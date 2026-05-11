@@ -1,0 +1,153 @@
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  max-width: 360px;
+  margin: 0 auto 24px;
+}
+
+.cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  font-weight: 800;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.cell:hover:not(.cellDisabled) {
+  background: var(--bg-glass-hover);
+  border-color: var(--border-glow);
+  transform: scale(1.05);
+}
+
+.cellDisabled {
+  cursor: not-allowed;
+}
+
+.cellX {
+  color: var(--accent-purple);
+  text-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+  animation: popIn 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards;
+}
+
+.cellO {
+  color: var(--accent-cyan);
+  text-shadow: 0 0 20px rgba(6, 182, 212, 0.5);
+  animation: popIn 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards;
+}
+
+.cellFading {
+  animation: pulse-glow 1s ease-in-out infinite !important;
+  opacity: 0.5;
+}
+
+.gameWrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+}
+
+.gameWrapper::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 50% 30%, rgba(139, 92, 246, 0.08) 0%, transparent 60%);
+  z-index: -1;
+}
+
+.infoBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+
+.playerTag {
+  padding: 8px 20px;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  font-size: 0.9rem;
+  border: 2px solid transparent;
+}
+
+.playerTagActive {
+  border-color: var(--accent-purple);
+  background: rgba(139, 92, 246, 0.1);
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.2);
+}
+
+.turnIndicator {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  min-height: 30px;
+}
+
+.backBtn {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 10;
+}
+
+.winOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.3s ease forwards;
+}
+
+.winCard {
+  text-align: center;
+  padding: 48px;
+  max-width: 400px;
+  width: 90%;
+}
+
+.winEmoji {
+  font-size: 4rem;
+  display: block;
+  margin-bottom: 16px;
+  animation: float 2s ease-in-out infinite;
+}
+
+.winTitle {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.winSub {
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+}
+
+.winActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}

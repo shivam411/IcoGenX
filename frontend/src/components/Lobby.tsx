@@ -1,0 +1,125 @@
+'use client';
+
+import { useState } from 'react';
+import { useGame } from '@/context/GameContext';
+import styles from './Lobby.module.css';
+
+interface LobbyProps {
+  gameType: string;
+  gameName: string;
+  gameIcon: string;
+  accentColor: string;
+  children: React.ReactNode;
+}
+
+export default function Lobby({ gameType, gameName, gameIcon, accentColor, children }: LobbyProps) {
+  const { connected, roomCode, gameStarted, playerNumber, opponentDisconnected, error, createRoom, joinRoom } = useGame();
+  const [joinCode, setJoinCode] = useState('');
+
+  if (!connected) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.connectingBox}>
+          <div className={styles.spinner} />
+          <p>Connecting to server...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (opponentDisconnected) {
+    return (
+      <div className={styles.container}>
+        <div className={`glass-card ${styles.disconnectBox}`}>
+          <span className={styles.disconnectIcon}>😔</span>
+          <h2>Opponent Disconnected</h2>
+          <p>Your opponent has left the game.</p>
+          <button className="btn btn-primary" onClick={() => window.location.reload()}>
+            Back to Lobby
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (gameStarted) {
+    return <>{children}</>;
+  }
+
+  if (roomCode) {
+    return (
+      <div className={styles.container}>
+        <div className={`glass-card ${styles.waitingBox}`}>
+          <div className={styles.waitingPulse} style={{ '--accent': accentColor } as React.CSSProperties}>
+            <span className={styles.gameIconLarge}>{gameIcon}</span>
+          </div>
+          <h2 className={styles.waitingTitle}>Waiting for Opponent</h2>
+          <p className={styles.waitingSub}>Share this code with a friend</p>
+          <div className={styles.codeDisplay}>
+            <span className={styles.codeText}>{roomCode}</span>
+            <button
+              className={`btn btn-sm btn-ghost ${styles.copyBtn}`}
+              onClick={() => navigator.clipboard.writeText(roomCode)}
+            >
+              📋 Copy
+            </button>
+          </div>
+          <div className={styles.dotLoader}>
+            <span /><span /><span />
+          </div>
+          {playerNumber !== null && (
+            <p className={styles.playerTag}>You are Player {playerNumber + 1}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.container}>
+      <div className={`glass-card ${styles.lobbyCard}`}>
+        <div className={styles.header}>
+          <span className={styles.gameIconLarge}>{gameIcon}</span>
+          <h1 className={styles.title}>{gameName}</h1>
+        </div>
+
+        <div className={styles.actions}>
+          <button
+            className="btn btn-primary btn-lg"
+            onClick={() => createRoom(gameType)}
+            style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)` }}
+          >
+            🎮 Create Room
+          </button>
+
+          <div className={styles.divider}>
+            <span>or join a room</span>
+          </div>
+
+          <div className={styles.joinRow}>
+            <input
+              className="input"
+              placeholder="Enter room code"
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+              maxLength={6}
+            />
+            <button
+              className="btn btn-ghost"
+              onClick={() => joinCode && joinRoom(joinCode)}
+              disabled={!joinCode}
+            >
+              Join
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <div className={styles.errorBanner}>
+            ⚠️ {error}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

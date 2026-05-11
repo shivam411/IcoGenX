@@ -1,0 +1,152 @@
+.gameWrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+}
+
+.gameWrapper::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: radial-gradient(circle at 50% 30%, rgba(236, 72, 153, 0.08) 0%, transparent 60%);
+  z-index: -1;
+}
+
+.backBtn { position: fixed; top: 20px; left: 20px; z-index: 10; }
+
+.turnInfo {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.progressBar {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.progressItem {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.progressItem strong {
+  color: var(--text-primary);
+}
+
+.nextHint {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+
+.nextHint strong {
+  color: var(--accent-pink);
+  font-size: 1.1rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-width: 340px;
+  margin: 0 auto;
+}
+
+.flipCard {
+  aspect-ratio: 1;
+  perspective: 600px;
+  cursor: pointer;
+}
+
+.flipCardInner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.flipped .flipCardInner {
+  transform: rotateY(180deg);
+}
+
+.flipFront,
+.flipBack {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  font-weight: 800;
+}
+
+.flipFront {
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.15), rgba(139, 92, 246, 0.15));
+  border: 2px solid rgba(236, 72, 153, 0.2);
+  font-size: 1.5rem;
+  color: var(--accent-pink);
+}
+
+.flipBack {
+  background: var(--bg-glass);
+  border: 2px solid var(--border-subtle);
+  transform: rotateY(180deg);
+  font-size: 1.2rem;
+  color: var(--text-muted);
+}
+
+.flipBack::after {
+  content: '?';
+  font-size: 2rem;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.flipCard:hover .flipCardInner {
+  transform: scale(1.05);
+}
+
+.flipped:hover .flipCardInner {
+  transform: rotateY(180deg) scale(1.05);
+}
+
+.wrongFlip {
+  animation: shake 0.5s ease;
+}
+
+.wrongFlip .flipFront {
+  border-color: var(--accent-red) !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: var(--accent-red) !important;
+}
+
+.winOverlay {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.3s ease forwards;
+}
+
+.winCard {
+  text-align: center; padding: 48px; max-width: 400px; width: 90%;
+}
+
+.winEmoji { font-size: 4rem; display: block; margin-bottom: 16px; }
+.winTitle { font-family: var(--font-display); font-size: 2rem; font-weight: 800; margin-bottom: 8px; }
+.winSub { color: var(--text-secondary); margin-bottom: 24px; }
