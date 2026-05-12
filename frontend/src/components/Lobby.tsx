@@ -15,6 +15,7 @@ interface LobbyProps {
 export default function Lobby({ gameType, gameName, gameIcon, accentColor, children }: LobbyProps) {
   const { connected, roomCode, gameStarted, playerNumber, opponentDisconnected, error, createRoom, joinRoom } = useGame();
   const [joinCode, setJoinCode] = useState('');
+  const [name, setName] = useState('');
 
   if (!connected) {
     return (
@@ -47,6 +48,7 @@ export default function Lobby({ gameType, gameName, gameIcon, accentColor, child
   }
 
   if (roomCode) {
+    const { playerName } = useGame();
     return (
       <div className={styles.container}>
         <div className={`glass-card ${styles.waitingBox}`}>
@@ -67,9 +69,9 @@ export default function Lobby({ gameType, gameName, gameIcon, accentColor, child
           <div className={styles.dotLoader}>
             <span /><span /><span />
           </div>
-          {playerNumber !== null && (
-            <p className={styles.playerTag}>You are Player {playerNumber + 1}</p>
-          )}
+          <p className={styles.playerTag}>
+            You are {playerName || 'Player'} {playerNumber !== null ? `(P${playerNumber + 1})` : ''}
+          </p>
         </div>
       </div>
     );
@@ -83,10 +85,22 @@ export default function Lobby({ gameType, gameName, gameIcon, accentColor, child
           <h1 className={styles.title}>{gameName}</h1>
         </div>
 
+        <div className={styles.nameSection}>
+          <label className={styles.nameLabel}>Your Name</label>
+          <input
+            className="input"
+            placeholder="Enter your name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={15}
+          />
+        </div>
+
         <div className={styles.actions}>
           <button
             className="btn btn-primary btn-lg"
-            onClick={() => createRoom(gameType)}
+            onClick={() => name.trim() && createRoom(gameType, name.trim())}
+            disabled={!name.trim()}
             style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)` }}
           >
             🎮 Create Room
@@ -106,8 +120,8 @@ export default function Lobby({ gameType, gameName, gameIcon, accentColor, child
             />
             <button
               className="btn btn-ghost"
-              onClick={() => joinCode && joinRoom(joinCode)}
-              disabled={!joinCode}
+              onClick={() => name.trim() && joinCode && joinRoom(joinCode, name.trim())}
+              disabled={!joinCode || !name.trim()}
             >
               Join
             </button>

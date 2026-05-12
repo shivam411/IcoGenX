@@ -42,6 +42,7 @@ pub struct AppState {
     pub rooms: RwLock<HashMap<String, Room>>,
     pub player_rooms: RwLock<HashMap<String, String>>,        // player_id -> room_code
     pub player_numbers: RwLock<HashMap<String, u8>>,          // player_id -> 0 or 1
+    pub player_names: RwLock<HashMap<String, String>>,          // player_id -> name
     pub senders: RwLock<HashMap<String, Arc<RwLock<Sender>>>>, // player_id -> ws sender
 }
 
@@ -51,6 +52,7 @@ impl AppState {
             rooms: RwLock::new(HashMap::new()),
             player_rooms: RwLock::new(HashMap::new()),
             player_numbers: RwLock::new(HashMap::new()),
+            player_names: RwLock::new(HashMap::new()),
             senders: RwLock::new(HashMap::new()),
         }
     }
@@ -82,6 +84,7 @@ impl AppState {
 
         let room_code = self.player_rooms.write().await.remove(player_id);
         self.player_numbers.write().await.remove(player_id);
+        self.player_names.write().await.remove(player_id);
 
         if let Some(code) = room_code {
             let remaining = {
@@ -124,9 +127,9 @@ fn generate_room_code() -> String {
 
 pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientMessage) {
     match msg {
-        ClientMessage::CreateRoom { game_type } => {
+        ClientMessage::CreateRoom { game_type, player_name } => {
             let code = generate_room_code();
-            tracing::info!("Player {} creating room {} for game {}", player_id, code, game_type);
+            tracing::info!("Player {} ({}) creating room {} for game {}", player_id, player_name, code, game_type);
 
             let room = Room {
                 code: code.clone(),
@@ -147,6 +150,11 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                 .write()
                 .await
                 .insert(player_id.to_string(), 0);
+            state
+                .player_names
+                .write()
+                .await
+                .insert(player_id.to_string(), player_name.clone());
 
             state
                 .send_to(
@@ -159,8 +167,8 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                 .await;
         }
 
-        ClientMessage::JoinRoom { room_code } => {
-            tracing::info!("Player {} attempting to join room {}", player_id, room_code);
+        ClientMessage::JoinRoom { room_code, player_name } => {
+            tracing::info!("Player {} ({}) attempting to join room {}", player_id, player_name, room_code);
 
             // Extract room info under write lock, then release lock before sending
             let join_result = {
@@ -214,13 +222,16 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                         .insert(player_id.to_string(), code.clone());
                     state.player_numbers.write().await
                         .insert(player_id.to_string(), player_num);
+                    state.player_names.write().await
+                        .insert(player_id.to_string(), player_name.clone());
 
-                    tracing::info!("Player {} joined room {} as player {}", player_id, code, player_num);
+                    tracing::info!("Player {} ({}) joined room {} as player {}", player_id, player_name, code, player_num);
 
                     // Notify all players about the join
                     let join_msg = ServerMessage::PlayerJoined {
                         player_id: player_id.to_string(),
                         player_number: player_num,
+                        player_name: player_name.clone(),
                     };
                     state.send_to_players(&players, &join_msg).await;
 

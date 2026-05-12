@@ -4,10 +4,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type")]
 pub enum ClientMessage {
-    CreateRoom { game_type: String },
-    JoinRoom { room_code: String },
+    CreateRoom { game_type: String, player_name: String },
+    JoinRoom { room_code: String, player_name: String },
     GameAction { action: GameAction },
 }
+
 
 /// Game-specific actions
 #[derive(Debug, Deserialize)]
@@ -27,7 +28,8 @@ pub enum GameAction {
 pub enum ServerMessage {
     Welcome { player_id: String },
     RoomCreated { room_code: String, game_type: String },
-    PlayerJoined { player_id: String, player_number: u8 },
+    PlayerJoined { player_id: String, player_number: u8, player_name: String },
+
     GameStart { game_state: serde_json::Value },
     GameUpdate { game_state: serde_json::Value },
     GameOver { winner: Option<String>, reason: String },

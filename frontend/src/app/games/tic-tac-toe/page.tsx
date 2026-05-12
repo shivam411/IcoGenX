@@ -6,7 +6,7 @@ import styles from './game.module.css';
 import Link from 'next/link';
 
 function TicTacToeBoard() {
-  const { gameState, playerNumber, sendAction, gameOver, winner } = useGame();
+  const { gameState, playerNumber, playerName, opponentName, sendAction, gameOver, winner } = useGame();
 
   if (!gameState) return null;
 
@@ -14,6 +14,9 @@ function TicTacToeBoard() {
   const currentPlayer: number = gameState.currentPlayer;
   const fadingCells: (number | null)[] = gameState.fadingCells || [];
   const isMyTurn = currentPlayer === playerNumber;
+
+  const p1Name = playerNumber === 0 ? (playerName || 'You') : (opponentName || 'Opponent');
+  const p2Name = playerNumber === 1 ? (playerName || 'You') : (opponentName || 'Opponent');
 
   const handleClick = (cell: number) => {
     if (!isMyTurn || board[cell] !== null || gameOver) return;
@@ -30,16 +33,25 @@ function TicTacToeBoard() {
     return classes.join(' ');
   };
 
+  const getWinnerName = (w: string | null) => {
+    if (!w) return null;
+    if (w === 'Player 1') return p1Name;
+    if (w === 'Player 2') return p2Name;
+    return w;
+  };
+
+  const winnerName = getWinnerName(winner);
+
   return (
     <div className={styles.gameWrapper}>
       <Link href="/" className={`btn btn-ghost btn-sm ${styles.backBtn}`}>← Back</Link>
 
       <div className={styles.infoBar}>
         <span className={`${styles.playerTag} ${currentPlayer === 0 ? styles.playerTagActive : ''}`}>
-          ❌ Player 1 {playerNumber === 0 ? '(You)' : ''}
+          ❌ {p1Name}
         </span>
         <span className={`${styles.playerTag} ${currentPlayer === 1 ? styles.playerTagActive : ''}`}>
-          ⭕ Player 2 {playerNumber === 1 ? '(You)' : ''}
+          ⭕ {p2Name}
         </span>
       </div>
 
@@ -63,14 +75,14 @@ function TicTacToeBoard() {
         <div className={styles.winOverlay}>
           <div className={`glass-card ${styles.winCard}`}>
             <span className={styles.winEmoji}>
-              {winner ? (winner.includes(`${(playerNumber || 0) + 1}`) ? '🎉' : '😢') : '🤝'}
+              {winnerName === playerName ? '🎉' : winnerName ? '😢' : '🤝'}
             </span>
             <h2 className={styles.winTitle}>
-              {winner
-                ? winner.includes(`${(playerNumber || 0) + 1}`) ? 'You Win!' : 'You Lose!'
-                : 'Draw!'}
+              {winnerName ? (winnerName === playerName ? 'You Win!' : 'You Lose!') : 'Draw!'}
             </h2>
-            <p className={styles.winSub}>{winner || 'No winner this time'}</p>
+            <p className={styles.winSub}>
+              {winnerName ? `${winnerName} wins the game!` : 'No winner this time'}
+            </p>
             <div className={styles.winActions}>
               <Link href="/" className="btn btn-primary">Play Again</Link>
             </div>

@@ -13,6 +13,8 @@ interface WebSocketContextType {
   playerId: string | null;
   playerNumber: number | null;
   roomCode: string | null;
+  playerName: string | null;
+  opponentName: string | null;
   gameState: GameState | null;
   gameType: string | null;
   gameStarted: boolean;
@@ -20,8 +22,8 @@ interface WebSocketContextType {
   winner: string | null;
   error: string | null;
   opponentDisconnected: boolean;
-  createRoom: (gameType: string) => void;
-  joinRoom: (roomCode: string) => void;
+  createRoom: (gameType: string, playerName: string) => void;
+  joinRoom: (roomCode: string, playerName: string) => void;
   sendAction: (action: any) => void;
   resetGame: () => void;
 }
@@ -34,6 +36,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [connected, setConnected] = useState(false);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [playerNumber, setPlayerNumber] = useState<number | null>(null);
+  const [playerName, setPlayerNameState] = useState<string | null>(null);
+  const [opponentName, setOpponentName] = useState<string | null>(null);
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [gameType, setGameType] = useState<string | null>(null);
@@ -57,9 +61,14 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           setPlayerNumber(0); // Creator is always player 0
           break;
         case 'PlayerJoined':
-          // Joiner sets their own player number
           if (msg.player_number !== undefined) {
-            setPlayerNumber(prev => prev ?? msg.player_number);
+            // If I am joining, this confirms my number
+            if (msg.player_id === playerId) {
+              setPlayerNumber(msg.player_number);
+            } else {
+              // Someone else joined, they are my opponent
+              setOpponentName(msg.player_name);
+            }
           }
           break;
         case 'GameStart':
@@ -85,7 +94,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.error('[WS] Failed to parse message:', e);
     }
-  }, []);
+  }, [playerId]);
 
   const connectWs = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
@@ -127,7 +136,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       // Cleanup on unmount
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
-        reconnectTimerRef.current = undefined as any; // Prevent reconnect
+        reconnectTimerRef.current = null as any;
       }
       wsRef.current?.close();
     };
@@ -142,12 +151,14 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const createRoom = useCallback((gameType: string) => {
-    send({ type: 'CreateRoom', game_type: gameType });
+  const createRoom = useCallback((gameType: string, playerName: string) => {
+    setPlayerNameState(playerName);
+    send({ type: 'CreateRoom', game_type: gameType, player_name: playerName });
   }, [send]);
 
-  const joinRoom = useCallback((code: string) => {
-    send({ type: 'JoinRoom', room_code: code });
+  const joinRoom = useCallback((code: string, playerName: string) => {
+    setPlayerNameState(playerName);
+    send({ type: 'JoinRoom', room_code: code, player_name: playerName });
   }, [send]);
 
   const sendAction = useCallback((action: any) => {
@@ -161,6 +172,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     setWinner(null);
     setRoomCode(null);
     setPlayerNumber(null);
+    setPlayerNameState(null);
+    setOpponentName(null);
     setOpponentDisconnected(false);
     setGameType(null);
   }, []);
@@ -171,6 +184,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       playerId,
       playerNumber,
       roomCode,
+      playerName,
+      opponentName,
       gameState,
       gameType,
       gameStarted,
