@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useGame } from '@/context/GameContext';
 import styles from './Lobby.module.css';
 
@@ -13,9 +14,27 @@ interface LobbyProps {
 }
 
 export default function Lobby({ gameType, gameName, gameIcon, accentColor, children }: LobbyProps) {
-  const { connected, roomCode, gameStarted, playerNumber, opponentDisconnected, error, createRoom, joinRoom } = useGame();
+  const { connected, roomCode, gameStarted, playerNumber, opponentDisconnected, error, createRoom, joinRoom, playerName } = useGame();
   const [joinCode, setJoinCode] = useState('');
   const [name, setName] = useState('');
+  const [nameError, setNameError] = useState(false);
+  const router = useRouter();
+
+  const handleCreate = () => {
+    if (!name.trim()) {
+      setNameError(true);
+      return;
+    }
+    createRoom(gameType, name.trim());
+  };
+
+  const handleJoin = () => {
+    if (!name.trim()) {
+      setNameError(true);
+      return;
+    }
+    if (joinCode) joinRoom(joinCode, name.trim());
+  };
 
   if (!connected) {
     return (
@@ -48,7 +67,6 @@ export default function Lobby({ gameType, gameName, gameIcon, accentColor, child
   }
 
   if (roomCode) {
-    const { playerName } = useGame();
     return (
       <div className={styles.container}>
         <div className={`glass-card ${styles.waitingBox}`}>
@@ -80,6 +98,13 @@ export default function Lobby({ gameType, gameName, gameIcon, accentColor, child
   return (
     <div className={styles.container}>
       <div className={`glass-card ${styles.lobbyCard}`}>
+        <button 
+          className={styles.backBtn} 
+          onClick={() => router.push('/')}
+          aria-label="Back to home"
+        >
+          ← Back
+        </button>
         <div className={styles.header}>
           <span className={styles.gameIconLarge}>{gameIcon}</span>
           <h1 className={styles.title}>{gameName}</h1>
@@ -91,16 +116,24 @@ export default function Lobby({ gameType, gameName, gameIcon, accentColor, child
             className="input"
             placeholder="Enter your name"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (e.target.value.trim()) setNameError(false);
+            }}
             maxLength={15}
+            style={nameError ? { borderColor: 'var(--accent-red, #ef4444)' } : {}}
           />
+          {nameError && (
+            <div style={{ color: 'var(--accent-red, #ef4444)', fontSize: '0.8rem', marginTop: '6px', textAlign: 'left' }}>
+              ⚠️ Please enter your name first
+            </div>
+          )}
         </div>
 
         <div className={styles.actions}>
           <button
             className="btn btn-primary btn-lg"
-            onClick={() => name.trim() && createRoom(gameType, name.trim())}
-            disabled={!name.trim()}
+            onClick={handleCreate}
             style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)` }}
           >
             🎮 Create Room
@@ -120,8 +153,8 @@ export default function Lobby({ gameType, gameName, gameIcon, accentColor, child
             />
             <button
               className="btn btn-ghost"
-              onClick={() => name.trim() && joinCode && joinRoom(joinCode, name.trim())}
-              disabled={!joinCode || !name.trim()}
+              onClick={handleJoin}
+              disabled={!joinCode}
             >
               Join
             </button>

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080/ws';
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:6100/ws';
 
 interface GameState {
   [key: string]: any;
@@ -46,6 +46,10 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [winner, setWinner] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [opponentDisconnected, setOpponentDisconnected] = useState(false);
+  
+  // Refs for stable callbacks
+  const playerIdRef = useRef<string | null>(null);
+  const handleMessageRef = useRef<(event: MessageEvent) => void>(() => {});
 
   const handleMessage = useCallback((event: MessageEvent) => {
     try {
@@ -63,7 +67,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         case 'PlayerJoined':
           if (msg.player_number !== undefined) {
             // If I am joining, this confirms my number
-            if (msg.player_id === playerId) {
+            if (msg.player_id === playerIdRef.current) {
               setPlayerNumber(msg.player_number);
             } else {
               // Someone else joined, they are my opponent
@@ -94,7 +98,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.error('[WS] Failed to parse message:', e);
     }
-  }, [playerId]);
+  }, []); // No dependencies
 
   const connectWs = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
@@ -106,15 +110,16 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     wsRef.current = ws;
 
     ws.onopen = () => {
-      console.log('[WS] Connected');
+      console.log('[WS] Connected to', WS_URL);
       setConnected(true);
     };
 
-    ws.onclose = () => {
-      console.log('[WS] Disconnected');
+    ws.onclose = (event) => {
+      console.log(`[WS] Disconnected (code: ${event.code}, reason: ${event.reason || 'none'})`);
       setConnected(false);
       // Only reconnect if we haven't intentionally cleaned up
       if (reconnectTimerRef.current === null) {
+        console.log('[WS] Attempting to reconnect in 2s...');
         reconnectTimerRef.current = setTimeout(() => {
           reconnectTimerRef.current = null;
           connectWs();
@@ -123,10 +128,19 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     };
 
     ws.onerror = (err) => {
-      console.error('[WS] Error:', err);
+      console.error('[WS] Error Event:', err);
     };
 
-    ws.onmessage = handleMessage;
+    ws.onmessage = (e) => handleMessageRef.current(e);
+  }, []); // Stable connection function
+
+  // Keep refs in sync
+  useEffect(() => {
+    playerIdRef.current = playerId;
+  }, [playerId]);
+
+  useEffect(() => {
+    handleMessageRef.current = handleMessage;
   }, [handleMessage]);
 
   useEffect(() => {

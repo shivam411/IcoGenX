@@ -105,11 +105,86 @@
   min-height: 30px;
 }
 
-.backBtn {
-  position: fixed;
+.topBar {
+  position: absolute;
   top: 20px;
   left: 20px;
   z-index: 10;
+}
+
+.endGameBtn {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--accent-red, #ef4444);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+.endGameBtn:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.gameLayout {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 48px;
+  width: 100%;
+  max-width: 900px;
+  margin-top: 40px;
+}
+
+.boardContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.rulesContainer {
+  flex: 1;
+  max-width: 350px;
+  background: var(--bg-glass);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.rulesTitle {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.rulesList {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rulesList li {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.rulesList strong {
+  color: var(--text-primary);
+  display: block;
+  margin-bottom: 4px;
+}
+
+@media (max-width: 800px) {
+  .gameLayout {
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+  }
 }
 
 .winOverlay {

@@ -227,7 +227,25 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
 
                     tracing::info!("Player {} ({}) joined room {} as player {}", player_id, player_name, code, player_num);
 
-                    // Notify all players about the join
+                    // Send existing players' info to the new joiner
+                    {
+                        let pnames = state.player_names.read().await;
+                        let pnums = state.player_numbers.read().await;
+                        for existing_pid in &players {
+                            if existing_pid != player_id {
+                                if let (Some(name), Some(num)) = (pnames.get(existing_pid), pnums.get(existing_pid)) {
+                                    let existing_msg = ServerMessage::PlayerJoined {
+                                        player_id: existing_pid.to_string(),
+                                        player_number: *num,
+                                        player_name: name.clone(),
+                                    };
+                                    state.send_to(player_id, &existing_msg).await;
+                                }
+                            }
+                        }
+                    }
+
+                    // Notify all players about the new joiner
                     let join_msg = ServerMessage::PlayerJoined {
                         player_id: player_id.to_string(),
                         player_number: player_num,

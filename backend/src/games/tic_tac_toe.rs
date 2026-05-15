@@ -10,17 +10,23 @@ pub struct TicTacToeGame {
     pub current_player: u8,                // 0 or 1
     pub winner: Option<u8>,
     pub game_over: bool,
+    pub x_player: u8,                      // 0 or 1
 }
 
 impl TicTacToeGame {
     pub fn new() -> Self {
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        let x_player = if rng.gen_bool(0.5) { 0 } else { 1 };
+        
         TicTacToeGame {
             board: [None; 9],
             player1_moves: VecDeque::new(),
             player2_moves: VecDeque::new(),
-            current_player: 0,
+            current_player: x_player, // X goes first
             winner: None,
             game_over: false,
+            x_player,
         }
     }
 
@@ -98,6 +104,7 @@ impl TicTacToeGame {
             "fadingCells": [self.fading_cell(0), self.fading_cell(1)],
             "player1Moves": self.player1_moves.iter().collect::<Vec<_>>(),
             "player2Moves": self.player2_moves.iter().collect::<Vec<_>>(),
+            "xPlayer": self.x_player,
         })
     }
 }

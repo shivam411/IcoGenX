@@ -27,8 +27,9 @@ async fn main() {
         .layer(CorsLayer::permissive())
         .with_state(state);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
-    println!("🎮 Game server running on http://localhost:8080");
+    let addr = std::net::SocketAddr::from(([0, 0, 0, 0, 0, 0, 0, 0], 6100));
+    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    println!("🎮 Game server running on http://localhost:6100");
     axum::serve(listener, app).await.unwrap();
 }
 
@@ -36,6 +37,7 @@ async fn ws_handler(
     ws: WebSocketUpgrade,
     State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
+    println!("[WS] Connection request received");
     ws.on_upgrade(move |socket| handle_socket(socket, state))
 }
 
