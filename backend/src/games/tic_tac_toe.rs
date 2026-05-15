@@ -10,27 +10,41 @@ pub struct TicTacToeGame {
     pub current_player: u8,                // 0 or 1
     pub winner: Option<u8>,
     pub game_over: bool,
-    pub x_player: u8,                      // 0 or 1
+    pub x_player: Option<u8>,              // assigned after toss
+    pub coin_tossed: bool,
 }
 
 impl TicTacToeGame {
     pub fn new() -> Self {
-        use rand::Rng;
-        let mut rng = rand::thread_rng();
-        let x_player = if rng.gen_bool(0.5) { 0 } else { 1 };
-        
         TicTacToeGame {
             board: [None; 9],
             player1_moves: VecDeque::new(),
             player2_moves: VecDeque::new(),
-            current_player: x_player, // X goes first
+            current_player: 0, // Doesn't matter until toss
             winner: None,
             game_over: false,
-            x_player,
+            x_player: None,
+            coin_tossed: false,
         }
     }
 
+    pub fn toss_coin(&mut self) -> Result<(), String> {
+        if self.coin_tossed {
+            return Err("Coin already tossed".into());
+        }
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        let x_p = if rng.gen_bool(0.5) { 0 } else { 1 };
+        self.x_player = Some(x_p);
+        self.current_player = x_p;
+        self.coin_tossed = true;
+        Ok(())
+    }
+
     pub fn make_move(&mut self, player: u8, cell: usize) -> Result<(), String> {
+        if !self.coin_tossed {
+            return Err("Waiting for coin toss".into());
+        }
         if self.game_over {
             return Err("Game is over".into());
         }
@@ -105,6 +119,7 @@ impl TicTacToeGame {
             "player1Moves": self.player1_moves.iter().collect::<Vec<_>>(),
             "player2Moves": self.player2_moves.iter().collect::<Vec<_>>(),
             "xPlayer": self.x_player,
+            "coinTossed": self.coin_tossed,
         })
     }
 }

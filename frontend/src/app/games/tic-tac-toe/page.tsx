@@ -8,6 +8,26 @@ import Link from 'next/link';
 
 function TicTacToeBoard() {
   const { gameState, playerNumber, playerName, opponentName, sendAction, gameOver, winner } = useGame();
+  const [tossPhase, setTossPhase] = useState<'waiting' | 'flipping' | 'result' | 'done'>('waiting');
+
+  useEffect(() => {
+    if (!gameState) return;
+    if (gameState.coinTossed && tossPhase === 'waiting') {
+      // Coin toss just triggered
+      setTossPhase('flipping');
+      setTimeout(() => setTossPhase('result'), 2000);
+      setTimeout(() => setTossPhase('done'), 5000);
+    }
+  }, [gameState, tossPhase]);
+
+  // Handle joining a game already in progress
+  useEffect(() => {
+    if (gameState && gameState.coinTossed && tossPhase === 'waiting') {
+       // If we load in and it's already tossed, but we didn't see the transition (e.g. refresh)
+       // actually the previous effect handles it by animating. If we want to skip animation on refresh,
+       // it's a bit more complex. Let's just always animate if waiting -> coinTossed.
+    }
+  }, []);
 
   if (!gameState) return null;
 
@@ -16,14 +36,7 @@ function TicTacToeBoard() {
   const fadingCells: (number | null)[] = gameState.fadingCells || [];
   const xPlayer: number | undefined = gameState.xPlayer;
   const isMyTurn = currentPlayer === playerNumber;
-
-  const [showCoinToss, setShowCoinToss] = useState(true);
-
-  useEffect(() => {
-    // Hide coin toss after 3 seconds
-    const timer = setTimeout(() => setShowCoinToss(false), 3000);
-    return () => clearTimeout(timer);
-  }, []);
+  const coinTossed: boolean = gameState.coinTossed;
 
   const p1Name = playerNumber === 0 ? (playerName || 'You') : (opponentName || 'Opponent');
   const p2Name = playerNumber === 1 ? (playerName || 'You') : (opponentName || 'Opponent');
@@ -53,6 +66,55 @@ function TicTacToeBoard() {
   };
 
   const winnerName = getWinnerName(winner);
+
+  // PRE-GAME TOSS UI
+  if (!coinTossed || tossPhase !== 'done') {
+    return (
+      <div className={styles.gameWrapper}>
+        <div className={styles.topBar}>
+          <Link href="/" className={`btn btn-ghost btn-sm ${styles.endGameBtn}`}>🛑 End Game</Link>
+        </div>
+        
+        <div className={`glass-card ${styles.winCard}`}>
+          {tossPhase === 'waiting' && (
+            <>
+              <span className={styles.winEmoji}>🪙</span>
+              <h2 className={styles.winTitle}>Coin Toss</h2>
+              <p className={styles.winSub}>
+                Who gets ❌ is decided by a coin toss! ❌ always goes first.
+              </p>
+              <div className={styles.winActions}>
+                {playerNumber === 0 ? (
+                  <button className="btn btn-primary" onClick={() => sendAction({ game: 'TicTacToeTossCoin' })}>
+                    Toss Coin
+                  </button>
+                ) : (
+                  <p style={{ color: 'var(--text-secondary)' }}>Waiting for creator to toss...</p>
+                )}
+              </div>
+            </>
+          )}
+
+          {tossPhase === 'flipping' && (
+            <>
+              <span className={styles.winEmoji} style={{ animation: 'flip 0.5s ease-in-out infinite' }}>🪙</span>
+              <h2 className={styles.winTitle}>Flipping...</h2>
+            </>
+          )}
+
+          {tossPhase === 'result' && xPlayer !== undefined && (
+            <>
+              <span className={styles.winEmoji}>✨</span>
+              <h2 className={styles.winTitle}>Result!</h2>
+              <p className={styles.winSub}>
+                <strong>{xPlayer === playerNumber ? (playerName || 'You') : opponentName}</strong> won the toss and gets ❌!
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.gameWrapper}>
@@ -99,20 +161,6 @@ function TicTacToeBoard() {
           </ul>
         </div>
       </div>
-
-      {showCoinToss && xPlayer !== undefined && (
-        <div className={styles.winOverlay}>
-          <div className={`glass-card ${styles.winCard}`}>
-            <span className={styles.winEmoji} style={{ animation: 'flip 1s ease-in-out infinite' }}>
-              🪙
-            </span>
-            <h2 className={styles.winTitle}>Coin Toss!</h2>
-            <p className={styles.winSub}>
-              <strong>{xPlayer === playerNumber ? (playerName || 'You') : opponentName}</strong> won the toss and gets ❌!
-            </p>
-          </div>
-        </div>
-      )}
 
       {gameOver && (
         <div className={styles.winOverlay}>

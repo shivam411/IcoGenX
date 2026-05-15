@@ -365,6 +365,15 @@ fn process_action(
             Ok(broadcast_same(players, state))
         }
 
+        (GameInstance::TicTacToe(g), GameAction::TicTacToeTossCoin) => {
+            if player != 0 {
+                return Err("Only creator can toss coin".into());
+            }
+            g.toss_coin()?;
+            let state = g.state_json();
+            Ok(broadcast_same(players, state))
+        }
+
         (GameInstance::ShutTheBox(g), GameAction::ShutTheBox { combination, target }) => {
             if combination.is_empty() {
                 let _roll = g.roll_dice(player)?;
