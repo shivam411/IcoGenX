@@ -8,6 +8,7 @@ pub enum ClientMessage {
     JoinRoom { room_code: String, player_name: String },
     LeaveRoom,
     GameAction { action: GameAction },
+    SendEmoji { emoji: String },
     RequestPlayAgain,
 }
 
@@ -35,6 +36,7 @@ pub enum ServerMessage {
 
     GameStart { game_state: serde_json::Value, scores: [u32; 2], game_type: String, variant: Option<String> },
     GameUpdate { game_state: serde_json::Value },
+    EmojiSent { player_id: String, emoji: String },
     GameOver { winner: Option<String>, reason: String },
     Error { message: String },
     OpponentDisconnected,

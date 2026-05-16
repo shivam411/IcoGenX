@@ -125,8 +125,8 @@ impl TicTacToeGame {
             &mut self.player2_moves
         };
 
-        // Disappearing mechanic: remove oldest if already have 3 (only for Disappearing variant)
-        if self.variant == TicTacToeVariant::Disappearing && moves.len() >= 3 {
+        // Disappearing mechanic: remove oldest if already have 4 (only for Disappearing variant)
+        if self.variant == TicTacToeVariant::Disappearing && moves.len() >= 4 {
             if let Some(oldest) = moves.pop_front() {
                 self.board[oldest] = None;
             }
@@ -187,7 +187,7 @@ impl TicTacToeGame {
         } else {
             &self.player2_moves
         };
-        if moves.len() >= 3 {
+        if moves.len() >= 4 {
             moves.front().copied()
         } else {
             None

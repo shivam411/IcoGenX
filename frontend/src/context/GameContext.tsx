@@ -99,6 +99,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
             } else {
               // Someone else joined, they are my opponent
               setOpponentName(msg.player_name);
+              setOpponentDisconnected(false);
             }
           }
           break;

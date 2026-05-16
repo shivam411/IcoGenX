@@ -15,6 +15,53 @@
 }
 
 
+/* Active Game Banner */
+.activeGameBanner {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 800px;
+  margin: 24px auto 0;
+  padding: 16px 24px;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  animation: slideDown 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.activeGameContent {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.activeGameIcon {
+  font-size: 2rem;
+  animation: float 2s ease-in-out infinite;
+}
+
+.activeGameContent strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.activeGameContent p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
 /* Background Effects */
 .bgOrbs {
   position: fixed;

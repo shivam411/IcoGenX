@@ -189,7 +189,7 @@ export default function CoinToss({
             className={`btn btn-ghost btn-sm ${styles.skipBtn}`} 
             onClick={onComplete}
           >
-            Skip Animation ⏭️
+            Jump to Game ⏭️
           </button>
         )}
       </div>

@@ -260,3 +260,12 @@
   color: var(--text-secondary);
   margin-bottom: 24px;
 }
+
+.countdown {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--accent-red, #ef4444);
+  margin: 16px 0;
+  text-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+}

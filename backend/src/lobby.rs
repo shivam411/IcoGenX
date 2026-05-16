@@ -353,6 +353,26 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
             tracing::info!("Player {} explicitly leaving room", player_id);
             state.remove_player(player_id).await;
         }
+        ClientMessage::SendEmoji { emoji } => {
+            let room_code = {
+                let pr = state.player_rooms.read().await;
+                pr.get(player_id).cloned()
+            };
+            if let Some(code) = room_code {
+                let mut players_to_notify = vec![];
+                {
+                    let rooms = state.rooms.read().await;
+                    if let Some(room) = rooms.get(&code) {
+                        players_to_notify = room.players.clone();
+                    }
+                }
+                let msg = ServerMessage::EmojiSent {
+                    player_id: player_id.to_string(),
+                    emoji,
+                };
+                state.send_to_players(&players_to_notify, &msg).await;
+            }
+        }
         ClientMessage::RequestPlayAgain => {
             let room_code = {
                 let pr = state.player_rooms.read().await;
