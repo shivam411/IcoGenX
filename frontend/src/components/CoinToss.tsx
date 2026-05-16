@@ -183,13 +183,13 @@ export default function CoinToss({
           </>
         )}
 
-        {/* Skip Animation Button */}
+        {/* Continue Button */}
         {phase !== 'idle' && (
           <button 
             className={`btn btn-ghost btn-sm ${styles.skipBtn}`} 
             onClick={onComplete}
           >
-            Jump to Game ⏭️
+            Continue to Game ⏭️
           </button>
         )}
       </div>

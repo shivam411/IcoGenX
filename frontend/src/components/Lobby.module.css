@@ -269,3 +269,163 @@
   margin: 16px 0;
   text-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
 }
+
+.reactionFeed {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 90;
+  pointer-events: none;
+}
+
+.reactionBubble {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+  background: rgba(10, 14, 28, 0.78);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
+  animation: reaction-rise 2.2s ease forwards;
+}
+
+.reactionBubbleSelf {
+  border-color: rgba(139, 92, 246, 0.35);
+}
+
+.reactionBubbleOpponent {
+  border-color: rgba(6, 182, 212, 0.35);
+}
+
+.reactionEmoji {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.reactionSender {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.reactionDock {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+  background: rgba(10, 14, 28, 0.82);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+  z-index: 90;
+}
+
+.reactionDockLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.reactionButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.reactionBtn {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.reactionBtn:hover {
+  transform: translateY(-2px) scale(1.04);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.reactionBtn:active {
+  transform: scale(0.94);
+}
+
+@keyframes reaction-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.9);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-18px) scale(0.96);
+  }
+}
+
+@media (max-width: 800px) {
+  .reactionFeed {
+    top: 14px;
+    right: 14px;
+    gap: 8px;
+  }
+
+  .reactionBubble {
+    padding: 8px 12px;
+  }
+
+  .reactionSender {
+    font-size: 0.72rem;
+  }
+
+  .reactionDock {
+    width: calc(100% - 24px);
+    max-width: 360px;
+    bottom: 14px;
+    padding: 10px 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    border-radius: 24px;
+  }
+
+  .reactionDockLabel {
+    width: 100%;
+    text-align: center;
+  }
+
+  .reactionButtons {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .reactionBtn {
+    width: 40px;
+    height: 40px;
+    font-size: 1.25rem;
+  }
+}

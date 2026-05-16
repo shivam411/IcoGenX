@@ -154,9 +154,9 @@ function TicTacToeBoard() {
           <h3 className={styles.rulesTitle}>📜 Rules</h3>
           <ul className={styles.rulesList}>
             <li><strong>Coin Toss:</strong> Who gets X or O is decided by a coin toss at the start. X always goes first!</li>
-            <li><strong>Max 3 Symbols:</strong> You can only have a maximum of 3 symbols on the board.</li>
-            <li><strong>Disappearing Act:</strong> When you place your 4th symbol, your very 1st symbol will disappear from the board!</li>
-            <li><strong>Fading Hint:</strong> The symbol that is about to disappear will fade and pulse to warn you.</li>
+            <li><strong>Max 4 Symbols:</strong> You can keep up to 4 symbols on the board at once.</li>
+            <li><strong>Disappearing Act:</strong> When you place your 5th symbol, your very 1st symbol disappears from the board.</li>
+            <li><strong>Fading Hint:</strong> Once you have 4 symbols down, your oldest one fades to warn you that it will vanish next.</li>
             <li><strong>Win:</strong> Get 3 in a row before your symbols vanish to win!</li>
           </ul>
         </div>

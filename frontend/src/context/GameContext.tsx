@@ -8,6 +8,12 @@ interface GameState {
   [key: string]: any;
 }
 
+interface EmojiReaction {
+  id: number;
+  emoji: string;
+  fromSelf: boolean;
+}
+
 interface WebSocketContextType {
   connected: boolean;
   playerId: string | null;
@@ -26,10 +32,12 @@ interface WebSocketContextType {
   opponentDisconnected: boolean;
   playAgainRequested: boolean;
   opponentPlayAgainRequested: boolean;
+  recentEmojis: EmojiReaction[];
   createRoom: (gameType: string, variant: string | null, playerName: string) => void;
   joinRoom: (roomCode: string, playerName: string) => void;
   leaveRoom: () => void;
   sendAction: (action: any) => void;
+  sendEmoji: (emoji: string) => void;
   requestPlayAgain: () => void;
   resetGame: () => void;
 }
@@ -56,6 +64,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [opponentDisconnected, setOpponentDisconnected] = useState(false);
   const [playAgainRequested, setPlayAgainRequested] = useState(false);
   const [opponentPlayAgainRequested, setOpponentPlayAgainRequested] = useState(false);
+  const [recentEmojis, setRecentEmojis] = useState<EmojiReaction[]>([]);
   
   // Refs for stable callbacks
   const playerIdRef = useRef<string | null>(null);
@@ -113,6 +122,21 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         case 'GameUpdate':
           setGameState(msg.game_state);
           break;
+        case 'EmojiSent': {
+          const reactionId = Date.now() + Math.random();
+          setRecentEmojis((prev) => [
+            ...prev.slice(-3),
+            {
+              id: reactionId,
+              emoji: msg.emoji,
+              fromSelf: msg.player_id === playerIdRef.current,
+            },
+          ]);
+          setTimeout(() => {
+            setRecentEmojis((prev) => prev.filter((reaction) => reaction.id !== reactionId));
+          }, 2200);
+          break;
+        }
         case 'GameOver':
           setGameOver(true);
           setWinner(msg.winner);
@@ -233,6 +257,13 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     send({ type: 'GameAction', action });
   }, [send]);
 
+  const sendEmoji = useCallback((emoji: string) => {
+    if (!emoji) {
+      return;
+    }
+    send({ type: 'SendEmoji', emoji });
+  }, [send]);
+
   const requestPlayAgain = useCallback(() => {
     setPlayAgainRequested(true);
     send({ type: 'RequestPlayAgain' });
@@ -253,6 +284,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     setScores([0, 0]);
     setPlayAgainRequested(false);
     setOpponentPlayAgainRequested(false);
+    setRecentEmojis([]);
   }, []);
 
   const leaveRoom = useCallback(() => {
@@ -280,10 +312,12 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       opponentDisconnected,
       playAgainRequested,
       opponentPlayAgainRequested,
+      recentEmojis,
       createRoom,
       joinRoom,
       leaveRoom,
       sendAction,
+      sendEmoji,
       requestPlayAgain,
       resetGame,
     }}>

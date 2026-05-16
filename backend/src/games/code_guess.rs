@@ -153,3 +153,46 @@ impl CodeGuessGame {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::CodeGuessGame;
+
+    #[test]
+    fn repeated_digits_are_scored_without_double_counting() {
+        let mut game = CodeGuessGame::new();
+        game.set_code(0, "9876").unwrap();
+        game.set_code(1, "1122").unwrap();
+
+        let result = game.make_guess(0, "2211").unwrap();
+
+        assert_eq!(result.correct_position, 0);
+        assert_eq!(result.correct_digit, 4);
+        assert_eq!(game.player1_guesses.len(), 1);
+        assert_eq!(game.current_player, 1);
+    }
+
+    #[test]
+    fn exact_match_marks_game_as_won() {
+        let mut game = CodeGuessGame::new();
+        game.set_code(0, "9876").unwrap();
+        game.set_code(1, "1234").unwrap();
+
+        let result = game.make_guess(0, "1234").unwrap();
+
+        assert_eq!(result.correct_position, 4);
+        assert_eq!(result.correct_digit, 0);
+        assert!(game.game_over);
+        assert_eq!(game.winner, Some(0));
+    }
+
+    #[test]
+    fn guess_is_rejected_until_both_codes_are_set() {
+        let mut game = CodeGuessGame::new();
+        game.set_code(0, "1234").unwrap();
+
+        let error = game.make_guess(0, "5678").unwrap_err();
+
+        assert_eq!(error, "Both players must set their code first");
+    }
+}

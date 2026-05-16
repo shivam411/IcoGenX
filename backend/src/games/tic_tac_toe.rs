@@ -210,3 +210,68 @@ impl TicTacToeGame {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{TicTacToeGame, TicTacToeVariant};
+
+    fn ready_game(variant: &str) -> TicTacToeGame {
+        let mut game = TicTacToeGame::new_variant(variant);
+        game.coin_tossed = true;
+        game.x_player = Some(0);
+        game.current_player = 0;
+        game
+    }
+
+    #[test]
+    fn disappearing_variant_flags_oldest_mark_after_fourth_move() {
+        let mut game = ready_game("disappearing");
+
+        game.make_move(0, 0).unwrap();
+        game.make_move(1, 1).unwrap();
+        game.make_move(0, 2).unwrap();
+        game.make_move(1, 3).unwrap();
+        game.make_move(0, 4).unwrap();
+        game.make_move(1, 5).unwrap();
+        game.make_move(0, 6).unwrap();
+
+        assert_eq!(game.variant, TicTacToeVariant::Disappearing);
+        assert_eq!(game.player1_moves.iter().copied().collect::<Vec<_>>(), vec![0, 2, 4, 6]);
+        assert_eq!(game.board[0], Some(0));
+        assert_eq!(game.fading_cell(0), Some(0));
+    }
+
+    #[test]
+    fn disappearing_variant_removes_oldest_mark_on_fifth_move() {
+        let mut game = ready_game("disappearing");
+
+        game.make_move(0, 0).unwrap();
+        game.make_move(1, 1).unwrap();
+        game.make_move(0, 2).unwrap();
+        game.make_move(1, 3).unwrap();
+        game.make_move(0, 5).unwrap();
+        game.make_move(1, 4).unwrap();
+        game.make_move(0, 7).unwrap();
+        game.make_move(1, 6).unwrap();
+        game.make_move(0, 8).unwrap();
+
+        assert_eq!(game.board[0], None);
+        assert_eq!(game.board[8], Some(0));
+        assert_eq!(game.player1_moves.iter().copied().collect::<Vec<_>>(), vec![2, 5, 7, 8]);
+        assert_eq!(game.fading_cell(0), Some(2));
+    }
+
+    #[test]
+    fn joker_cell_counts_for_both_players_once_claimed() {
+        let mut game = ready_game("joker");
+        game.joker_cell = Some(4);
+
+        game.make_move(0, 4).unwrap();
+        game.make_move(1, 0).unwrap();
+        game.make_move(0, 1).unwrap();
+        game.make_move(1, 8).unwrap();
+
+        assert!(game.game_over);
+        assert_eq!(game.winner, Some(1));
+    }
+}

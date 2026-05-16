@@ -14,8 +14,23 @@ interface LobbyProps {
   children: React.ReactNode;
 }
 
+const QUICK_REACTIONS = ['😀', '😮', '😅', '😤', '🎉', '👏'];
+
 export default function Lobby({ gameType, variant, gameName, gameIcon, accentColor, children }: LobbyProps) {
-  const { connected, roomCode, gameStarted, playerNumber, opponentDisconnected, error, createRoom, joinRoom, playerName } = useGame();
+  const {
+    connected,
+    roomCode,
+    gameStarted,
+    playerNumber,
+    opponentDisconnected,
+    error,
+    createRoom,
+    joinRoom,
+    playerName,
+    opponentName,
+    recentEmojis,
+    sendEmoji,
+  } = useGame();
   const [joinCode, setJoinCode] = useState('');
   const [name, setName] = useState('');
   const [nameError, setNameError] = useState(false);
@@ -100,7 +115,42 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
   }
 
   if (gameStarted) {
-    return <>{children}</>;
+    return (
+      <>
+        {children}
+
+        <div className={styles.reactionFeed} aria-live="polite">
+          {recentEmojis.map((reaction) => (
+            <div
+              key={reaction.id}
+              className={`${styles.reactionBubble} ${reaction.fromSelf ? styles.reactionBubbleSelf : styles.reactionBubbleOpponent}`}
+            >
+              <span className={styles.reactionEmoji}>{reaction.emoji}</span>
+              <span className={styles.reactionSender}>
+                {reaction.fromSelf ? (playerName || 'You') : (opponentName || 'Opponent')}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className={styles.reactionDock}>
+          <span className={styles.reactionDockLabel}>React</span>
+          <div className={styles.reactionButtons}>
+            {QUICK_REACTIONS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                className={styles.reactionBtn}
+                onClick={() => sendEmoji(emoji)}
+                aria-label={`Send ${emoji} reaction`}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </div>
+      </>
+    );
   }
 
   if (roomCode) {

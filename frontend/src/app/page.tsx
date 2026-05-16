@@ -86,7 +86,7 @@ const variants = [
     id: 'disappearing',
     name: 'Disappearing',
     icon: '🪄',
-    desc: 'Max 3 marks. Oldest vanishes!'
+    desc: 'Keep 4 marks in play. Your oldest vanishes on the 5th move.'
   },
   {
     id: 'joker',
