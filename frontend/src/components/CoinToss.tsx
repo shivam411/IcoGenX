@@ -36,25 +36,25 @@ export default function CoinToss({
 
   // When result arrives from server, start the flip animation
   useEffect(() => {
+    // Only run this ONCE when result becomes non-null
     if (result !== null && phase === 'idle') {
       setPhase('flipping');
 
       // Flip for 2 seconds
       const flipTimer = setTimeout(() => {
-        setPhase('landing');
-        // Spawn sparkles
+        setPhase((p) => p === 'flipping' ? 'landing' : p);
         spawnSparkles();
-      }, 2000);
+      }, 1500);
 
-      // Show result text after landing (0.8s landing animation)
+      // Show result text after landing
       const resultTimer = setTimeout(() => {
-        setPhase('result');
-      }, 2800);
+        setPhase((p) => p === 'landing' ? 'result' : p);
+      }, 2000);
 
       // Auto-complete after showing result
       const completeTimer = setTimeout(() => {
         onComplete();
-      }, 5500);
+      }, 4500);
 
       return () => {
         clearTimeout(flipTimer);
@@ -62,7 +62,8 @@ export default function CoinToss({
         clearTimeout(completeTimer);
       };
     }
-  }, [result, phase, onComplete]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result]); // deliberately omitting phase and onComplete to prevent cleanup on phase change
 
   const spawnSparkles = useCallback(() => {
     const newSparkles = Array.from({ length: 12 }, (_, i) => {
@@ -180,6 +181,16 @@ export default function CoinToss({
               {xWinnerName} plays as ✕ and goes first. {result === playerNumber ? opponentName : playerName} plays as ○.
             </p>
           </>
+        )}
+
+        {/* Skip Animation Button */}
+        {phase !== 'idle' && (
+          <button 
+            className={`btn btn-ghost btn-sm ${styles.skipBtn}`} 
+            onClick={onComplete}
+          >
+            Skip Animation ⏭️
+          </button>
         )}
       </div>
     </div>

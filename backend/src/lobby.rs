@@ -31,9 +31,12 @@ pub enum GameInstance {
 pub struct Room {
     pub code: String,
     pub game_type: String,
+    pub variant: Option<String>,
     pub players: Vec<String>,   // player IDs
     pub game: Option<GameInstance>,
     pub started: bool,
+    pub scores: [u32; 2],
+    pub play_again_votes: [bool; 2],
 }
 
 type Sender = SplitSink<WebSocket, Message>;
@@ -127,16 +130,19 @@ fn generate_room_code() -> String {
 
 pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientMessage) {
     match msg {
-        ClientMessage::CreateRoom { game_type, player_name } => {
+        ClientMessage::CreateRoom { game_type, variant, player_name } => {
             let code = generate_room_code();
-            tracing::info!("Player {} ({}) creating room {} for game {}", player_id, player_name, code, game_type);
+            tracing::info!("Player {} ({}) creating room {} for game {} (variant: {:?})", player_id, player_name, code, game_type, variant);
 
             let room = Room {
                 code: code.clone(),
                 game_type: game_type.clone(),
+                variant: variant.clone(),
                 players: vec![player_id.to_string()],
                 game: None,
                 started: false,
+                scores: [0, 0],
+                play_again_votes: [false, false],
             };
 
             state.rooms.write().await.insert(code.clone(), room);
@@ -162,6 +168,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                     &ServerMessage::RoomCreated {
                         room_code: code,
                         game_type,
+                        variant,
                     },
                 )
                 .await;
@@ -187,16 +194,18 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                         let player_num = (room.players.len() - 1) as u8;
                         let players = room.players.clone();
                         let game_type_str = room.game_type.clone();
+                        let variant_str = room.variant.clone();
+                        let scores = room.scores.clone();
 
                         // Start game if 2 players
                         let start_info = if room.players.len() == 2 {
-                            let game = create_game(&game_type_str);
+                            let game = create_game(&game_type_str, variant_str.as_deref());
                             match game {
                                 Some(g) => {
                                     let game_state = get_game_state(&g);
                                     room.game = Some(g);
                                     room.started = true;
-                                    Some(game_state)
+                                    Some((game_state, scores))
                                 }
                                 None => None,
                             }
@@ -204,7 +213,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                             None
                         };
 
-                        Ok((player_num, players, room_code.clone(), start_info))
+                        Ok((player_num, players, room_code.clone(), start_info, game_type_str, variant_str))
                     }
                 }
             };
@@ -216,7 +225,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                         .send_to(player_id, &ServerMessage::Error { message: msg })
                         .await;
                 }
-                Ok((player_num, players, code, start_info)) => {
+                Ok((player_num, players, code, start_info, game_type_str, variant_str)) => {
                     // Register mappings
                     state.player_rooms.write().await
                         .insert(player_id.to_string(), code.clone());
@@ -238,6 +247,8 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                                         player_id: existing_pid.to_string(),
                                         player_number: *num,
                                         player_name: name.clone(),
+                                        game_type: game_type_str.clone(),
+                                        variant: variant_str.clone(),
                                     };
                                     state.send_to(player_id, &existing_msg).await;
                                 }
@@ -250,14 +261,19 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                         player_id: player_id.to_string(),
                         player_number: player_num,
                         player_name: player_name.clone(),
+                        game_type: game_type_str.clone(),
+                        variant: variant_str.clone(),
                     };
                     state.send_to_players(&players, &join_msg).await;
 
                     // Start game if ready
-                    if let Some(game_state) = start_info {
+                    if let Some((game_state, scores)) = start_info {
                         tracing::info!("Game starting in room {}", code);
                         let start_msg = ServerMessage::GameStart {
                             game_state: game_state.clone(),
+                            scores,
+                            game_type: game_type_str.clone(),
+                            variant: variant_str.clone(),
                         };
                         state.send_to_players(&players, &start_msg).await;
                     }
@@ -291,6 +307,15 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                                     let over = check_game_over(game);
                                     let mut all_msgs = msgs;
                                     if let Some(over_msg) = over {
+                                        // Update scores if there's a winner
+                                        if let ServerMessage::GameOver { winner: Some(ref winner_str), .. } = over_msg {
+                                            if winner_str == "Player 1" {
+                                                room.scores[0] += 1;
+                                            } else if winner_str == "Player 2" {
+                                                room.scores[1] += 1;
+                                            }
+                                        }
+                                        
                                         for pid in &players {
                                             all_msgs.push((pid.clone(), over_msg.clone()));
                                         }
@@ -324,18 +349,95 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                     .await;
             }
         }
+        ClientMessage::RequestPlayAgain => {
+            let room_code = {
+                let pr = state.player_rooms.read().await;
+                pr.get(player_id).cloned()
+            };
+
+            let player_num = {
+                let pn = state.player_numbers.read().await;
+                pn.get(player_id).copied().unwrap_or(0)
+            };
+
+            if let Some(code) = room_code {
+                let messages_to_send = {
+                    let mut rooms = state.rooms.write().await;
+                    if let Some(room) = rooms.get_mut(&code) {
+                        room.play_again_votes[player_num as usize] = true;
+                        
+                        if room.play_again_votes[0] && room.play_again_votes[1] {
+                            // Both voted yes, restart game
+                            room.play_again_votes = [false, false];
+                            if let Some(ref mut game) = room.game {
+                                reset_game(game, room.scores, player_num);
+                                let state_json = get_game_state(game);
+                                let scores = room.scores;
+                                
+                                let msg = ServerMessage::PlayAgainAccepted {
+                                    game_state: state_json,
+                                    scores,
+                                };
+                                
+                                room.players.iter()
+                                    .map(|pid| (pid.clone(), msg.clone()))
+                                    .collect::<Vec<_>>()
+                            } else {
+                                vec![]
+                            }
+                        } else {
+                            // Just notify others
+                            let msg = ServerMessage::PlayAgainRequested { by_player: player_num };
+                            room.players.iter()
+                                .map(|pid| (pid.clone(), msg.clone()))
+                                .collect::<Vec<_>>()
+                        }
+                    } else {
+                        vec![]
+                    }
+                };
+                
+                for (pid, msg) in &messages_to_send {
+                    state.send_to(pid, msg).await;
+                }
+            }
+        }
     }
 }
 
-fn create_game(game_type: &str) -> Option<GameInstance> {
+fn create_game(game_type: &str, variant: Option<&str>) -> Option<GameInstance> {
     match game_type {
-        "tic_tac_toe" => Some(GameInstance::TicTacToe(TicTacToeGame::new())),
+        "tic_tac_toe" => {
+            if let Some(v) = variant {
+                Some(GameInstance::TicTacToe(TicTacToeGame::new_variant(v)))
+            } else {
+                Some(GameInstance::TicTacToe(TicTacToeGame::new()))
+            }
+        },
         "shut_the_box" => Some(GameInstance::ShutTheBox(ShutTheBoxGame::new())),
         "code_guess" => Some(GameInstance::CodeGuess(CodeGuessGame::new())),
         "memory_flip" => Some(GameInstance::MemoryFlip(MemoryFlipGame::new())),
         "higher_lower" => Some(GameInstance::HigherLower(HigherLowerGame::new())),
         "stop_clock" => Some(GameInstance::StopClock(StopClockGame::new())),
         _ => None,
+    }
+}
+
+fn reset_game(game: &mut GameInstance, _previous_scores: [u32; 2], _current_player: u8) {
+    match game {
+        GameInstance::TicTacToe(g) => {
+            let last_winner = g.winner;
+            g.reset();
+            // If there was a winner, they get X (and go first)
+            if let Some(winner) = last_winner {
+                g.x_player = Some(winner);
+                g.current_player = winner;
+                g.coin_tossed = true; // skip toss
+            }
+        },
+        // Add resets for other games as needed. 
+        // For now, only TicTacToe supports restart properly.
+        _ => {}
     }
 }
 

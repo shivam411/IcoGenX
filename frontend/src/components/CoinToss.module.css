@@ -229,6 +229,16 @@
   animation: shimmer 2s ease-in-out infinite;
 }
 
+.skipBtn {
+  margin-top: 16px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  z-index: 10;
+}
+.skipBtn:hover {
+  color: var(--text-primary);
+}
+
 /* === Sparkles === */
 .sparkles {
   position: absolute;
@@ -256,11 +266,11 @@
 }
 
 @keyframes coinFlip {
-  0% { transform: rotateY(0deg) rotateX(0deg) translateY(-80px); }
-  25% { transform: rotateY(270deg) rotateX(20deg) translateY(-120px); }
-  50% { transform: rotateY(540deg) rotateX(0deg) translateY(-80px); }
-  75% { transform: rotateY(810deg) rotateX(-20deg) translateY(-120px); }
-  100% { transform: rotateY(1080deg) rotateX(0deg) translateY(-80px); }
+  0% { transform: rotateY(0deg) translateY(0px) scale(1); }
+  25% { transform: rotateY(270deg) translateY(-40px) scale(1.1); }
+  50% { transform: rotateY(540deg) translateY(0px) scale(1); }
+  75% { transform: rotateY(810deg) translateY(-40px) scale(1.1); }
+  100% { transform: rotateY(1080deg) translateY(0px) scale(1); }
 }
 
 @keyframes coinLandX {

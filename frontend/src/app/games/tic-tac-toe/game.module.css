@@ -47,6 +47,12 @@
   animation: popIn 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55) forwards;
 }
 
+.cellJoker {
+  border-color: rgba(234, 179, 8, 0.4);
+  box-shadow: inset 0 0 15px rgba(234, 179, 8, 0.1);
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
 .cellFading {
   animation: pulse-glow 1s ease-in-out infinite !important;
   opacity: 0.5;
@@ -71,6 +77,43 @@
   height: 100%;
   background: radial-gradient(circle at 50% 30%, rgba(139, 92, 246, 0.08) 0%, transparent 60%);
   z-index: -1;
+}
+
+/* Score Board */
+.scoreBoard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 12px 32px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+}
+
+.scorePlayer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.scoreName {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.scoreValue {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.scoreDivider {
+  color: var(--text-muted);
+  font-weight: 700;
 }
 
 .infoBar {
@@ -103,6 +146,18 @@
   color: var(--text-primary);
   margin-bottom: 20px;
   min-height: 30px;
+}
+
+.warningText {
+  color: #ef4444; /* red-500 */
+  animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
 }
 
 .topBar {
@@ -213,11 +268,6 @@
   animation: float 2s ease-in-out infinite;
 }
 
-@keyframes flip {
-  0% { transform: perspective(400px) rotateY(0deg); }
-  100% { transform: perspective(400px) rotateY(360deg); }
-}
-
 .winTitle {
   font-family: var(--font-display);
   font-size: 2rem;
@@ -227,7 +277,16 @@
 
 .winSub {
   color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.playAgainStatus {
+  min-height: 24px;
   margin-bottom: 24px;
+  font-size: 0.9rem;
+  color: var(--accent-purple);
+  font-weight: 600;
+  animation: pulse 2s infinite;
 }
 
 .winActions {

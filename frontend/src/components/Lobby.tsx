@@ -7,13 +7,14 @@ import styles from './Lobby.module.css';
 
 interface LobbyProps {
   gameType: string;
+  variant?: string;
   gameName: string;
   gameIcon: string;
   accentColor: string;
   children: React.ReactNode;
 }
 
-export default function Lobby({ gameType, gameName, gameIcon, accentColor, children }: LobbyProps) {
+export default function Lobby({ gameType, variant, gameName, gameIcon, accentColor, children }: LobbyProps) {
   const { connected, roomCode, gameStarted, playerNumber, opponentDisconnected, error, createRoom, joinRoom, playerName } = useGame();
   const [joinCode, setJoinCode] = useState('');
   const [name, setName] = useState('');
@@ -25,7 +26,7 @@ export default function Lobby({ gameType, gameName, gameIcon, accentColor, child
       setNameError(true);
       return;
     }
-    createRoom(gameType, name.trim());
+    createRoom(gameType, variant || null, name.trim());
   };
 
   const handleJoin = () => {

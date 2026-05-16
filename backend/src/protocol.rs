@@ -30,9 +30,9 @@ pub enum GameAction {
 pub enum ServerMessage {
     Welcome { player_id: String },
     RoomCreated { room_code: String, game_type: String, variant: Option<String> },
-    PlayerJoined { player_id: String, player_number: u8, player_name: String },
+    PlayerJoined { player_id: String, player_number: u8, player_name: String, game_type: String, variant: Option<String> },
 
-    GameStart { game_state: serde_json::Value, scores: [u32; 2] },
+    GameStart { game_state: serde_json::Value, scores: [u32; 2], game_type: String, variant: Option<String> },
     GameUpdate { game_state: serde_json::Value },
     GameOver { winner: Option<String>, reason: String },
     Error { message: String },

@@ -17,14 +17,19 @@ interface WebSocketContextType {
   opponentName: string | null;
   gameState: GameState | null;
   gameType: string | null;
+  variant: string | null;
+  scores: [number, number];
   gameStarted: boolean;
   gameOver: boolean;
   winner: string | null;
   error: string | null;
   opponentDisconnected: boolean;
-  createRoom: (gameType: string, playerName: string) => void;
+  playAgainRequested: boolean;
+  opponentPlayAgainRequested: boolean;
+  createRoom: (gameType: string, variant: string | null, playerName: string) => void;
   joinRoom: (roomCode: string, playerName: string) => void;
   sendAction: (action: any) => void;
+  requestPlayAgain: () => void;
   resetGame: () => void;
 }
 
@@ -41,11 +46,15 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [gameType, setGameType] = useState<string | null>(null);
+  const [variant, setVariant] = useState<string | null>(null);
+  const [scores, setScores] = useState<[number, number]>([0, 0]);
   const [gameStarted, setGameStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [opponentDisconnected, setOpponentDisconnected] = useState(false);
+  const [playAgainRequested, setPlayAgainRequested] = useState(false);
+  const [opponentPlayAgainRequested, setOpponentPlayAgainRequested] = useState(false);
   
   // Refs for stable callbacks
   const playerIdRef = useRef<string | null>(null);
@@ -62,6 +71,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         case 'RoomCreated':
           setRoomCode(msg.room_code);
           setGameType(msg.game_type);
+          if (msg.variant) setVariant(msg.variant);
           setPlayerNumber(0); // Creator is always player 0
           break;
         case 'PlayerJoined':
@@ -69,6 +79,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
             // If I am joining, this confirms my number
             if (msg.player_id === playerIdRef.current) {
               setPlayerNumber(msg.player_number);
+              if (msg.game_type) setGameType(msg.game_type);
+              if (msg.variant) setVariant(msg.variant);
             } else {
               // Someone else joined, they are my opponent
               setOpponentName(msg.player_name);
@@ -78,6 +90,9 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         case 'GameStart':
           setGameStarted(true);
           setGameState(msg.game_state);
+          if (msg.scores) setScores(msg.scores);
+          if (msg.game_type) setGameType(msg.game_type);
+          if (msg.variant) setVariant(msg.variant);
           break;
         case 'GameUpdate':
           setGameState(msg.game_state);
@@ -93,6 +108,17 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           break;
         case 'OpponentDisconnected':
           setOpponentDisconnected(true);
+          break;
+        case 'PlayAgainRequested':
+          setOpponentPlayAgainRequested(true);
+          break;
+        case 'PlayAgainAccepted':
+          setGameState(msg.game_state);
+          if (msg.scores) setScores(msg.scores);
+          setGameOver(false);
+          setWinner(null);
+          setPlayAgainRequested(false);
+          setOpponentPlayAgainRequested(false);
           break;
       }
     } catch (e) {
@@ -165,9 +191,9 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const createRoom = useCallback((gameType: string, playerName: string) => {
+  const createRoom = useCallback((gameType: string, variant: string | null, playerName: string) => {
     setPlayerNameState(playerName);
-    send({ type: 'CreateRoom', game_type: gameType, player_name: playerName });
+    send({ type: 'CreateRoom', game_type: gameType, variant, player_name: playerName });
   }, [send]);
 
   const joinRoom = useCallback((code: string, playerName: string) => {
@@ -177,6 +203,11 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
   const sendAction = useCallback((action: any) => {
     send({ type: 'GameAction', action });
+  }, [send]);
+
+  const requestPlayAgain = useCallback(() => {
+    setPlayAgainRequested(true);
+    send({ type: 'RequestPlayAgain' });
   }, [send]);
 
   const resetGame = useCallback(() => {
@@ -190,6 +221,10 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     setOpponentName(null);
     setOpponentDisconnected(false);
     setGameType(null);
+    setVariant(null);
+    setScores([0, 0]);
+    setPlayAgainRequested(false);
+    setOpponentPlayAgainRequested(false);
   }, []);
 
   return (
@@ -202,14 +237,19 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       opponentName,
       gameState,
       gameType,
+      variant,
+      scores,
       gameStarted,
       gameOver,
       winner,
       error,
       opponentDisconnected,
+      playAgainRequested,
+      opponentPlayAgainRequested,
       createRoom,
       joinRoom,
       sendAction,
+      requestPlayAgain,
       resetGame,
     }}>
       {children}
