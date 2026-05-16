@@ -31,6 +31,7 @@ impl HigherLowerGame {
         let (variant, max_number) = match variant {
             "sprint" => ("sprint", 50),
             "expert" => ("expert", 200),
+            "code_breaker_number" => ("code_breaker_number", 100),
             _ => ("classic", 100),
         };
 
@@ -173,5 +174,15 @@ mod tests {
 
         assert_eq!(error, "Guess must be between 1 and 50");
         assert!(game.guesses.is_empty());
+    }
+
+    #[test]
+    fn code_breaker_number_variant_uses_classic_range() {
+        let game = HigherLowerGame::new_variant("code_breaker_number");
+
+        assert_eq!(game.variant, "code_breaker_number");
+        assert_eq!(game.max_number, 100);
+        assert_eq!(game.range_low, 1);
+        assert_eq!(game.range_high, 100);
     }
 }

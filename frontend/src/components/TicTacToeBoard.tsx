@@ -3,7 +3,7 @@
 import { useGame } from '@/context/GameContext';
 import styles from '../app/games/tic-tac-toe/game.module.css';
 import CoinToss from '@/components/CoinToss';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
@@ -32,6 +32,15 @@ export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardPr
   const [selectedGobbletSize, setSelectedGobbletSize] = useState<number | null>(null);
   const [selectedGobbletFrom, setSelectedGobbletFrom] = useState<number | null>(null);
   const [bidValue, setBidValue] = useState('0');
+  const [winLineVisible, setWinLineVisible] = useState(false);
+  const [winLineGeometry, setWinLineGeometry] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    angle: number;
+  } | null>(null);
+  const boardRef = useRef<HTMLDivElement | null>(null);
+  const cellRefs = useRef<Array<HTMLDivElement | null>>([]);
 
   if (!gameState) return null;
 
@@ -43,6 +52,7 @@ export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardPr
   const coinTossed: boolean = gameState.coinTossed;
   const jokerCell: number | undefined = gameState.jokerCell;
   const variant: string = gameState.variant || 'classic';
+  const winningLine: number[] | null = gameState.winningLine || null;
   const gobbletStacks: GobbletPiece[][] = gameState.gobbletStacks || [];
   const remainingPieces: number[][] = gameState.remainingPieces || [[0, 0, 0], [0, 0, 0]];
   const biddingChips: number[] = gameState.biddingChips || [0, 0];
@@ -54,6 +64,53 @@ export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardPr
 
   const p1Name = playerNumber === 0 ? (playerName || 'You') : (opponentName || 'Opponent');
   const p2Name = playerNumber === 1 ? (playerName || 'You') : (opponentName || 'Opponent');
+
+  const winningLineKey = winningLine?.join(',') || '';
+
+  useEffect(() => {
+    if (!gameOver || !winningLine || winningLine.length !== 3) {
+      setWinLineGeometry(null);
+      setWinLineVisible(false);
+      return;
+    }
+
+    const computeLine = () => {
+      const boardElement = boardRef.current;
+      const startCell = cellRefs.current[winningLine[0]];
+      const endCell = cellRefs.current[winningLine[2]];
+
+      if (!boardElement || !startCell || !endCell) {
+        return;
+      }
+
+      const boardRect = boardElement.getBoundingClientRect();
+      const startRect = startCell.getBoundingClientRect();
+      const endRect = endCell.getBoundingClientRect();
+
+      const startX = startRect.left + startRect.width / 2 - boardRect.left;
+      const startY = startRect.top + startRect.height / 2 - boardRect.top;
+      const endX = endRect.left + endRect.width / 2 - boardRect.left;
+      const endY = endRect.top + endRect.height / 2 - boardRect.top;
+      const width = Math.hypot(endX - startX, endY - startY);
+      const angle = Math.atan2(endY - startY, endX - startX) * (180 / Math.PI);
+
+      setWinLineGeometry({ left: startX, top: startY, width, angle });
+    };
+
+    setWinLineVisible(false);
+    const animationFrame = window.requestAnimationFrame(() => {
+      computeLine();
+      window.setTimeout(() => setWinLineVisible(true), 40);
+    });
+    const handleResize = () => computeLine();
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [gameOver, winningLineKey]);
 
   const showWarning = (message: string) => {
     setWarningMsg(message);
@@ -164,6 +221,10 @@ export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardPr
     if (variant === 'gobblet') {
       classes.push(styles.cellGobblet);
       if (selectedGobbletFrom === idx) classes.push(styles.cellSelected);
+    }
+
+    if (winningLine?.includes(idx)) {
+      classes.push(styles.cellWinning);
     }
 
     if (variant === 'gravity') classes.push(styles.cellGravity);
@@ -351,16 +412,31 @@ export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardPr
             )}
           </div>
 
-          <div className={styles.board}>
+          <div className={styles.board} ref={boardRef}>
             {board.map((cell: number | null, idx: number) => (
               <div
                 key={idx}
                 className={getCellClass(idx)}
+                ref={(element) => {
+                  cellRefs.current[idx] = element;
+                }}
                 onClick={() => handleClick(idx)}
               >
                 {renderCellContent(cell, idx)}
               </div>
             ))}
+
+            {gameOver && winningLine && winLineGeometry && (
+              <div
+                className={styles.winLine}
+                style={{
+                  left: `${winLineGeometry.left}px`,
+                  top: `${winLineGeometry.top}px`,
+                  width: `${winLineGeometry.width}px`,
+                  transform: `translateY(-50%) rotate(${winLineGeometry.angle}deg) scaleX(${winLineVisible ? 1 : 0})`,
+                }}
+              />
+            )}
           </div>
 
           {renderVariantControls()}

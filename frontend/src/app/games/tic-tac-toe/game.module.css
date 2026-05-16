@@ -6,6 +6,8 @@
   max-width: 400px;
   margin: 0 auto 32px;
   box-sizing: border-box;
+  position: relative;
+  overflow: visible;
 }
 
 
@@ -59,6 +61,11 @@
   opacity: 0.5;
 }
 
+.cellWinning {
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.35), 0 0 28px rgba(34, 197, 94, 0.35);
+  animation: winPop 0.45s ease-out both;
+}
+
 .cellGravity::after {
   content: '';
   position: absolute;
@@ -88,6 +95,50 @@
   font-family: var(--font-display);
   font-size: clamp(1.5rem, 8vw, 3rem);
   color: var(--text-secondary);
+}
+
+.winLine {
+  position: absolute;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(34, 197, 94, 0.2), rgba(34, 197, 94, 0.95), rgba(34, 197, 94, 0.2));
+  box-shadow: 0 0 18px rgba(34, 197, 94, 0.55), 0 0 44px rgba(34, 197, 94, 0.22);
+  transform-origin: 0 50%;
+  transition: transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 220ms ease-out;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.winLine::before,
+.winLine::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.98);
+  box-shadow: 0 0 14px rgba(34, 197, 94, 0.7);
+  transform: translateY(-50%);
+}
+
+.winLine::before {
+  left: -8px;
+}
+
+.winLine::after {
+  right: -8px;
+}
+
+@keyframes winPop {
+  0% {
+    transform: scale(0.92);
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.18), 0 0 0 rgba(34, 197, 94, 0);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.35), 0 0 28px rgba(34, 197, 94, 0.35);
+  }
 }
 
 .gobbletPiece {

@@ -44,6 +44,7 @@ pub struct TicTacToeGame {
     pub current_player: u8,
     pub winner: Option<u8>,
     pub game_over: bool,
+    pub winning_line: Option<[usize; 3]>,
     pub x_player: Option<u8>,
     pub coin_tossed: bool,
     pub variant: TicTacToeVariant,
@@ -81,6 +82,7 @@ impl TicTacToeGame {
             current_player: 0,
             winner: None,
             game_over: false,
+            winning_line: None,
             x_player: if skips_coin_toss { Some(0) } else { None },
             coin_tossed: skips_coin_toss,
             variant,
@@ -116,6 +118,7 @@ impl TicTacToeGame {
         self.player2_moves.clear();
         self.winner = None;
         self.game_over = false;
+        self.winning_line = None;
         self.coin_tossed = self.variant == TicTacToeVariant::Bidding;
         self.x_player = if self.variant == TicTacToeVariant::Bidding { Some(0) } else { None };
         self.gobblet_stacks = vec![Vec::new(); 9];
@@ -339,11 +342,13 @@ impl TicTacToeGame {
     }
 
     fn finish_mark(&mut self, player: u8, allow_draw: bool) {
-        if self.check_win(player) {
-            self.winner = Some(player);
+        if let Some((winner, line)) = self.resolve_winner(player) {
+            self.winner = Some(winner);
+            self.winning_line = Some(line);
             self.game_over = true;
         } else if allow_draw && self.is_board_full() {
             self.game_over = true;
+            self.winning_line = None;
         }
 
         if !self.game_over && self.variant != TicTacToeVariant::Bidding {
@@ -361,29 +366,47 @@ impl TicTacToeGame {
         self.board.iter().all(|c| c.is_some())
     }
 
-    fn check_win(&self, player: u8) -> bool {
+    fn cell_claims_player(&self, player: u8, idx: usize) -> bool {
+        if self.board[idx] == Some(player) {
+            return true;
+        }
+
+        if self.variant == TicTacToeVariant::Joker {
+            if let Some(jc) = self.joker_cell {
+                if idx == jc && self.board[idx].is_some() {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
+    fn winning_line_for_player(&self, player: u8) -> Option<[usize; 3]> {
         const LINES: [[usize; 3]; 8] = [
             [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
             [0, 3, 6], [1, 4, 7], [2, 5, 8], // cols
             [0, 4, 8], [2, 4, 6],             // diags
         ];
 
-        LINES.iter().any(|line| {
-            line.iter().all(|&i| {
-                if self.board[i] == Some(player) {
-                    return true;
-                }
-                // Joker variant: joker cell counts for both players
-                if self.variant == TicTacToeVariant::Joker {
-                    if let Some(jc) = self.joker_cell {
-                        if i == jc && self.board[i].is_some() {
-                            return true;
-                        }
-                    }
-                }
-                false
+        LINES
+            .iter()
+            .copied()
+            .find(|line| line.iter().all(|&idx| self.cell_claims_player(player, idx)))
+    }
+
+    fn resolve_winner(&self, last_player: u8) -> Option<(u8, [usize; 3])> {
+        self.winning_line_for_player(last_player)
+            .map(|line| (last_player, line))
+            .or_else(|| {
+                let other_player = 1 - last_player;
+                self.winning_line_for_player(other_player)
+                    .map(|line| (other_player, line))
             })
-        })
+    }
+
+    fn check_win(&self, player: u8) -> bool {
+        self.winning_line_for_player(player).is_some()
     }
 
     /// Get the oldest move index that's about to disappear (for UI warning)
@@ -409,6 +432,7 @@ impl TicTacToeGame {
             "currentPlayer": self.current_player,
             "winner": self.winner,
             "gameOver": self.game_over,
+            "winningLine": self.winning_line,
             "fadingCells": [self.fading_cell(0), self.fading_cell(1)],
             "player1Moves": self.player1_moves.iter().collect::<Vec<_>>(),
             "player2Moves": self.player2_moves.iter().collect::<Vec<_>>(),
@@ -490,6 +514,21 @@ mod tests {
 
         assert!(game.game_over);
         assert_eq!(game.winner, Some(1));
+    }
+
+    #[test]
+    fn joker_move_can_end_game_for_the_other_player() {
+        let mut game = ready_game("joker");
+        game.joker_cell = Some(4);
+
+        game.make_move(0, 0).unwrap();
+        game.make_move(1, 1).unwrap();
+        game.make_move(0, 8).unwrap();
+        game.make_move(1, 4).unwrap();
+
+        assert!(game.game_over);
+        assert_eq!(game.winner, Some(0));
+        assert_eq!(game.winning_line, Some([0, 4, 8]));
     }
 
     #[test]
