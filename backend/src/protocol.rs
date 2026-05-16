@@ -46,3 +46,31 @@ pub enum ServerMessage {
     PlayAgainRequested { by_player: u8 },
     PlayAgainAccepted { game_state: serde_json::Value, scores: [u32; 2] },
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{ClientMessage, ServerMessage};
+
+    #[test]
+    fn client_message_deserializes_send_emoji() {
+        let message: ClientMessage = serde_json::from_str(r#"{"type":"SendEmoji","emoji":"🎉"}"#).unwrap();
+
+        match message {
+            ClientMessage::SendEmoji { emoji } => assert_eq!(emoji, "🎉"),
+            _ => panic!("expected send emoji message"),
+        }
+    }
+
+    #[test]
+    fn server_message_serializes_game_over_tagged_enum() {
+        let payload = serde_json::to_value(ServerMessage::GameOver {
+            winner: Some("Player 1".into()),
+            reason: "Game completed".into(),
+        })
+        .unwrap();
+
+        assert_eq!(payload["type"], "GameOver");
+        assert_eq!(payload["winner"], "Player 1");
+        assert_eq!(payload["reason"], "Game completed");
+    }
+}

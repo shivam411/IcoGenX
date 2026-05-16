@@ -585,3 +585,134 @@ fn check_game_over(game: &GameInstance) -> Option<ServerMessage> {
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{broadcast_same, check_game_over, create_game, process_action, reset_game, GameInstance};
+    use crate::games::tic_tac_toe::TicTacToeVariant;
+    use crate::protocol::{GameAction, ServerMessage};
+
+    fn players() -> Vec<String> {
+        vec!["p1".to_string(), "p2".to_string()]
+    }
+
+    #[test]
+    fn create_game_builds_requested_variant() {
+        let game = create_game("tic_tac_toe", Some("joker"));
+
+        match game {
+            Some(GameInstance::TicTacToe(game)) => {
+                assert_eq!(game.variant, TicTacToeVariant::Joker);
+                assert!(game.joker_cell.is_some());
+            }
+            _ => panic!("expected joker tic-tac-toe"),
+        }
+
+        assert!(create_game("unknown", None).is_none());
+    }
+
+    #[test]
+    fn reset_game_skips_toss_for_previous_tic_tac_toe_winner() {
+        let mut game = create_game("tic_tac_toe", Some("classic")).unwrap();
+
+        if let GameInstance::TicTacToe(inner) = &mut game {
+            inner.winner = Some(1);
+            inner.game_over = true;
+            inner.board[0] = Some(1);
+        }
+
+        reset_game(&mut game, [2, 1], 0);
+
+        match game {
+            GameInstance::TicTacToe(inner) => {
+                assert_eq!(inner.x_player, Some(1));
+                assert_eq!(inner.current_player, 1);
+                assert!(inner.coin_tossed);
+                assert!(inner.board.iter().all(|cell| cell.is_none()));
+            }
+            _ => panic!("expected tic-tac-toe game"),
+        }
+    }
+
+    #[test]
+    fn process_action_code_guess_sends_individualized_views() {
+        let mut game = create_game("code_guess", None).unwrap();
+        let messages = process_action(
+            &mut game,
+            0,
+            GameAction::CodeGuess {
+                guess: "1234".into(),
+            },
+            &players(),
+        )
+        .unwrap();
+
+        assert_eq!(messages.len(), 2);
+
+        let first = &messages[0];
+        let second = &messages[1];
+
+        match (&first.1, &second.1) {
+            (ServerMessage::GameUpdate { game_state: first_state }, ServerMessage::GameUpdate { game_state: second_state }) => {
+                assert_eq!(first_state["myCodeSet"], true);
+                assert_eq!(second_state["myCodeSet"], false);
+            }
+            _ => panic!("expected game updates"),
+        }
+    }
+
+    #[test]
+    fn process_action_stop_clock_ready_broadcasts_same_state() {
+        let mut game = create_game("stop_clock", None).unwrap();
+        let messages = process_action(
+            &mut game,
+            0,
+            GameAction::StopClock { stopped_at_ms: 0 },
+            &players(),
+        )
+        .unwrap();
+
+        assert_eq!(messages.len(), 2);
+        match &messages[0].1 {
+            ServerMessage::GameUpdate { game_state } => {
+                assert_eq!(game_state["playerReady"][0], true);
+                assert_eq!(game_state["bothReady"], false);
+            }
+            _ => panic!("expected broadcast update"),
+        }
+    }
+
+    #[test]
+    fn broadcast_same_duplicates_state_for_each_player() {
+        let state = serde_json::json!({ "value": 7 });
+        let messages = broadcast_same(&players(), state.clone());
+
+        assert_eq!(messages.len(), 2);
+        for (player_id, message) in messages {
+            assert!(player_id == "p1" || player_id == "p2");
+            match message {
+                ServerMessage::GameUpdate { game_state } => assert_eq!(game_state, state),
+                _ => panic!("expected game update"),
+            }
+        }
+    }
+
+    #[test]
+    fn check_game_over_formats_winner_name() {
+        let mut game = create_game("higher_lower", None).unwrap();
+        if let GameInstance::HigherLower(inner) = &mut game {
+            inner.winner = Some(1);
+            inner.game_over = true;
+        }
+
+        let message = check_game_over(&game).unwrap();
+
+        match message {
+            ServerMessage::GameOver { winner, reason } => {
+                assert_eq!(winner, Some("Player 2".into()));
+                assert_eq!(reason, "Game completed");
+            }
+            _ => panic!("expected game over message"),
+        }
+    }
+}

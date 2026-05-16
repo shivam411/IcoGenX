@@ -83,3 +83,52 @@ impl StopClockGame {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::StopClockGame;
+
+    #[test]
+    fn both_players_ready_sets_shared_flag() {
+        let mut game = StopClockGame::new();
+
+        game.set_ready(0);
+        assert!(!game.both_ready);
+
+        game.set_ready(1);
+        assert!(game.both_ready);
+        assert_eq!(game.player_ready, [true, true]);
+    }
+
+    #[test]
+    fn closest_to_twenty_seconds_wins() {
+        let mut game = StopClockGame::new();
+
+        game.stop(0, 19_800).unwrap();
+        game.stop(1, 20_700).unwrap();
+
+        assert!(game.game_over);
+        assert_eq!(game.winner, Some(0));
+    }
+
+    #[test]
+    fn equal_distance_results_in_draw() {
+        let mut game = StopClockGame::new();
+
+        game.stop(0, 19_500).unwrap();
+        game.stop(1, 20_500).unwrap();
+
+        assert!(game.game_over);
+        assert_eq!(game.winner, None);
+    }
+
+    #[test]
+    fn duplicate_stop_is_rejected() {
+        let mut game = StopClockGame::new();
+
+        game.stop(0, 19_800).unwrap();
+        let error = game.stop(0, 20_000).unwrap_err();
+
+        assert_eq!(error, "Already stopped");
+    }
+}

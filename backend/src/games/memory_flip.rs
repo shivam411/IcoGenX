@@ -127,3 +127,80 @@ impl MemoryFlipGame {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::MemoryFlipGame;
+
+    fn ordered_game() -> MemoryFlipGame {
+        MemoryFlipGame {
+            card_values: (1..=9).collect(),
+            revealed: vec![false; 9],
+            next_expected: 1,
+            player1_progress: 0,
+            player2_progress: 0,
+            current_player: 0,
+            winner: None,
+            game_over: false,
+            last_flip: None,
+            last_flip_correct: None,
+        }
+    }
+
+    #[test]
+    fn correct_flip_reveals_card_and_updates_progress() {
+        let mut game = ordered_game();
+
+        let result = game.flip_card(0, 0).unwrap();
+
+        assert!(result);
+        assert!(game.revealed[0]);
+        assert_eq!(game.next_expected, 2);
+        assert_eq!(game.player1_progress, 1);
+        assert_eq!(game.last_flip, Some(0));
+        assert_eq!(game.last_flip_correct, Some(true));
+    }
+
+    #[test]
+    fn wrong_flip_resets_board_and_passes_turn() {
+        let mut game = ordered_game();
+        game.revealed[0] = true;
+        game.next_expected = 2;
+
+        let result = game.flip_card(0, 4).unwrap();
+
+        assert!(!result);
+        assert_eq!(game.revealed, vec![false; 9]);
+        assert_eq!(game.next_expected, 1);
+        assert_eq!(game.current_player, 1);
+        assert_eq!(game.last_flip_correct, Some(false));
+    }
+
+    #[test]
+    fn revealing_all_cards_wins_the_game() {
+        let mut game = ordered_game();
+
+        for card_index in 0..9 {
+            assert!(game.flip_card(0, card_index).unwrap());
+        }
+
+        assert!(game.game_over);
+        assert_eq!(game.winner, Some(0));
+        assert_eq!(game.player1_progress, 9);
+    }
+
+    #[test]
+    fn state_json_hides_unrevealed_values_but_full_state_does_not() {
+        let mut game = ordered_game();
+        game.revealed[0] = true;
+        game.revealed[3] = true;
+
+        let public_state = game.state_json();
+        let full_state = game.full_state_json();
+
+        assert_eq!(public_state["visibleValues"][0], 1);
+        assert!(public_state["visibleValues"][1].is_null());
+        assert_eq!(full_state["cardValues"][0], 1);
+        assert_eq!(full_state["cardValues"][8], 9);
+    }
+}

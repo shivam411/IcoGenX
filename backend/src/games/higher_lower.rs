@@ -84,3 +84,56 @@ impl HigherLowerGame {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::HigherLowerGame;
+
+    fn fixed_game(target: u8) -> HigherLowerGame {
+        HigherLowerGame {
+            target,
+            guesses: Vec::new(),
+            range_low: 1,
+            range_high: 100,
+            current_player: 0,
+            winner: None,
+            game_over: false,
+        }
+    }
+
+    #[test]
+    fn lower_guess_raises_lower_bound_and_switches_turn() {
+        let mut game = fixed_game(73);
+
+        let hint = game.make_guess(0, 40).unwrap();
+
+        assert_eq!(hint, "higher");
+        assert_eq!(game.range_low, 41);
+        assert_eq!(game.range_high, 100);
+        assert_eq!(game.current_player, 1);
+        assert_eq!(game.guesses.len(), 1);
+    }
+
+    #[test]
+    fn out_of_range_guess_is_rejected() {
+        let mut game = fixed_game(73);
+        game.range_low = 50;
+        game.range_high = 80;
+
+        let error = game.make_guess(0, 49).unwrap_err();
+
+        assert_eq!(error, "Guess must be between 50 and 80");
+        assert!(game.guesses.is_empty());
+    }
+
+    #[test]
+    fn exact_guess_marks_winner_and_ends_game() {
+        let mut game = fixed_game(73);
+
+        let hint = game.make_guess(0, 73).unwrap();
+
+        assert_eq!(hint, "correct");
+        assert!(game.game_over);
+        assert_eq!(game.winner, Some(0));
+    }
+}

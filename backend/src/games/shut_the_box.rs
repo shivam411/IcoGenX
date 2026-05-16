@@ -158,3 +158,73 @@ impl ShutTheBoxGame {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ShutTheBoxGame;
+
+    fn rolled_game(roll: u8) -> ShutTheBoxGame {
+        ShutTheBoxGame {
+            player1_cards: [false; 6],
+            player2_cards: [false; 6],
+            current_player: 0,
+            last_roll: Some(roll),
+            needs_roll: false,
+            winner: None,
+            game_over: false,
+        }
+    }
+
+    #[test]
+    fn applying_self_combination_opens_cards_and_ends_turn() {
+        let mut game = rolled_game(3);
+
+        game.apply_combination(0, &[1, 2], "self").unwrap();
+
+        assert_eq!(game.player1_cards, [true, true, false, false, false, false]);
+        assert_eq!(game.current_player, 1);
+        assert!(game.needs_roll);
+        assert_eq!(game.last_roll, None);
+    }
+
+    #[test]
+    fn applying_to_opponent_closes_open_cards() {
+        let mut game = rolled_game(3);
+        game.player2_cards = [true, true, false, false, false, false];
+
+        game.apply_combination(0, &[1, 2], "opponent").unwrap();
+
+        assert_eq!(game.player2_cards, [false, false, false, false, false, false]);
+    }
+
+    #[test]
+    fn duplicate_combination_values_are_rejected() {
+        let mut game = rolled_game(2);
+
+        let error = game.apply_combination(0, &[1, 1], "self").unwrap_err();
+
+        assert_eq!(error, "Duplicate card value: 1");
+    }
+
+    #[test]
+    fn opening_all_cards_marks_winner() {
+        let mut game = rolled_game(6);
+        game.player1_cards = [true, true, true, true, true, false];
+
+        game.apply_combination(0, &[6], "self").unwrap();
+
+        assert!(game.game_over);
+        assert_eq!(game.winner, Some(0));
+    }
+
+    #[test]
+    fn passing_turn_resets_roll_state() {
+        let mut game = rolled_game(4);
+
+        game.pass_turn(0).unwrap();
+
+        assert_eq!(game.current_player, 1);
+        assert!(game.needs_roll);
+        assert_eq!(game.last_roll, None);
+    }
+}
