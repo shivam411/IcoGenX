@@ -1,5 +1,5 @@
 runtime: nodejs22
-service: default
+service: online-games
 
 automatic_scaling:
   min_instances: 0
@@ -7,12 +7,12 @@ automatic_scaling:
 
 build_env_variables:
   NEXT_TELEMETRY_DISABLED: "1"
-  NEXT_PUBLIC_WS_URL: "wss://backend-dot-project-fd34c85a-5bfe-4206-955.el.r.appspot.com/ws"
+  NEXT_PUBLIC_WS_URL: "wss://api.icogenx.com/ws"
 
 env_variables:
   NODE_ENV: "production"
   NEXT_TELEMETRY_DISABLED: "1"
-  NEXT_PUBLIC_WS_URL: "wss://backend-dot-project-fd34c85a-5bfe-4206-955.el.r.appspot.com/ws"
+  NEXT_PUBLIC_WS_URL: "wss://api.icogenx.com/ws"
 
 handlers:
   - url: /.*
