@@ -28,6 +28,7 @@ interface WebSocketContextType {
   opponentPlayAgainRequested: boolean;
   createRoom: (gameType: string, variant: string | null, playerName: string) => void;
   joinRoom: (roomCode: string, playerName: string) => void;
+  leaveRoom: () => void;
   sendAction: (action: any) => void;
   requestPlayAgain: () => void;
   resetGame: () => void;
@@ -67,8 +68,22 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       switch (msg.type) {
         case 'Welcome':
           setPlayerId(msg.player_id);
+          // Try to auto-reconnect if we have a saved session
+          const savedRoom = localStorage.getItem('arena_room_code');
+          const savedName = localStorage.getItem('arena_player_name');
+          // Only auto-reconnect if we are not currently in a room (roomCode is likely null on fresh load)
+          if (savedRoom && savedName) {
+            console.log('[WS] Auto-reconnecting to room:', savedRoom);
+            setPlayerNameState(savedName);
+            // Send join directly since wsRef.current might not be fully established in our React state yet
+            const joinMsg = JSON.stringify({ type: 'JoinRoom', room_code: savedRoom, player_name: savedName });
+            if (wsRef.current?.readyState === WebSocket.OPEN) {
+              wsRef.current.send(joinMsg);
+            }
+          }
           break;
         case 'RoomCreated':
+          localStorage.setItem('arena_room_code', msg.room_code);
           setRoomCode(msg.room_code);
           setGameType(msg.game_type);
           if (msg.variant) setVariant(msg.variant);
@@ -103,6 +118,15 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           break;
         case 'Error':
           console.error('[WS] Error from server:', msg.message);
+          if (msg.message === 'Room not found' || msg.message === 'Room is full') {
+            const currentSavedRoom = localStorage.getItem('arena_room_code');
+            if (currentSavedRoom) {
+              alert(`Session ended: ${msg.message}`);
+              localStorage.removeItem('arena_room_code');
+            }
+            // Clear local state since we can't join
+            setRoomCode(null);
+          }
           setError(msg.message);
           setTimeout(() => setError(null), 5000);
           break;
@@ -192,11 +216,14 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const createRoom = useCallback((gameType: string, variant: string | null, playerName: string) => {
+    localStorage.setItem('arena_player_name', playerName);
     setPlayerNameState(playerName);
     send({ type: 'CreateRoom', game_type: gameType, variant, player_name: playerName });
   }, [send]);
 
   const joinRoom = useCallback((code: string, playerName: string) => {
+    localStorage.setItem('arena_player_name', playerName);
+    localStorage.setItem('arena_room_code', code);
     setPlayerNameState(playerName);
     send({ type: 'JoinRoom', room_code: code, player_name: playerName });
   }, [send]);
@@ -227,6 +254,12 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     setOpponentPlayAgainRequested(false);
   }, []);
 
+  const leaveRoom = useCallback(() => {
+    localStorage.removeItem('arena_room_code');
+    send({ type: 'LeaveRoom' });
+    resetGame();
+  }, [send, resetGame]);
+
   return (
     <WebSocketContext.Provider value={{
       connected,
@@ -248,6 +281,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       opponentPlayAgainRequested,
       createRoom,
       joinRoom,
+      leaveRoom,
       sendAction,
       requestPlayAgain,
       resetGame,

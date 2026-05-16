@@ -120,10 +120,11 @@ export default function HomePage() {
     }
   }, [gameStarted, gameType, variant, router]);
 
-  // Reset any game state on home page mount
+  // Load saved name from storage on mount
   useEffect(() => {
-    resetGame();
-  }, [resetGame]);
+    const savedName = localStorage.getItem('arena_player_name');
+    if (savedName) setJoinName(savedName);
+  }, []);
 
   const handleQuickJoin = (e: React.FormEvent) => {
     e.preventDefault();

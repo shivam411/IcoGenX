@@ -6,16 +6,19 @@ import Link from 'next/link';
 import CoinToss from '@/components/CoinToss';
 import { useState } from 'react';
 
+import { useRouter } from 'next/navigation';
+
 interface TicTacToeBoardProps {
   variantTitle: string;
   rules: React.ReactNode;
 }
 
 export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardProps) {
+  const router = useRouter();
   const { 
     gameState, playerNumber, playerName, opponentName, sendAction, 
     gameOver, winner, scores, requestPlayAgain, 
-    playAgainRequested, opponentPlayAgainRequested 
+    playAgainRequested, opponentPlayAgainRequested, leaveRoom
   } = useGame();
   
   const [tossComplete, setTossComplete] = useState(false);
@@ -44,6 +47,11 @@ export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardPr
     if (board[cell] !== null) return;
 
     sendAction({ game: 'TicTacToe', cell });
+  };
+
+  const handleExit = () => {
+    leaveRoom();
+    router.push('/');
   };
 
   const getCellClass = (idx: number) => {
@@ -100,7 +108,7 @@ export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardPr
   return (
     <div className={styles.gameWrapper}>
       <div className={styles.topBar}>
-        <Link href="/" className={`btn btn-ghost btn-sm ${styles.endGameBtn}`}>🛑 Exit</Link>
+        <button onClick={handleExit} className={`btn btn-ghost btn-sm ${styles.endGameBtn}`}>🛑 Exit</button>
       </div>
 
       <div className={styles.gameLayout}>
@@ -186,7 +194,7 @@ export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardPr
                   🔄 Play Again
                 </button>
               )}
-              <Link href="/" className="btn btn-ghost">Change Game</Link>
+              <button onClick={handleExit} className="btn btn-ghost">Change Game</button>
             </div>
           </div>
         </div>

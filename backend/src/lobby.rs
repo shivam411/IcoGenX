@@ -349,6 +349,10 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                     .await;
             }
         }
+        ClientMessage::LeaveRoom => {
+            tracing::info!("Player {} explicitly leaving room", player_id);
+            state.remove_player(player_id).await;
+        }
         ClientMessage::RequestPlayAgain => {
             let room_code = {
                 let pr = state.player_rooms.read().await;

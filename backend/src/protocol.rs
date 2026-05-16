@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 pub enum ClientMessage {
     CreateRoom { game_type: String, variant: Option<String>, player_name: String },
     JoinRoom { room_code: String, player_name: String },
+    LeaveRoom,
     GameAction { action: GameAction },
     RequestPlayAgain,
 }
