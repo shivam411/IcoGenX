@@ -1,0 +1,11 @@
+.gcloudignore
+.git
+.gitignore
+
+target/
+coverage/
+
+*.log
+.env
+.env.*
+*.local

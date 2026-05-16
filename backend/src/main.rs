@@ -27,9 +27,13 @@ async fn main() {
         .layer(CorsLayer::permissive())
         .with_state(state);
 
-    let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 6100));
+    let port = std::env::var("PORT")
+        .ok()
+        .and_then(|value| value.parse::<u16>().ok())
+        .unwrap_or(6100);
+    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    println!("🎮 Game server running on http://127.0.0.1:6100");
+    println!("🎮 Game server running on http://0.0.0.0:{}", port);
     axum::serve(listener, app).await.unwrap();
 }
 

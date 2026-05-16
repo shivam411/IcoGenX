@@ -6,7 +6,27 @@ import { useRouter } from 'next/navigation';
 import { useGame } from '@/context/GameContext';
 import styles from './page.module.css';
 
-const games = [
+interface GameVariant {
+  id: string;
+  name: string;
+  icon: string;
+  desc: string;
+  path: string;
+}
+
+interface GameCard {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  players: string;
+  category: string;
+  badgeClass: string;
+  gradient: string;
+  variants?: GameVariant[];
+}
+
+const games: GameCard[] = [
   {
     id: 'tic-tac-toe',
     name: 'Tic-Tac-Toe Variants',
@@ -16,7 +36,29 @@ const games = [
     category: 'Strategy',
     badgeClass: 'badge-purple',
     gradient: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
-    hasVariants: true,
+    variants: [
+      {
+        id: 'classic',
+        name: 'Classic',
+        icon: '📝',
+        desc: 'Normal 3x3. Draws are possible.',
+        path: '/games/tic-tac-toe/classic',
+      },
+      {
+        id: 'disappearing',
+        name: 'Disappearing',
+        icon: '🪄',
+        desc: 'Keep 4 marks in play. Your oldest vanishes on the 5th move.',
+        path: '/games/tic-tac-toe/disappearing',
+      },
+      {
+        id: 'joker',
+        name: 'Joker Cell',
+        icon: '🃏',
+        desc: 'One cell is gold and acts as X and O.',
+        path: '/games/tic-tac-toe/joker',
+      },
+    ],
   },
   {
     id: 'shut-the-box',
@@ -27,7 +69,6 @@ const games = [
     category: 'Strategy',
     badgeClass: 'badge-orange',
     gradient: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
-    hasVariants: false,
   },
   {
     id: 'code-guess',
@@ -38,7 +79,6 @@ const games = [
     category: 'Logic',
     badgeClass: 'badge-cyan',
     gradient: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
-    hasVariants: false,
   },
   {
     id: 'memory-flip',
@@ -49,18 +89,39 @@ const games = [
     category: 'Memory',
     badgeClass: 'badge-pink',
     gradient: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
-    hasVariants: false,
   },
   {
     id: 'higher-lower',
-    name: 'Higher or Lower',
+    name: 'Higher or Lower Variants',
     icon: '🔢',
-    description: 'A number between 1-100 is hidden. Take turns guessing — the range keeps shrinking!',
+    description: 'Guess hidden numbers across Sprint, Classic, or Expert ranges as the window shrinks.',
     players: '2 Players',
     category: 'Quick',
     badgeClass: 'badge-green',
     gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-    hasVariants: false,
+    variants: [
+      {
+        id: 'sprint',
+        name: 'Sprint',
+        icon: '⚡',
+        desc: 'A compact 1-50 range for quick rounds.',
+        path: '/games/higher-lower/sprint',
+      },
+      {
+        id: 'classic',
+        name: 'Classic',
+        icon: '🔢',
+        desc: 'The familiar 1-100 guessing window.',
+        path: '/games/higher-lower',
+      },
+      {
+        id: 'expert',
+        name: 'Expert',
+        icon: '🧩',
+        desc: 'A wider 1-200 range with more pressure.',
+        path: '/games/higher-lower/expert',
+      },
+    ],
   },
   {
     id: 'stop-clock',
@@ -71,29 +132,7 @@ const games = [
     category: 'Reflex',
     badgeClass: 'badge-blue',
     gradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-    hasVariants: false,
   },
-];
-
-const variants = [
-  {
-    id: 'classic',
-    name: 'Classic',
-    icon: '📝',
-    desc: 'Normal 3x3. Draws are possible.'
-  },
-  {
-    id: 'disappearing',
-    name: 'Disappearing',
-    icon: '🪄',
-    desc: 'Keep 4 marks in play. Your oldest vanishes on the 5th move.'
-  },
-  {
-    id: 'joker',
-    name: 'Joker Cell',
-    icon: '🃏',
-    desc: 'One cell is gold and acts as X and O.'
-  }
 ];
 
 export default function HomePage() {
@@ -102,7 +141,7 @@ export default function HomePage() {
   
   const [filter, setFilter] = useState('All');
   const [page, setPage] = useState(1);
-  const [showVariants, setShowVariants] = useState(false);
+  const [selectedGame, setSelectedGame] = useState<GameCard | null>(null);
   
   // Quick Join State
   const [joinName, setJoinName] = useState('');
@@ -206,8 +245,8 @@ export default function HomePage() {
             <div
               key={game.id}
               onClick={() => {
-                if (game.hasVariants) {
-                  setShowVariants(true);
+                if (game.variants) {
+                  setSelectedGame(game);
                 } else {
                   router.push(`/games/${game.id}`);
                 }
@@ -258,15 +297,15 @@ export default function HomePage() {
       </div>
 
       {/* Variants Modal */}
-      {showVariants && (
-        <div className={styles.modalOverlay} onClick={() => setShowVariants(false)}>
+      {selectedGame?.variants && (
+        <div className={styles.modalOverlay} onClick={() => setSelectedGame(null)}>
           <div className={`glass-card ${styles.modalCard}`} onClick={e => e.stopPropagation()}>
             <h2 className={styles.modalTitle}>Choose Variant</h2>
-            <p className={styles.modalSub}>Select which version of Tic-Tac-Toe you want to play</p>
+            <p className={styles.modalSub}>Select which version of {selectedGame.name.replace(' Variants', '')} you want to play</p>
             
             <div className={styles.variantList}>
-              {variants.map(v => (
-                <Link key={v.id} href={`/games/tic-tac-toe/${v.id}`} className={styles.variantItem}>
+              {selectedGame.variants.map(v => (
+                <Link key={v.id} href={v.path} className={styles.variantItem}>
                   <div className={styles.variantIcon}>{v.icon}</div>
                   <div>
                     <h3 className={styles.variantName}>{v.name}</h3>
@@ -277,7 +316,7 @@ export default function HomePage() {
               ))}
             </div>
             
-            <button className={`btn btn-ghost ${styles.closeBtn}`} onClick={() => setShowVariants(false)}>
+            <button className={`btn btn-ghost ${styles.closeBtn}`} onClick={() => setSelectedGame(null)}>
               Cancel
             </button>
           </div>

@@ -492,7 +492,7 @@ fn create_game(game_type: &str, variant: Option<&str>) -> Option<GameInstance> {
         "shut_the_box" => Some(GameInstance::ShutTheBox(ShutTheBoxGame::new())),
         "code_guess" => Some(GameInstance::CodeGuess(CodeGuessGame::new())),
         "memory_flip" => Some(GameInstance::MemoryFlip(MemoryFlipGame::new())),
-        "higher_lower" => Some(GameInstance::HigherLower(HigherLowerGame::new())),
+        "higher_lower" => Some(GameInstance::HigherLower(HigherLowerGame::new_variant(variant.unwrap_or("classic")))),
         "stop_clock" => Some(GameInstance::StopClock(StopClockGame::new())),
         _ => None,
     }

@@ -36,6 +36,11 @@ function getGamePath(gameType: string | null, variant: string | null) {
   if (gameType === 'tic_tac_toe') {
     return `/games/tic-tac-toe/${variant || 'classic'}`;
   }
+  if (gameType === 'higher_lower') {
+    return variant && variant !== 'classic'
+      ? `/games/higher-lower/${variant}`
+      : '/games/higher-lower';
+  }
   return `/games/${gameType.replace(/_/g, '-')}`;
 }
 

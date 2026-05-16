@@ -9,13 +9,21 @@
 # Node.js
 node_modules/
 npm-debug.log*
+coverage/
 
 # Next.js
 frontend/.next/
 frontend/out/
+frontend/coverage/
 
 # Rust
 backend/target/
+backend/coverage/
+
+# Environment files
+.env
+.env.*
+*.local
 
 # System
 .DS_Store

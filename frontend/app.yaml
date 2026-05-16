@@ -1,0 +1,20 @@
+runtime: nodejs22
+service: default
+
+automatic_scaling:
+  min_instances: 0
+  max_instances: 1
+
+build_env_variables:
+  NEXT_TELEMETRY_DISABLED: "1"
+  NEXT_PUBLIC_WS_URL: "wss://backend-dot-project-fd34c85a-5bfe-4206-955.el.r.appspot.com/ws"
+
+env_variables:
+  NODE_ENV: "production"
+  NEXT_TELEMETRY_DISABLED: "1"
+  NEXT_PUBLIC_WS_URL: "wss://backend-dot-project-fd34c85a-5bfe-4206-955.el.r.appspot.com/ws"
+
+handlers:
+  - url: /.*
+    script: auto
+    secure: always

@@ -1,10 +1,12 @@
 use serde::Serialize;
 
-/// Higher/Lower: guess a number between 1-100
+/// Higher/Lower: guess a hidden number inside the variant range.
 #[derive(Debug, Clone, Serialize)]
 pub struct HigherLowerGame {
     #[serde(skip_serializing)]
     pub target: u8,
+    pub variant: String,
+    pub max_number: u8,
     pub guesses: Vec<GuessEntry>,
     pub range_low: u8,
     pub range_high: u8,
@@ -22,12 +24,24 @@ pub struct GuessEntry {
 
 impl HigherLowerGame {
     pub fn new() -> Self {
-        let target = (rand::random::<u8>() % 100) + 1;
+        Self::new_variant("classic")
+    }
+
+    pub fn new_variant(variant: &str) -> Self {
+        let (variant, max_number) = match variant {
+            "sprint" => ("sprint", 50),
+            "expert" => ("expert", 200),
+            _ => ("classic", 100),
+        };
+
+        let target = (rand::random::<u8>() % max_number) + 1;
         HigherLowerGame {
             target,
+            variant: variant.to_string(),
+            max_number,
             guesses: Vec::new(),
             range_low: 1,
-            range_high: 100,
+            range_high: max_number,
             current_player: 0,
             winner: None,
             game_over: false,
@@ -41,8 +55,8 @@ impl HigherLowerGame {
         if player != self.current_player {
             return Err("Not your turn".into());
         }
-        if guess < 1 || guess > 100 {
-            return Err("Guess must be between 1 and 100".into());
+        if guess < 1 || guess > self.max_number {
+            return Err(format!("Guess must be between 1 and {}", self.max_number));
         }
         if guess < self.range_low || guess > self.range_high {
             return Err(format!("Guess must be between {} and {}", self.range_low, self.range_high));
@@ -76,6 +90,8 @@ impl HigherLowerGame {
     pub fn state_json(&self) -> serde_json::Value {
         serde_json::json!({
             "guesses": self.guesses,
+            "variant": self.variant,
+            "maxNumber": self.max_number,
             "rangeLow": self.range_low,
             "rangeHigh": self.range_high,
             "currentPlayer": self.current_player,
@@ -92,6 +108,8 @@ mod tests {
     fn fixed_game(target: u8) -> HigherLowerGame {
         HigherLowerGame {
             target,
+            variant: "classic".into(),
+            max_number: 100,
             guesses: Vec::new(),
             range_low: 1,
             range_high: 100,
@@ -135,5 +153,25 @@ mod tests {
         assert_eq!(hint, "correct");
         assert!(game.game_over);
         assert_eq!(game.winner, Some(0));
+    }
+
+    #[test]
+    fn expert_variant_uses_larger_range() {
+        let game = HigherLowerGame::new_variant("expert");
+
+        assert_eq!(game.variant, "expert");
+        assert_eq!(game.max_number, 200);
+        assert_eq!(game.range_high, 200);
+        assert!((1..=200).contains(&game.target));
+    }
+
+    #[test]
+    fn variant_range_limits_guesses() {
+        let mut game = HigherLowerGame::new_variant("sprint");
+
+        let error = game.make_guess(0, 51).unwrap_err();
+
+        assert_eq!(error, "Guess must be between 1 and 50");
+        assert!(game.guesses.is_empty());
     }
 }
