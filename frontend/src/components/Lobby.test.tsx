@@ -75,7 +75,7 @@ describe('Lobby', () => {
 
     fireEvent.change(screen.getByPlaceholderText('Enter room code'), { target: { value: 'ab12cd' } });
     fireEvent.click(screen.getByText('Join'));
-    expect(joinRoom).toHaveBeenCalledWith('AB12CD', 'Jamie');
+    expect(joinRoom).toHaveBeenCalledWith('AB12CD', 'Jamie', 'tic_tac_toe', 'classic');
   });
 
   it('shows the waiting room code and copies it to the clipboard', () => {
@@ -119,7 +119,7 @@ describe('Lobby', () => {
     expect(sendEmoji).toHaveBeenCalledWith('🎉');
   });
 
-  it('counts down the disconnect timer and swaps to the final state', () => {
+  it('keeps the lobby form available when opponent disconnect state is handled globally', () => {
     mockUseGame.mockReturnValue(buildGameState({ opponentDisconnected: true }));
 
     render(
@@ -128,13 +128,7 @@ describe('Lobby', () => {
       </Lobby>,
     );
 
-    expect(screen.getByText('00:20')).toBeTruthy();
-
-    act(() => {
-      vi.advanceTimersByTime(20_000);
-    });
-
-    expect(screen.getByText('Opponent failed to reconnect. The game has ended.')).toBeTruthy();
-    expect(screen.getByText('Back to Lobby')).toBeTruthy();
+    expect(screen.getByText('Test Game')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Enter your name')).toBeTruthy();
   });
 });

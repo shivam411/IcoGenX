@@ -8,10 +8,63 @@ interface GameState {
   [key: string]: any;
 }
 
+export interface SavedSession {
+  roomCode: string;
+  playerName: string;
+  gameType: string | null;
+  variant: string | null;
+  path: string | null;
+  reconnectDeadline: number | null;
+}
+
 interface EmojiReaction {
   id: number;
   emoji: string;
   fromSelf: boolean;
+}
+
+const RECONNECT_WINDOW_MS = 20_000;
+const STORAGE_ROOM_CODE = 'arena_room_code';
+const STORAGE_PLAYER_NAME = 'arena_player_name';
+const STORAGE_GAME_TYPE = 'arena_game_type';
+const STORAGE_VARIANT = 'arena_variant';
+const STORAGE_GAME_PATH = 'arena_game_path';
+const STORAGE_RECONNECT_DEADLINE = 'arena_reconnect_deadline';
+
+function getGamePath(gameType: string | null, variant: string | null) {
+  if (!gameType) return null;
+  if (gameType === 'tic_tac_toe') {
+    return `/games/tic-tac-toe/${variant || 'classic'}`;
+  }
+  return `/games/${gameType.replace(/_/g, '-')}`;
+}
+
+function readSavedSession(): SavedSession | null {
+  if (typeof window === 'undefined') return null;
+
+  const roomCode = localStorage.getItem(STORAGE_ROOM_CODE);
+  const playerName = localStorage.getItem(STORAGE_PLAYER_NAME);
+  if (!roomCode || !playerName) return null;
+
+  const gameType = localStorage.getItem(STORAGE_GAME_TYPE);
+  const variant = localStorage.getItem(STORAGE_VARIANT);
+  const path = localStorage.getItem(STORAGE_GAME_PATH) || getGamePath(gameType, variant);
+  let reconnectDeadline = Number(localStorage.getItem(STORAGE_RECONNECT_DEADLINE));
+
+  if (!Number.isFinite(reconnectDeadline) || reconnectDeadline <= Date.now()) {
+    reconnectDeadline = Date.now() + RECONNECT_WINDOW_MS;
+    localStorage.setItem(STORAGE_RECONNECT_DEADLINE, String(reconnectDeadline));
+  }
+
+  return { roomCode, playerName, gameType, variant, path, reconnectDeadline };
+}
+
+function clearSavedSessionStorage() {
+  localStorage.removeItem(STORAGE_ROOM_CODE);
+  localStorage.removeItem(STORAGE_GAME_TYPE);
+  localStorage.removeItem(STORAGE_VARIANT);
+  localStorage.removeItem(STORAGE_GAME_PATH);
+  localStorage.removeItem(STORAGE_RECONNECT_DEADLINE);
 }
 
 interface WebSocketContextType {
@@ -30,11 +83,16 @@ interface WebSocketContextType {
   winner: string | null;
   error: string | null;
   opponentDisconnected: boolean;
+  savedSession: SavedSession | null;
+  savedSessionSecondsLeft: number | null;
+  opponentReconnectSecondsLeft: number | null;
   playAgainRequested: boolean;
   opponentPlayAgainRequested: boolean;
   recentEmojis: EmojiReaction[];
   createRoom: (gameType: string, variant: string | null, playerName: string) => void;
-  joinRoom: (roomCode: string, playerName: string) => void;
+  joinRoom: (roomCode: string, playerName: string, gameType?: string | null, variant?: string | null) => void;
+  joinSavedSession: () => void;
+  clearSavedSession: () => void;
   leaveRoom: () => void;
   sendAction: (action: any) => void;
   sendEmoji: (emoji: string) => void;
@@ -62,6 +120,9 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [winner, setWinner] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [opponentDisconnected, setOpponentDisconnected] = useState(false);
+  const [savedSession, setSavedSession] = useState<SavedSession | null>(null);
+  const [opponentReconnectDeadline, setOpponentReconnectDeadline] = useState<number | null>(null);
+  const [clockNow, setClockNow] = useState(() => Date.now());
   const [playAgainRequested, setPlayAgainRequested] = useState(false);
   const [opponentPlayAgainRequested, setOpponentPlayAgainRequested] = useState(false);
   const [recentEmojis, setRecentEmojis] = useState<EmojiReaction[]>([]);
@@ -77,22 +138,17 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       switch (msg.type) {
         case 'Welcome':
           setPlayerId(msg.player_id);
-          // Try to auto-reconnect if we have a saved session
-          const savedRoom = localStorage.getItem('arena_room_code');
-          const savedName = localStorage.getItem('arena_player_name');
-          // Only auto-reconnect if we are not currently in a room (roomCode is likely null on fresh load)
-          if (savedRoom && savedName) {
-            console.log('[WS] Auto-reconnecting to room:', savedRoom);
-            setPlayerNameState(savedName);
-            // Send join directly since wsRef.current might not be fully established in our React state yet
-            const joinMsg = JSON.stringify({ type: 'JoinRoom', room_code: savedRoom, player_name: savedName });
-            if (wsRef.current?.readyState === WebSocket.OPEN) {
-              wsRef.current.send(joinMsg);
-            }
-          }
+          setSavedSession(readSavedSession());
+          setPlayerNameState(localStorage.getItem(STORAGE_PLAYER_NAME));
           break;
         case 'RoomCreated':
-          localStorage.setItem('arena_room_code', msg.room_code);
+          localStorage.setItem(STORAGE_ROOM_CODE, msg.room_code);
+          localStorage.setItem(STORAGE_GAME_TYPE, msg.game_type);
+          if (msg.variant) localStorage.setItem(STORAGE_VARIANT, msg.variant);
+          else localStorage.removeItem(STORAGE_VARIANT);
+          localStorage.setItem(STORAGE_GAME_PATH, getGamePath(msg.game_type, msg.variant || null) || '/');
+          localStorage.removeItem(STORAGE_RECONNECT_DEADLINE);
+          setSavedSession(null);
           setRoomCode(msg.room_code);
           setGameType(msg.game_type);
           if (msg.variant) setVariant(msg.variant);
@@ -105,10 +161,19 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
               setPlayerNumber(msg.player_number);
               if (msg.game_type) setGameType(msg.game_type);
               if (msg.variant) setVariant(msg.variant);
+              if (msg.game_type) {
+                localStorage.setItem(STORAGE_GAME_TYPE, msg.game_type);
+                if (msg.variant) localStorage.setItem(STORAGE_VARIANT, msg.variant);
+                else localStorage.removeItem(STORAGE_VARIANT);
+                localStorage.setItem(STORAGE_GAME_PATH, getGamePath(msg.game_type, msg.variant || null) || '/');
+                localStorage.removeItem(STORAGE_RECONNECT_DEADLINE);
+                setSavedSession(null);
+              }
             } else {
               // Someone else joined, they are my opponent
               setOpponentName(msg.player_name);
               setOpponentDisconnected(false);
+              setOpponentReconnectDeadline(null);
             }
           }
           break;
@@ -118,6 +183,14 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           if (msg.scores) setScores(msg.scores);
           if (msg.game_type) setGameType(msg.game_type);
           if (msg.variant) setVariant(msg.variant);
+          if (msg.game_type) {
+            localStorage.setItem(STORAGE_GAME_TYPE, msg.game_type);
+            if (msg.variant) localStorage.setItem(STORAGE_VARIANT, msg.variant);
+            else localStorage.removeItem(STORAGE_VARIANT);
+            localStorage.setItem(STORAGE_GAME_PATH, getGamePath(msg.game_type, msg.variant || null) || '/');
+            localStorage.removeItem(STORAGE_RECONNECT_DEADLINE);
+            setSavedSession(null);
+          }
           break;
         case 'GameUpdate':
           setGameState(msg.game_state);
@@ -144,12 +217,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         case 'Error':
           console.error('[WS] Error from server:', msg.message);
           if (msg.message === 'Room not found' || msg.message === 'Room is full') {
-            const currentSavedRoom = localStorage.getItem('arena_room_code');
-            if (currentSavedRoom) {
-              alert(`Session ended: ${msg.message}`);
-              localStorage.removeItem('arena_room_code');
-            }
-            // Clear local state since we can't join
+            clearSavedSessionStorage();
+            setSavedSession(null);
             setRoomCode(null);
           }
           setError(msg.message);
@@ -157,6 +226,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           break;
         case 'OpponentDisconnected':
           setOpponentDisconnected(true);
+          setOpponentReconnectDeadline(Date.now() + RECONNECT_WINDOW_MS);
           break;
         case 'PlayAgainRequested':
           setOpponentPlayAgainRequested(true);
@@ -220,6 +290,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     connectWs();
+    setSavedSession(readSavedSession());
 
     return () => {
       // Cleanup on unmount
@@ -231,6 +302,16 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     };
   }, [connectWs]);
 
+  useEffect(() => {
+    if (!savedSession?.reconnectDeadline && !opponentReconnectDeadline) return;
+
+    const timer = setInterval(() => {
+      setClockNow(Date.now());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [savedSession?.reconnectDeadline, opponentReconnectDeadline]);
+
   const send = useCallback((msg: any) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       console.log('[WS] → Sending:', msg.type, msg);
@@ -241,17 +322,47 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const createRoom = useCallback((gameType: string, variant: string | null, playerName: string) => {
-    localStorage.setItem('arena_player_name', playerName);
+    localStorage.setItem(STORAGE_PLAYER_NAME, playerName);
+    localStorage.removeItem(STORAGE_ROOM_CODE);
+    localStorage.setItem(STORAGE_GAME_TYPE, gameType);
+    if (variant) localStorage.setItem(STORAGE_VARIANT, variant);
+    else localStorage.removeItem(STORAGE_VARIANT);
+    localStorage.setItem(STORAGE_GAME_PATH, getGamePath(gameType, variant) || '/');
+    localStorage.removeItem(STORAGE_RECONNECT_DEADLINE);
+    setSavedSession(null);
     setPlayerNameState(playerName);
     send({ type: 'CreateRoom', game_type: gameType, variant, player_name: playerName });
   }, [send]);
 
-  const joinRoom = useCallback((code: string, playerName: string) => {
-    localStorage.setItem('arena_player_name', playerName);
-    localStorage.setItem('arena_room_code', code);
+  const joinRoom = useCallback((code: string, playerName: string, gameType?: string | null, variant?: string | null) => {
+    localStorage.setItem(STORAGE_PLAYER_NAME, playerName);
+    localStorage.setItem(STORAGE_ROOM_CODE, code);
+    if (gameType) {
+      localStorage.setItem(STORAGE_GAME_TYPE, gameType);
+      if (variant) localStorage.setItem(STORAGE_VARIANT, variant);
+      else localStorage.removeItem(STORAGE_VARIANT);
+      localStorage.setItem(STORAGE_GAME_PATH, getGamePath(gameType, variant || null) || '/');
+    }
+    localStorage.removeItem(STORAGE_RECONNECT_DEADLINE);
+    setSavedSession(null);
     setPlayerNameState(playerName);
     send({ type: 'JoinRoom', room_code: code, player_name: playerName });
   }, [send]);
+
+  const joinSavedSession = useCallback(() => {
+    const session = readSavedSession();
+    if (!session) return;
+
+    localStorage.removeItem(STORAGE_RECONNECT_DEADLINE);
+    setSavedSession(null);
+    setPlayerNameState(session.playerName);
+    send({ type: 'JoinRoom', room_code: session.roomCode, player_name: session.playerName });
+  }, [send]);
+
+  const clearSavedSession = useCallback(() => {
+    clearSavedSessionStorage();
+    setSavedSession(null);
+  }, []);
 
   const sendAction = useCallback((action: any) => {
     send({ type: 'GameAction', action });
@@ -279,6 +390,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     setPlayerNameState(null);
     setOpponentName(null);
     setOpponentDisconnected(false);
+    setOpponentReconnectDeadline(null);
     setGameType(null);
     setVariant(null);
     setScores([0, 0]);
@@ -288,10 +400,18 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const leaveRoom = useCallback(() => {
-    localStorage.removeItem('arena_room_code');
+    clearSavedSessionStorage();
+    setSavedSession(null);
     send({ type: 'LeaveRoom' });
     resetGame();
   }, [send, resetGame]);
+
+  const savedSessionSecondsLeft = savedSession?.reconnectDeadline
+    ? Math.max(0, Math.ceil((savedSession.reconnectDeadline - clockNow) / 1000))
+    : null;
+  const opponentReconnectSecondsLeft = opponentReconnectDeadline
+    ? Math.max(0, Math.ceil((opponentReconnectDeadline - clockNow) / 1000))
+    : null;
 
   return (
     <WebSocketContext.Provider value={{
@@ -310,11 +430,16 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       winner,
       error,
       opponentDisconnected,
+      savedSession,
+      savedSessionSecondsLeft,
+      opponentReconnectSecondsLeft,
       playAgainRequested,
       opponentPlayAgainRequested,
       recentEmojis,
       createRoom,
       joinRoom,
+      joinSavedSession,
+      clearSavedSession,
       leaveRoom,
       sendAction,
       sendEmoji,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useGame } from '@/context/GameContext';
@@ -98,7 +98,7 @@ const variants = [
 
 export default function HomePage() {
   const router = useRouter();
-  const { joinRoom, connected, gameType, variant, gameStarted, error, resetGame } = useGame();
+  const { joinRoom, connected, error } = useGame();
   
   const [filter, setFilter] = useState('All');
   const [page, setPage] = useState(1);
@@ -108,27 +108,6 @@ export default function HomePage() {
   const [joinName, setJoinName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [joinError, setJoinError] = useState('');
-
-  // Track if game was already started when we landed here
-  const initialGameStarted = useRef(gameStarted);
-
-  // Handle redirect when successfully joined from home
-  useEffect(() => {
-    if (gameStarted && gameType) {
-      // If the game was already started when we landed on the home page, DON'T redirect
-      // Instead, we will show the top banner. 
-      // Only redirect if gameStarted just flipped to true (e.g. they just joined or auto-reconnected)
-      if (initialGameStarted.current) {
-        return;
-      }
-      
-      if (gameType === 'tic_tac_toe') {
-        router.push(`/games/tic-tac-toe/${variant || 'classic'}`);
-      } else {
-        router.push(`/games/${gameType.replace(/_/g, '-')}`);
-      }
-    }
-  }, [gameStarted, gameType, variant, router]);
 
   // Load saved name from storage on mount
   useEffect(() => {
@@ -161,31 +140,6 @@ export default function HomePage() {
 
   return (
     <div className={styles.page}>
-      {gameStarted && initialGameStarted.current && (
-        <div className={styles.activeGameBanner}>
-          <div className={styles.activeGameContent}>
-            <span className={styles.activeGameIcon}>🎮</span>
-            <div>
-              <strong>Active Game in Progress</strong>
-              <p>You are still connected to a room.</p>
-            </div>
-          </div>
-          <button 
-            className="btn btn-primary btn-sm"
-            onClick={() => {
-              initialGameStarted.current = false;
-              if (gameType === 'tic_tac_toe') {
-                router.push(`/games/tic-tac-toe/${variant || 'classic'}`);
-              } else if (gameType) {
-                router.push(`/games/${gameType.replace(/_/g, '-')}`);
-              }
-            }}
-          >
-            Return to Game
-          </button>
-        </div>
-      )}
-
       {/* Background Orbs */}
       <div className={styles.bgOrbs}>
         <div className={`${styles.orb} ${styles.orb1}`} />

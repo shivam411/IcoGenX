@@ -177,6 +177,27 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
         ClientMessage::JoinRoom { room_code, player_name } => {
             tracing::info!("Player {} ({}) attempting to join room {}", player_id, player_name, room_code);
 
+            let reconnect_context = {
+                let rooms = state.rooms.read().await;
+                if let Some(room) = rooms.get(&room_code) {
+                    if room.started && room.game.is_some() && room.players.len() == 1 {
+                        Some(room.players[0].clone())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            };
+
+            let reconnect_context = if let Some(remaining_player_id) = reconnect_context {
+                let player_numbers = state.player_numbers.read().await;
+                let remaining_player_number = player_numbers.get(&remaining_player_id).copied().unwrap_or(0);
+                Some((remaining_player_id, remaining_player_number))
+            } else {
+                None
+            };
+
             // Extract room info under write lock, then release lock before sending
             let join_result = {
                 let mut rooms = state.rooms.write().await;
@@ -190,15 +211,41 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                         Err("Room is full".to_string())
                     }
                     Some(room) => {
-                        room.players.push(player_id.to_string());
-                        let player_num = (room.players.len() - 1) as u8;
+                        let is_rejoining_started_game = reconnect_context
+                            .as_ref()
+                            .map(|(remaining_player_id, _)| {
+                                room.started
+                                    && room.game.is_some()
+                                    && room.players.len() == 1
+                                    && room.players[0] == *remaining_player_id
+                            })
+                            .unwrap_or(false);
+
+                        let player_num = if is_rejoining_started_game {
+                            let remaining_player_number = reconnect_context
+                                .as_ref()
+                                .map(|(_, number)| *number)
+                                .unwrap_or(0);
+                            let player_num = if remaining_player_number == 0 { 1 } else { 0 };
+                            if player_num == 0 {
+                                room.players.insert(0, player_id.to_string());
+                            } else {
+                                room.players.push(player_id.to_string());
+                            }
+                            player_num
+                        } else {
+                            room.players.push(player_id.to_string());
+                            (room.players.len() - 1) as u8
+                        };
+
                         let players = room.players.clone();
                         let game_type_str = room.game_type.clone();
                         let variant_str = room.variant.clone();
-                        let scores = room.scores.clone();
+                        let scores = room.scores;
 
-                        // Start game if 2 players
-                        let start_info = if room.players.len() == 2 {
+                        let start_info = if is_rejoining_started_game {
+                            room.game.as_ref().map(|game| (get_game_state(game), scores))
+                        } else if room.players.len() == 2 {
                             let game = create_game(&game_type_str, variant_str.as_deref());
                             match game {
                                 Some(g) => {
@@ -212,6 +259,10 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                         } else {
                             None
                         };
+
+                        if is_rejoining_started_game {
+                            tracing::info!("Player {} ({}) rejoined running room {} as player {}", player_id, player_name, room_code, player_num);
+                        }
 
                         Ok((player_num, players, room_code.clone(), start_info, game_type_str, variant_str))
                     }
@@ -588,9 +639,10 @@ fn check_game_over(game: &GameInstance) -> Option<ServerMessage> {
 
 #[cfg(test)]
 mod tests {
-    use super::{broadcast_same, check_game_over, create_game, process_action, reset_game, GameInstance};
-    use crate::games::tic_tac_toe::TicTacToeVariant;
-    use crate::protocol::{GameAction, ServerMessage};
+    use super::{broadcast_same, check_game_over, create_game, handle_message, process_action, reset_game, AppState, GameInstance, Room};
+    use crate::games::tic_tac_toe::{TicTacToeGame, TicTacToeVariant};
+    use crate::protocol::{ClientMessage, GameAction, ServerMessage};
+    use std::sync::Arc;
 
     fn players() -> Vec<String> {
         vec!["p1".to_string(), "p2".to_string()]
@@ -713,6 +765,112 @@ mod tests {
                 assert_eq!(reason, "Game completed");
             }
             _ => panic!("expected game over message"),
+        }
+    }
+
+    #[tokio::test]
+    async fn join_room_reconnects_player_one_without_resetting_game() {
+        let state = Arc::new(AppState::new());
+        let mut game = TicTacToeGame::new_variant("classic");
+        game.coin_tossed = true;
+        game.x_player = Some(0);
+        game.current_player = 1;
+        game.board[0] = Some(0);
+
+        state.rooms.write().await.insert(
+            "ROOM42".into(),
+            Room {
+                code: "ROOM42".into(),
+                game_type: "tic_tac_toe".into(),
+                variant: Some("classic".into()),
+                players: vec!["p1".into()],
+                game: Some(GameInstance::TicTacToe(game)),
+                started: true,
+                scores: [2, 1],
+                play_again_votes: [false, false],
+            },
+        );
+        state.player_rooms.write().await.insert("p1".into(), "ROOM42".into());
+        state.player_numbers.write().await.insert("p1".into(), 0);
+        state.player_names.write().await.insert("p1".into(), "Alex".into());
+
+        handle_message(
+            &state,
+            "p2",
+            ClientMessage::JoinRoom {
+                room_code: "ROOM42".into(),
+                player_name: "Blair".into(),
+            },
+        )
+        .await;
+
+        assert_eq!(state.player_numbers.read().await.get("p2").copied(), Some(1));
+
+        let rooms = state.rooms.read().await;
+        let room = rooms.get("ROOM42").unwrap();
+        assert_eq!(room.players, vec!["p1".to_string(), "p2".to_string()]);
+        assert_eq!(room.scores, [2, 1]);
+
+        match room.game.as_ref().unwrap() {
+            GameInstance::TicTacToe(inner) => {
+                assert_eq!(inner.board[0], Some(0));
+                assert_eq!(inner.current_player, 1);
+                assert!(inner.coin_tossed);
+            }
+            _ => panic!("expected tic-tac-toe game"),
+        }
+    }
+
+    #[tokio::test]
+    async fn join_room_reconnects_creator_to_player_zero_seat() {
+        let state = Arc::new(AppState::new());
+        let mut game = TicTacToeGame::new_variant("disappearing");
+        game.coin_tossed = true;
+        game.x_player = Some(1);
+        game.current_player = 0;
+        game.board[4] = Some(1);
+
+        state.rooms.write().await.insert(
+            "ROOM42".into(),
+            Room {
+                code: "ROOM42".into(),
+                game_type: "tic_tac_toe".into(),
+                variant: Some("disappearing".into()),
+                players: vec!["p2".into()],
+                game: Some(GameInstance::TicTacToe(game)),
+                started: true,
+                scores: [0, 3],
+                play_again_votes: [false, false],
+            },
+        );
+        state.player_rooms.write().await.insert("p2".into(), "ROOM42".into());
+        state.player_numbers.write().await.insert("p2".into(), 1);
+        state.player_names.write().await.insert("p2".into(), "Blair".into());
+
+        handle_message(
+            &state,
+            "p1-return",
+            ClientMessage::JoinRoom {
+                room_code: "ROOM42".into(),
+                player_name: "Alex".into(),
+            },
+        )
+        .await;
+
+        assert_eq!(state.player_numbers.read().await.get("p1-return").copied(), Some(0));
+
+        let rooms = state.rooms.read().await;
+        let room = rooms.get("ROOM42").unwrap();
+        assert_eq!(room.players, vec!["p1-return".to_string(), "p2".to_string()]);
+        assert_eq!(room.scores, [0, 3]);
+
+        match room.game.as_ref().unwrap() {
+            GameInstance::TicTacToe(inner) => {
+                assert_eq!(inner.board[4], Some(1));
+                assert_eq!(inner.current_player, 0);
+                assert!(inner.coin_tossed);
+            }
+            _ => panic!("expected tic-tac-toe game"),
         }
     }
 }

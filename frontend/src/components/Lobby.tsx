@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGame } from '@/context/GameContext';
 import styles from './Lobby.module.css';
@@ -22,7 +22,6 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
     roomCode,
     gameStarted,
     playerNumber,
-    opponentDisconnected,
     error,
     createRoom,
     joinRoom,
@@ -35,24 +34,6 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
   const [name, setName] = useState('');
   const [nameError, setNameError] = useState(false);
   const router = useRouter();
-
-  const [disconnectTimer, setDisconnectTimer] = useState(20);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (opponentDisconnected && disconnectTimer > 0) {
-      timer = setInterval(() => {
-        setDisconnectTimer(t => t - 1);
-      }, 1000);
-    }
-    return () => clearInterval(timer);
-  }, [opponentDisconnected, disconnectTimer]);
-
-  useEffect(() => {
-    if (!opponentDisconnected) {
-      setDisconnectTimer(20);
-    }
-  }, [opponentDisconnected]);
 
   const handleCreate = () => {
     if (!name.trim()) {
@@ -67,7 +48,7 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
       setNameError(true);
       return;
     }
-    if (joinCode) joinRoom(joinCode, name.trim());
+    if (joinCode) joinRoom(joinCode, name.trim(), gameType, variant || null);
   };
 
   if (!connected) {
@@ -76,39 +57,6 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
         <div className={styles.connectingBox}>
           <div className={styles.spinner} />
           <p>Connecting to server...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (opponentDisconnected) {
-    return (
-      <div className={styles.container}>
-        <div className={`glass-card ${styles.disconnectBox}`}>
-          <span className={styles.disconnectIcon}>😔</span>
-          <h2>Opponent Disconnected</h2>
-          {disconnectTimer > 0 ? (
-            <>
-              <p>Your opponent has left the game. Waiting for them to return...</p>
-              <div className={styles.countdown}>
-                00:{disconnectTimer.toString().padStart(2, '0')}
-              </div>
-            </>
-          ) : (
-            <p>Opponent failed to reconnect. The game has ended.</p>
-          )}
-          <div className={styles.actions} style={{ marginTop: '20px' }}>
-            {disconnectTimer > 0 && (
-              <button className="btn btn-ghost" onClick={() => window.location.reload()}>
-                End Game Now
-              </button>
-            )}
-            {disconnectTimer === 0 && (
-              <button className="btn btn-primary" onClick={() => window.location.reload()}>
-                Back to Lobby
-              </button>
-            )}
-          </div>
         </div>
       </div>
     );

@@ -15,7 +15,7 @@
   perspective: 800px;
   width: 160px;
   height: 160px;
-  margin-bottom: 32px;
+  margin: 0 auto 32px;
   position: relative;
 }
 
@@ -319,15 +319,20 @@
 
 /* === Responsive === */
 @media (max-width: 500px) {
+  .container {
+    padding: 88px 14px 18px;
+  }
   .scene {
     width: 120px;
     height: 120px;
+    margin-bottom: 24px;
   }
   .coinFace {
     font-size: 3rem;
   }
   .card {
-    padding: 36px 28px;
+    width: 100%;
+    padding: 32px 20px;
   }
   .title {
     font-size: 1.6rem;
