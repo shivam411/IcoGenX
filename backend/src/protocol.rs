@@ -18,6 +18,8 @@ pub enum ClientMessage {
 #[serde(tag = "game")]
 pub enum GameAction {
     TicTacToe { cell: usize },
+    TicTacToeGobble { from: Option<usize>, to: usize, size: u8 },
+    TicTacToeBid { bid: u8 },
     TicTacToeTossCoin,
     ShutTheBox { combination: Vec<u8>, target: String },
     CodeGuess { guess: String },

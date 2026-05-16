@@ -8,6 +8,10 @@ pub enum TicTacToeVariant {
     Classic,
     Disappearing,
     Joker,
+    Gobblet,
+    Gravity,
+    Bidding,
+    Blind,
 }
 
 impl TicTacToeVariant {
@@ -16,9 +20,19 @@ impl TicTacToeVariant {
             "classic" => TicTacToeVariant::Classic,
             "disappearing" => TicTacToeVariant::Disappearing,
             "joker" => TicTacToeVariant::Joker,
+            "gobblet" | "gobblet_gobblers" => TicTacToeVariant::Gobblet,
+            "gravity" | "drop" => TicTacToeVariant::Gravity,
+            "bidding" | "auction" => TicTacToeVariant::Bidding,
+            "blind" | "memory" => TicTacToeVariant::Blind,
             _ => TicTacToeVariant::Classic,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct GobbletPiece {
+    pub player: u8,
+    pub size: u8,
 }
 
 /// Tic-Tac-Toe with multiple variants
@@ -34,6 +48,14 @@ pub struct TicTacToeGame {
     pub coin_tossed: bool,
     pub variant: TicTacToeVariant,
     pub joker_cell: Option<usize>,        // Only used in Joker variant
+    pub gobblet_stacks: Vec<Vec<GobbletPiece>>,
+    pub remaining_pieces: [[u8; 3]; 2],
+    pub bidding_chips: [u8; 2],
+    pub pending_bids: [Option<u8>; 2],
+    pub last_bids: Option<[u8; 2]>,
+    pub bidding_winner: Option<u8>,
+    pub bidding_phase: String,
+    pub last_event: Option<String>,
 }
 
 impl TicTacToeGame {
@@ -43,6 +65,7 @@ impl TicTacToeGame {
 
     pub fn new_variant(variant_str: &str) -> Self {
         let variant = TicTacToeVariant::from_str(variant_str);
+        let skips_coin_toss = variant == TicTacToeVariant::Bidding;
         let joker_cell = if variant == TicTacToeVariant::Joker {
             use rand::Rng;
             let mut rng = rand::thread_rng();
@@ -58,10 +81,18 @@ impl TicTacToeGame {
             current_player: 0,
             winner: None,
             game_over: false,
-            x_player: None,
-            coin_tossed: false,
+            x_player: if skips_coin_toss { Some(0) } else { None },
+            coin_tossed: skips_coin_toss,
             variant,
             joker_cell,
+            gobblet_stacks: vec![Vec::new(); 9],
+            remaining_pieces: [[2, 2, 2], [2, 2, 2]],
+            bidding_chips: [100, 100],
+            pending_bids: [None, None],
+            last_bids: None,
+            bidding_winner: None,
+            bidding_phase: "bidding".into(),
+            last_event: None,
         }
     }
 
@@ -85,8 +116,16 @@ impl TicTacToeGame {
         self.player2_moves.clear();
         self.winner = None;
         self.game_over = false;
-        self.coin_tossed = false;
-        self.x_player = None;
+        self.coin_tossed = self.variant == TicTacToeVariant::Bidding;
+        self.x_player = if self.variant == TicTacToeVariant::Bidding { Some(0) } else { None };
+        self.gobblet_stacks = vec![Vec::new(); 9];
+        self.remaining_pieces = [[2, 2, 2], [2, 2, 2]];
+        self.bidding_chips = [100, 100];
+        self.pending_bids = [None, None];
+        self.last_bids = None;
+        self.bidding_winner = None;
+        self.bidding_phase = "bidding".into();
+        self.last_event = None;
         // Re-randomize joker cell
         if self.variant == TicTacToeVariant::Joker {
             use rand::Rng;
@@ -112,6 +151,15 @@ impl TicTacToeGame {
         if player != self.current_player {
             return Err("Not your turn".into());
         }
+
+        match self.variant {
+            TicTacToeVariant::Gravity => return self.make_gravity_move(player, cell),
+            TicTacToeVariant::Blind => return self.make_blind_move(player, cell),
+            TicTacToeVariant::Bidding => return self.place_bidding_mark(player, cell),
+            TicTacToeVariant::Gobblet => return Err("Choose a small, medium, or large piece first".into()),
+            _ => {}
+        }
+
         if cell >= 9 {
             return Err("Invalid cell".into());
         }
@@ -135,17 +183,178 @@ impl TicTacToeGame {
         self.board[cell] = Some(player);
         moves.push_back(cell);
 
-        // Check win
+        self.finish_mark(player, matches!(self.variant, TicTacToeVariant::Classic));
+        Ok(())
+    }
+
+    pub fn make_gobblet_move(&mut self, player: u8, from: Option<usize>, to: usize, size: u8) -> Result<(), String> {
+        if self.variant != TicTacToeVariant::Gobblet {
+            return Err("Gobblet move is only valid in Gobblet mode".into());
+        }
+        if !self.coin_tossed {
+            return Err("Waiting for coin toss".into());
+        }
+        if self.game_over {
+            return Err("Game is over".into());
+        }
+        if player != self.current_player {
+            return Err("Not your turn".into());
+        }
+        if !(1..=3).contains(&size) {
+            return Err("Piece size must be small, medium, or large".into());
+        }
+        if to >= 9 {
+            return Err("Invalid cell".into());
+        }
+        if let Some(top) = self.gobblet_stacks[to].last() {
+            if top.size >= size {
+                return Err("You can only cover a smaller piece".into());
+            }
+        }
+
+        let piece = if let Some(from_idx) = from {
+            if from_idx >= 9 {
+                return Err("Invalid source cell".into());
+            }
+            if from_idx == to {
+                return Err("Choose a different destination".into());
+            }
+            match self.gobblet_stacks[from_idx].last() {
+                Some(top) if top.player == player && top.size == size => {}
+                Some(top) if top.player == player => return Err("Selected piece size does not match the top piece".into()),
+                Some(_) => return Err("You can only move your own top piece".into()),
+                None => return Err("No piece to move from that cell".into()),
+            }
+            self.gobblet_stacks[from_idx].pop().unwrap()
+        } else {
+            let size_index = (size - 1) as usize;
+            let player_index = player as usize;
+            if self.remaining_pieces[player_index][size_index] == 0 {
+                return Err("No pieces of that size left".into());
+            }
+            self.remaining_pieces[player_index][size_index] -= 1;
+            GobbletPiece { player, size }
+        };
+
+        self.gobblet_stacks[to].push(piece);
+        self.sync_gobblet_board();
+        self.finish_mark(player, false);
+        Ok(())
+    }
+
+    pub fn submit_bid(&mut self, player: u8, bid: u8) -> Result<(), String> {
+        if self.variant != TicTacToeVariant::Bidding {
+            return Err("Bids are only valid in Bidding mode".into());
+        }
+        if self.game_over {
+            return Err("Game is over".into());
+        }
+        if self.bidding_phase != "bidding" {
+            return Err("Wait for the current bidder to place their mark".into());
+        }
+        let player_index = player as usize;
+        if bid > self.bidding_chips[player_index] {
+            return Err("You cannot bid more chips than you have".into());
+        }
+        if self.pending_bids[player_index].is_some() {
+            return Err("You already bid this round".into());
+        }
+
+        self.pending_bids[player_index] = Some(bid);
+        self.last_event = Some(format!("Player {} locked a bid", player + 1));
+
+        if let (Some(p1_bid), Some(p2_bid)) = (self.pending_bids[0], self.pending_bids[1]) {
+            self.bidding_chips[0] -= p1_bid;
+            self.bidding_chips[1] -= p2_bid;
+            self.pending_bids = [None, None];
+            self.last_bids = Some([p1_bid, p2_bid]);
+
+            if p1_bid == p2_bid {
+                self.bidding_winner = None;
+                self.bidding_phase = "bidding".into();
+                self.last_event = Some(format!("Both players bid {}. Tie round, no mark placed.", p1_bid));
+            } else {
+                let winner = if p1_bid > p2_bid { 0 } else { 1 };
+                self.bidding_winner = Some(winner);
+                self.current_player = winner;
+                self.bidding_phase = "placing".into();
+                self.last_event = Some(format!("Player {} won the auction and places next.", winner + 1));
+            }
+        }
+
+        Ok(())
+    }
+
+    fn make_gravity_move(&mut self, player: u8, column: usize) -> Result<(), String> {
+        if column >= 3 {
+            return Err("Choose a column from 1 to 3".into());
+        }
+        let target = (0..3)
+            .rev()
+            .map(|row| row * 3 + column)
+            .find(|&idx| self.board[idx].is_none())
+            .ok_or_else(|| "Column is full".to_string())?;
+
+        self.board[target] = Some(player);
+        self.last_event = Some(format!("Player {} dropped into column {}", player + 1, column + 1));
+        self.finish_mark(player, true);
+        Ok(())
+    }
+
+    fn make_blind_move(&mut self, player: u8, cell: usize) -> Result<(), String> {
+        if cell >= 9 {
+            return Err("Invalid cell".into());
+        }
+        if self.board[cell].is_some() {
+            self.last_event = Some(format!("Square {} was already taken. Player {} loses the turn.", cell + 1, player + 1));
+            self.current_player = 1 - self.current_player;
+            return Ok(());
+        }
+
+        self.board[cell] = Some(player);
+        self.last_event = Some(format!("Player {} called square {}", player + 1, cell + 1));
+        self.finish_mark(player, true);
+        Ok(())
+    }
+
+    fn place_bidding_mark(&mut self, player: u8, cell: usize) -> Result<(), String> {
+        if self.bidding_phase != "placing" || self.bidding_winner != Some(player) {
+            return Err("Win the auction before placing a mark".into());
+        }
+        if cell >= 9 {
+            return Err("Invalid cell".into());
+        }
+        if self.board[cell].is_some() {
+            return Err("Cell occupied".into());
+        }
+
+        self.board[cell] = Some(player);
+        self.last_event = Some(format!("Player {} placed after winning the auction", player + 1));
+        self.finish_mark(player, true);
+        if !self.game_over {
+            self.bidding_phase = "bidding".into();
+            self.bidding_winner = None;
+        }
+        Ok(())
+    }
+
+    fn finish_mark(&mut self, player: u8, allow_draw: bool) {
         if self.check_win(player) {
             self.winner = Some(player);
             self.game_over = true;
-        } else if self.variant == TicTacToeVariant::Classic && self.is_board_full() {
-            // Draw in classic mode
+        } else if allow_draw && self.is_board_full() {
             self.game_over = true;
         }
 
-        self.current_player = 1 - self.current_player;
-        Ok(())
+        if !self.game_over && self.variant != TicTacToeVariant::Bidding {
+            self.current_player = 1 - self.current_player;
+        }
+    }
+
+    fn sync_gobblet_board(&mut self) {
+        for idx in 0..9 {
+            self.board[idx] = self.gobblet_stacks[idx].last().map(|piece| piece.player);
+        }
     }
 
     fn is_board_full(&self) -> bool {
@@ -207,6 +416,14 @@ impl TicTacToeGame {
             "coinTossed": self.coin_tossed,
             "variant": self.variant,
             "jokerCell": self.joker_cell,
+            "gobbletStacks": self.gobblet_stacks,
+            "remainingPieces": self.remaining_pieces,
+            "biddingChips": self.bidding_chips,
+            "pendingBids": self.pending_bids.map(|bid| bid.is_some()),
+            "lastBids": self.last_bids,
+            "biddingWinner": self.bidding_winner,
+            "biddingPhase": self.bidding_phase,
+            "lastEvent": self.last_event,
         })
     }
 }
@@ -273,5 +490,64 @@ mod tests {
 
         assert!(game.game_over);
         assert_eq!(game.winner, Some(1));
+    }
+
+    #[test]
+    fn gravity_variant_drops_marks_to_lowest_open_cell() {
+        let mut game = ready_game("gravity");
+
+        game.make_move(0, 0).unwrap();
+        game.make_move(1, 0).unwrap();
+        game.make_move(0, 0).unwrap();
+
+        assert_eq!(game.board[6], Some(0));
+        assert_eq!(game.board[3], Some(1));
+        assert_eq!(game.board[0], Some(0));
+    }
+
+    #[test]
+    fn blind_variant_occupied_square_costs_a_turn() {
+        let mut game = ready_game("blind");
+
+        game.make_move(0, 0).unwrap();
+        game.make_move(1, 0).unwrap();
+
+        assert_eq!(game.board[0], Some(0));
+        assert_eq!(game.current_player, 0);
+        assert!(game.last_event.as_ref().unwrap().contains("already taken"));
+    }
+
+    #[test]
+    fn gobblet_variant_covers_and_reveals_smaller_pieces() {
+        let mut game = ready_game("gobblet");
+
+        game.make_gobblet_move(0, None, 0, 1).unwrap();
+        game.make_gobblet_move(1, None, 0, 2).unwrap();
+        game.make_gobblet_move(0, None, 1, 1).unwrap();
+        game.make_gobblet_move(1, Some(0), 2, 2).unwrap();
+
+        assert_eq!(game.board[0], Some(0));
+        assert_eq!(game.board[2], Some(1));
+        assert_eq!(game.gobblet_stacks[0].len(), 1);
+        assert_eq!(game.gobblet_stacks[2].last().unwrap().size, 2);
+    }
+
+    #[test]
+    fn bidding_variant_high_bidder_places_after_both_bids() {
+        let mut game = TicTacToeGame::new_variant("bidding");
+
+        game.submit_bid(0, 10).unwrap();
+        assert_eq!(game.pending_bids, [Some(10), None]);
+
+        game.submit_bid(1, 20).unwrap();
+        assert_eq!(game.pending_bids, [None, None]);
+        assert_eq!(game.bidding_winner, Some(1));
+        assert_eq!(game.bidding_phase, "placing");
+        assert_eq!(game.bidding_chips, [90, 80]);
+
+        game.make_move(1, 4).unwrap();
+        assert_eq!(game.board[4], Some(1));
+        assert_eq!(game.bidding_phase, "bidding");
+        assert_eq!(game.bidding_winner, None);
     }
 }

@@ -31,12 +31,13 @@ const STORAGE_VARIANT = 'arena_variant';
 const STORAGE_GAME_PATH = 'arena_game_path';
 const STORAGE_RECONNECT_DEADLINE = 'arena_reconnect_deadline';
 
-function getGamePath(gameType: string | null, variant: string | null) {
+export function getGamePath(gameType: string | null, variant: string | null) {
   if (!gameType) return null;
   if (gameType === 'tic_tac_toe') {
     return `/games/tic-tac-toe/${variant || 'classic'}`;
   }
   if (gameType === 'higher_lower') {
+    if (variant === 'code_breaker_number') return '/games/code-guess/number';
     return variant && variant !== 'classic'
       ? `/games/higher-lower/${variant}`
       : '/games/higher-lower';
@@ -350,7 +351,19 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     }
     localStorage.removeItem(STORAGE_RECONNECT_DEADLINE);
     setSavedSession(null);
+    setRoomCode(code);
     setPlayerNameState(playerName);
+    setGameStarted(false);
+    setGameState(null);
+    setGameOver(false);
+    setWinner(null);
+    setScores([0, 0]);
+    setOpponentDisconnected(false);
+    setOpponentReconnectDeadline(null);
+    setPlayAgainRequested(false);
+    setOpponentPlayAgainRequested(false);
+    setGameType(gameType || null);
+    setVariant(variant || null);
     send({ type: 'JoinRoom', room_code: code, player_name: playerName });
   }, [send]);
 

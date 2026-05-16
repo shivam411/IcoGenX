@@ -542,6 +542,18 @@ fn process_action(
             Ok(broadcast_same(players, state))
         }
 
+        (GameInstance::TicTacToe(g), GameAction::TicTacToeGobble { from, to, size }) => {
+            g.make_gobblet_move(player, from, to, size)?;
+            let state = g.state_json();
+            Ok(broadcast_same(players, state))
+        }
+
+        (GameInstance::TicTacToe(g), GameAction::TicTacToeBid { bid }) => {
+            g.submit_bid(player, bid)?;
+            let state = g.state_json();
+            Ok(broadcast_same(players, state))
+        }
+
         (GameInstance::TicTacToe(g), GameAction::TicTacToeTossCoin) => {
             if player != 0 {
                 return Err("Only creator can toss coin".into());

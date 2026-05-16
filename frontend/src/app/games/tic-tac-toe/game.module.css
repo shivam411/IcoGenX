@@ -59,6 +59,136 @@
   opacity: 0.5;
 }
 
+.cellGravity::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  width: 28%;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.cellBidding {
+  border-color: rgba(34, 197, 94, 0.55);
+  box-shadow: inset 0 0 18px rgba(34, 197, 94, 0.12);
+}
+
+.cellGobblet {
+  font-size: 2.5rem;
+}
+
+.cellSelected {
+  border-color: rgba(34, 197, 94, 0.7);
+  transform: scale(1.04);
+  box-shadow: 0 0 22px rgba(34, 197, 94, 0.22);
+}
+
+.cellNumber {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 8vw, 3rem);
+  color: var(--text-secondary);
+}
+
+.gobbletPiece {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 0.9;
+}
+
+.gobbletPiece small {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.variantPanel {
+  width: 100%;
+  max-width: 400px;
+  margin-top: -12px;
+  padding: 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text-secondary);
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.pieceBank {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pieceButton {
+  min-height: 54px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 800;
+}
+
+.pieceButton:hover:not(:disabled),
+.pieceButtonActive {
+  border-color: rgba(34, 197, 94, 0.65);
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.pieceButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.pieceButton small {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.clearSelectionButton {
+  margin-top: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--accent-cyan);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.chipRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.lastBids {
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.bidControls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.bidControls input {
+  width: 100%;
+  min-width: 0;
+}
+
 .gameWrapper {
   min-height: 100vh;
   width: 100%;
@@ -312,6 +442,16 @@
   .cell {
     font-size: 2.5rem;
     border-radius: var(--radius-md);
+  }
+
+  .variantPanel {
+    max-width: 360px;
+  }
+
+  .chipRow {
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
   }
 
   .rulesContainer {

@@ -23,12 +23,15 @@ const VARIANT_CONFIG = {
   expert: {
     name: 'Higher or Lower: Expert',
   },
+  code_breaker_number: {
+    name: 'Code Breaker: Number Range',
+  },
 };
 
 export type HigherLowerVariant = keyof typeof VARIANT_CONFIG;
 
 export function normalizeHigherLowerVariant(variant: string | undefined): HigherLowerVariant {
-  if (variant === 'sprint' || variant === 'expert') return variant;
+  if (variant === 'sprint' || variant === 'expert' || variant === 'code_breaker_number') return variant;
   return 'classic';
 }
 
@@ -136,7 +139,19 @@ function HigherLowerBoard() {
   );
 }
 
-export default function HigherLowerGamePage({ variant = 'classic' }: { variant?: string }) {
+interface HigherLowerGamePageProps {
+  variant?: string;
+  gameName?: string;
+  gameIcon?: string;
+  accentColor?: string;
+}
+
+export default function HigherLowerGamePage({
+  variant = 'classic',
+  gameName,
+  gameIcon = '🔢',
+  accentColor = '#10b981',
+}: HigherLowerGamePageProps) {
   const normalizedVariant = normalizeHigherLowerVariant(variant);
   const config = VARIANT_CONFIG[normalizedVariant];
 
@@ -144,9 +159,9 @@ export default function HigherLowerGamePage({ variant = 'classic' }: { variant?:
     <Lobby
       gameType="higher_lower"
       variant={normalizedVariant}
-      gameName={config.name}
-      gameIcon="🔢"
-      accentColor="#10b981"
+      gameName={gameName || config.name}
+      gameIcon={gameIcon}
+      accentColor={accentColor}
     >
       <HigherLowerBoard />
     </Lobby>

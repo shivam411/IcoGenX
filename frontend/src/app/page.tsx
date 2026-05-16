@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useGame } from '@/context/GameContext';
+import { getGamePath, useGame } from '@/context/GameContext';
 import styles from './page.module.css';
 
 interface GameVariant {
@@ -31,7 +31,7 @@ const games: GameCard[] = [
     id: 'tic-tac-toe',
     name: 'Tic-Tac-Toe Variants',
     icon: '❌⭕',
-    description: 'Play Classic, Disappearing, or Joker Tic-Tac-Toe. No more boring draws!',
+    description: 'Play Classic, Gobblet, Gravity, Bidding, Blind, and more Tic-Tac-Toe twists.',
     players: '2 Players',
     category: 'Strategy',
     badgeClass: 'badge-purple',
@@ -58,6 +58,34 @@ const games: GameCard[] = [
         desc: 'One cell is gold and acts as X and O.',
         path: '/games/tic-tac-toe/joker',
       },
+      {
+        id: 'gobblet',
+        name: 'Gobblet Gobblers',
+        icon: '🪆',
+        desc: 'Small, medium, and large pieces can cover smaller ones.',
+        path: '/games/tic-tac-toe/gobblet',
+      },
+      {
+        id: 'gravity',
+        name: 'Gravity',
+        icon: '⬇️',
+        desc: 'Drop marks into columns and let them fall to the bottom.',
+        path: '/games/tic-tac-toe/gravity',
+      },
+      {
+        id: 'bidding',
+        name: 'Bidding',
+        icon: '🪙',
+        desc: 'Spend chips in auctions to win the right to place.',
+        path: '/games/tic-tac-toe/bidding',
+      },
+      {
+        id: 'blind',
+        name: 'Blind Memory',
+        icon: '🙈',
+        desc: 'Call numbered squares from memory. Occupied calls lose turns.',
+        path: '/games/tic-tac-toe/blind',
+      },
     ],
   },
   {
@@ -72,13 +100,29 @@ const games: GameCard[] = [
   },
   {
     id: 'code-guess',
-    name: '4-Digit Code Breaker',
+    name: 'Code Breaker',
     icon: '🔐',
-    description: 'Set a secret 4-digit code and try to crack your opponent\'s first. Bulls & Cows!',
+    description: 'Break a secret 4-digit code or chase a number with higher/lower clues.',
     players: '2 Players',
     category: 'Logic',
     badgeClass: 'badge-cyan',
     gradient: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
+    variants: [
+      {
+        id: 'digits',
+        name: '4-Digit Code',
+        icon: '🔐',
+        desc: 'Set a secret 4-digit code and crack your opponent\'s first.',
+        path: '/games/code-guess',
+      },
+      {
+        id: 'number-range',
+        name: 'Number Range',
+        icon: '🔎',
+        desc: 'Guess a 1-100 number with greater/less clues.',
+        path: '/games/code-guess/number',
+      },
+    ],
   },
   {
     id: 'memory-flip',
@@ -137,7 +181,7 @@ const games: GameCard[] = [
 
 export default function HomePage() {
   const router = useRouter();
-  const { joinRoom, connected, error } = useGame();
+  const { joinRoom, connected, error, gameStarted, gameType, variant } = useGame();
   
   const [filter, setFilter] = useState('All');
   const [page, setPage] = useState(1);
@@ -147,12 +191,26 @@ export default function HomePage() {
   const [joinName, setJoinName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [joinError, setJoinError] = useState('');
+  const [quickJoinPending, setQuickJoinPending] = useState(false);
 
   // Load saved name from storage on mount
   useEffect(() => {
     const savedName = localStorage.getItem('arena_player_name');
     if (savedName) setJoinName(savedName);
   }, []);
+
+  useEffect(() => {
+    if (!quickJoinPending || !gameStarted || !gameType) return;
+
+    const path = getGamePath(gameType, variant);
+    if (!path) return;
+    setQuickJoinPending(false);
+    router.push(path);
+  }, [quickJoinPending, gameStarted, gameType, variant, router]);
+
+  useEffect(() => {
+    if (error) setQuickJoinPending(false);
+  }, [error]);
 
   const handleQuickJoin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,6 +223,7 @@ export default function HomePage() {
       return;
     }
     setJoinError('');
+    setQuickJoinPending(true);
     joinRoom(joinCode.toUpperCase(), joinName.trim());
   };
 

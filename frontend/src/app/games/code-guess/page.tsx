@@ -143,7 +143,7 @@ function CodeGuessBoard() {
 
 export default function CodeGuessPage() {
   return (
-    <Lobby gameType="code_guess" gameName="4-Digit Code Breaker" gameIcon="🔐" accentColor="#06b6d4">
+    <Lobby gameType="code_guess" gameName="Code Breaker" gameIcon="🔐" accentColor="#06b6d4">
       <CodeGuessBoard />
     </Lobby>
   );
