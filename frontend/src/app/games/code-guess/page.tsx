@@ -23,7 +23,7 @@ const CODE_GUESS_RULES = (
 );
 
 function CodeGuessBoard() {
-  const { gameState, playerNumber, sendAction, gameOver, winner } = useGame();
+  const { gameState, playerNumber, opponentName, sendAction, gameOver, winner } = useGame();
   const [code, setCode] = useState('');
 
   if (!gameState) return null;
@@ -33,6 +33,7 @@ function CodeGuessBoard() {
   const bothSet = codesSet[0] && codesSet[1];
   const currentPlayer: number = gameState.currentPlayer;
   const isMyTurn = currentPlayer === playerNumber;
+  const opponentLabel = opponentName || 'Opponent';
 
   const myGuesses: Guess[] = playerNumber === 0 ? gameState.player1Guesses : gameState.player2Guesses;
 
@@ -49,7 +50,7 @@ function CodeGuessBoard() {
         <GameFrame turnText="🔐 Set your secret code to start." rulesTitle="Code Breaker Rules" rules={CODE_GUESS_RULES}>
           <div className={`glass-card ${styles.setupPhase}`} style={{ padding: 40 }}>
             <h2 className={styles.setupTitle}>🔐 Set Your Secret Code</h2>
-            <p className={styles.setupSub}>Choose a 4-digit number for your opponent to crack</p>
+            <p className={styles.setupSub}>Choose a 4-digit number for {opponentLabel} to crack</p>
             <input
               className={`input ${styles.codeInput}`}
               type="text"
@@ -78,7 +79,7 @@ function CodeGuessBoard() {
         <GameFrame turnText="⏳ Waiting for both secret codes to be locked in." rulesTitle="Code Breaker Rules" rules={CODE_GUESS_RULES}>
           <div className={`glass-card ${styles.waitingSetup}`}>
             <h3>Your code is set! ✅</h3>
-            <p>Waiting for opponent to set their code...</p>
+            <p>Waiting for {opponentLabel} to set their code...</p>
           </div>
         </GameFrame>
       </div>
@@ -89,7 +90,7 @@ function CodeGuessBoard() {
     <div className={styles.gameWrapper}>
       <GameFrame
         currentPlayer={currentPlayer}
-        turnText={isMyTurn ? '🎯 Your turn to guess!' : '⏳ Opponent is guessing...'}
+        turnText={isMyTurn ? '🎯 Your turn to guess!' : `⏳ ${opponentLabel} is guessing...`}
         rulesTitle="Code Breaker Rules"
         rules={CODE_GUESS_RULES}
       >
@@ -142,7 +143,7 @@ function CodeGuessBoard() {
             <p className={styles.winSub}>
               {winner?.includes(`${(playerNumber || 0) + 1}`)
                 ? 'You cracked the code first!'
-                : 'Opponent cracked your code!'}
+                : `${opponentLabel} cracked your code!`}
             </p>
             <Link href="/" className="btn btn-primary">Play Again</Link>
           </div>

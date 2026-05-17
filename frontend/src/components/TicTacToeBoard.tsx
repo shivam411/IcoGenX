@@ -64,6 +64,7 @@ export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardPr
 
   const p1Name = playerNumber === 0 ? (playerName || 'You') : (opponentName || 'Opponent');
   const p2Name = playerNumber === 1 ? (playerName || 'You') : (opponentName || 'Opponent');
+  const opponentLabel = opponentName || 'Opponent';
 
   const winningLineKey = winningLine?.join(',') || '';
 
@@ -321,7 +322,7 @@ export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardPr
             </div>
           ) : (
             <div className={styles.lastBids}>
-              {biddingWinner === playerNumber ? 'Place your mark' : 'Opponent is placing'}
+              {biddingWinner === playerNumber ? 'Place your mark' : `${opponentLabel} is placing`}
             </div>
           )}
         </div>
@@ -379,13 +380,13 @@ export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardPr
           
           <div className={styles.scoreBoard}>
             <div className={styles.scorePlayer}>
-              <span className={styles.scoreName}>{playerName}</span>
+              <span className={styles.scoreName}>{playerName || 'You'}</span>
               <span className={styles.scoreValue}>{myScore}</span>
             </div>
             <div className={styles.scoreDivider}>—</div>
             <div className={styles.scorePlayer}>
               <span className={styles.scoreValue}>{oppScore}</span>
-              <span className={styles.scoreName}>{opponentName}</span>
+              <span className={styles.scoreName}>{opponentLabel}</span>
             </div>
           </div>
 
@@ -403,12 +404,12 @@ export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardPr
               <span className={styles.warningText}>{warningMsg}</span>
             ) : variant === 'bidding' ? (
               biddingPhase === 'bidding'
-                ? (pendingBids[playerNumber || 0] ? 'Bid locked. Waiting for opponent...' : 'Set your bid.')
-                : (biddingWinner === playerNumber ? 'Auction won. Place your mark.' : 'Opponent won the auction.')
+                ? (pendingBids[playerNumber || 0] ? `Bid locked. Waiting for ${opponentLabel}...` : 'Set your bid.')
+                : (biddingWinner === playerNumber ? 'Auction won. Place your mark.' : `${opponentLabel} won the auction.`)
             ) : isMyTurn ? (
               '🎯 Your turn!'
             ) : (
-              '⏳ Opponent\'s turn...'
+              `⏳ ${opponentLabel}'s turn...`
             )}
           </div>
 
@@ -463,9 +464,9 @@ export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardPr
             
             <div className={styles.playAgainStatus}>
               {playAgainRequested ? (
-                <p>Waiting for opponent to accept...</p>
+                <p>Waiting for {opponentLabel} to accept...</p>
               ) : opponentPlayAgainRequested ? (
-                <p>{opponentName} wants to play again!</p>
+                <p>{opponentLabel} wants to play again!</p>
               ) : null}
             </div>
 

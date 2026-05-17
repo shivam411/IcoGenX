@@ -23,7 +23,7 @@ const SUIT_SYMBOLS: Record<string, string> = {
 const RED_SUITS = new Set(['H', 'D']);
 
 function BluffCardBoard() {
-  const { gameState, playerNumber, sendAction, gameOver, winner } = useGame();
+  const { gameState, playerNumber, playerName, opponentName, sendAction, gameOver, winner } = useGame();
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
   const gameInfo = getGameInfo('bluff_card');
 
@@ -46,6 +46,9 @@ function BluffCardBoard() {
   const opponentCount: number = gameState.opponentCardCount ?? 0;
   const canChallenge = Boolean(isMyTurn && lastPlay && lastPlay.player !== playerNumber && !gameOver);
   const canPlay = Boolean(isMyTurn && !gameOver);
+  const opponentLabel = opponentName || 'Opponent';
+  const playerLabel = playerName || 'You';
+  const getActorName = (actor: number) => (actor === playerNumber ? playerLabel : opponentLabel);
 
   const selectedSummary = useMemo(() => {
     if (!selectedCards.length) return 'Select 1 to 4 cards to play face down.';
@@ -77,7 +80,7 @@ function BluffCardBoard() {
     <div className={styles.gameWrapper}>
       <GameFrame
         currentPlayer={currentPlayer}
-        turnText={isMyTurn ? `Your turn: claim ${currentRank}` : `Opponent is claiming ${currentRank}`}
+        turnText={isMyTurn ? `Your turn: claim ${currentRank}` : `${opponentLabel} is claiming ${currentRank}`}
         rulesTitle={gameInfo?.rulesTitle || 'Bluff Rules'}
         rules={rules}
         tips={gameInfo?.tips}
@@ -93,7 +96,7 @@ function BluffCardBoard() {
               <strong>{currentRank}</strong>
             </div>
             <div className={styles.statusCard}>
-              <span className={styles.statusLabel}>Opponent</span>
+              <span className={styles.statusLabel}>{opponentLabel}</span>
               <strong>{opponentCount}</strong>
             </div>
           </div>
@@ -105,7 +108,7 @@ function BluffCardBoard() {
             <div className={styles.pileText}>
               {lastPlay ? (
                 <>
-                  Player {lastPlay.player + 1} played {lastPlay.count} as <strong>{lastPlay.claimedRank}</strong>
+                  {getActorName(lastPlay.player)} played {lastPlay.count} as <strong>{lastPlay.claimedRank}</strong>
                 </>
               ) : (
                 <>No active claim yet. Start with <strong>{currentRank}</strong>.</>
@@ -117,7 +120,7 @@ function BluffCardBoard() {
             <div className={`${styles.challengeBanner} ${lastChallenge.wasBluff ? styles.challengeCaught : styles.challengeHonest}`}>
               <strong>{lastChallenge.wasBluff ? 'Bluff caught' : 'Honest play'}</strong>
               <span>
-                Player {lastChallenge.collector + 1} picked up the pile after revealing{' '}
+                {getActorName(lastChallenge.collector)} picked up the pile after revealing{' '}
                 {lastChallenge.revealed.map((card: BluffCard) => card.id).join(', ')}.
               </span>
             </div>

@@ -2,7 +2,26 @@
 
 import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:6100/ws';
+const LOCAL_WS_URL = 'ws://localhost:6100/ws';
+const PRODUCTION_WS_URL = 'wss://api.icogenx.com/ws';
+
+function resolveWebSocketUrl() {
+  const configuredUrl = process.env.NEXT_PUBLIC_WS_URL;
+  if (configuredUrl) {
+    return configuredUrl;
+  }
+
+  if (typeof window === 'undefined') {
+    return PRODUCTION_WS_URL;
+  }
+
+  const hostname = window.location.hostname.toLowerCase();
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0') {
+    return LOCAL_WS_URL;
+  }
+
+  return PRODUCTION_WS_URL;
+}
 
 interface GameState {
   [key: string]: any;
@@ -269,12 +288,13 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    console.log('[WS] Connecting to', WS_URL);
-    const ws = new WebSocket(WS_URL);
+    const wsUrl = resolveWebSocketUrl();
+    console.log('[WS] Connecting to', wsUrl);
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {
-      console.log('[WS] Connected to', WS_URL);
+      console.log('[WS] Connected to', wsUrl);
       setConnected(true);
     };
 

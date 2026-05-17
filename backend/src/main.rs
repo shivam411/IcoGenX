@@ -5,6 +5,7 @@ mod protocol;
 use axum::{
     Router,
     extract::{State, WebSocketUpgrade, ws::{Message, WebSocket}},
+    http::Method,
     response::IntoResponse,
     routing::get,
 };
@@ -12,19 +13,43 @@ use futures::{SinkExt, StreamExt};
 use lobby::AppState;
 use protocol::{ClientMessage, ServerMessage};
 use std::sync::Arc;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tracing_subscriber;
+
+fn is_allowed_origin(origin: &str) -> bool {
+    let normalized = origin.trim().to_ascii_lowercase();
+    let Some(without_scheme) = normalized
+        .strip_prefix("https://")
+        .or_else(|| normalized.strip_prefix("http://"))
+    else {
+        return false;
+    };
+
+    let host = without_scheme.split('/').next().unwrap_or(without_scheme);
+    let host_without_port = host.split(':').next().unwrap_or(host);
+
+    matches!(host_without_port, "localhost" | "127.0.0.1" | "0.0.0.0")
+        || host_without_port == "icogenx.com"
+        || host_without_port == "www.icogenx.com"
+        || host_without_port.ends_with(".icogenx.com")
+}
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
 
     let state = Arc::new(AppState::new());
+    let cors = CorsLayer::new()
+        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_headers(Any)
+        .allow_origin(AllowOrigin::predicate(|origin, _request| {
+            origin.to_str().map(is_allowed_origin).unwrap_or(false)
+        }));
 
     let app = Router::new()
         .route("/ws", get(ws_handler))
         .route("/health", get(|| async { "OK" }))
-        .layer(CorsLayer::permissive())
+        .layer(cors)
         .with_state(state);
 
     let port = std::env::var("PORT")

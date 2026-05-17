@@ -17,7 +17,7 @@ const MEMORY_FLIP_RULES = (
 );
 
 function MemoryFlipBoard() {
-  const { gameState, playerNumber, sendAction, gameOver, winner } = useGame();
+  const { gameState, playerNumber, opponentName, sendAction, gameOver, winner } = useGame();
   const [wrongFlipIdx, setWrongFlipIdx] = useState<number | null>(null);
 
   useEffect(() => {
@@ -37,6 +37,7 @@ function MemoryFlipBoard() {
   const isMyTurn = currentPlayer === playerNumber;
   const p1Progress: number = gameState.player1Progress;
   const p2Progress: number = gameState.player2Progress;
+  const opponentLabel = opponentName || 'Opponent';
 
   const handleFlip = (idx: number) => {
     if (!isMyTurn || revealed[idx] || gameOver) return;
@@ -47,7 +48,7 @@ function MemoryFlipBoard() {
     <div className={styles.gameWrapper}>
       <GameFrame
         currentPlayer={currentPlayer}
-        turnText={isMyTurn ? '🎯 Your turn — find the next card!' : '⏳ Opponent is flipping...'}
+        turnText={isMyTurn ? '🎯 Your turn — find the next card!' : `⏳ ${opponentLabel} is flipping...`}
         rulesTitle="Memory Flip Rules"
         rules={MEMORY_FLIP_RULES}
       >
@@ -57,7 +58,7 @@ function MemoryFlipBoard() {
               🎮 You: <strong>{playerNumber === 0 ? p1Progress : p2Progress}/9</strong>
             </span>
             <span className={styles.progressItem}>
-              👤 Opponent: <strong>{playerNumber === 0 ? p2Progress : p1Progress}/9</strong>
+              👤 {opponentLabel}: <strong>{playerNumber === 0 ? p2Progress : p1Progress}/9</strong>
             </span>
           </div>
 
@@ -101,7 +102,7 @@ function MemoryFlipBoard() {
             <p className={styles.winSub}>
               {winner?.includes(`${(playerNumber || 0) + 1}`)
                 ? 'You flipped all cards in sequence!'
-                : 'Opponent completed the sequence!'}
+                : `${opponentLabel} completed the sequence!`}
             </p>
             <Link href="/" className="btn btn-primary">Play Again</Link>
           </div>

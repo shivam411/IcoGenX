@@ -31,7 +31,7 @@ function DieFace({ value, rolling }: { value: number; rolling: boolean }) {
 }
 
 function ShutTheBoxBoard() {
-  const { gameState, playerNumber, sendAction, gameOver, winner } = useGame();
+  const { gameState, playerNumber, opponentName, sendAction, gameOver, winner } = useGame();
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
   const [displayRoll, setDisplayRoll] = useState<number | null>(null);
   const [rolling, setRolling] = useState(false);
@@ -40,7 +40,7 @@ function ShutTheBoxBoard() {
     <ul>
       <li>Roll one die, then choose any unopened cards that add up to the rolled number.</li>
       <li>Your selected cards move forward automatically.</li>
-      <li>If your opponent already pushed the same number forward, their matching card moves back automatically.</li>
+      <li>Only the exact card values in your chosen combination pull matching opponent cards back. Matching the roll total alone does not.</li>
       <li>First player to move all six cards forward wins the round.</li>
     </ul>
   );
@@ -55,6 +55,8 @@ function ShutTheBoxBoard() {
   const lastRoll: number | null = gameState.lastRoll;
 
   const selectedSum = selectedCards.reduce((a, b) => a + b, 0);
+  const opponentLabel = opponentName || 'Opponent';
+  const rollOwnerLabel = isMyTurn ? 'You' : opponentLabel;
 
   useEffect(() => {
     if (needsRoll) {
@@ -110,14 +112,14 @@ function ShutTheBoxBoard() {
     <div className={styles.gameWrapper}>
       <GameFrame
         currentPlayer={currentPlayer}
-        turnText={isMyTurn ? '🎯 Your turn!' : '⏳ Opponent\'s turn...'}
+        turnText={isMyTurn ? '🎯 Your turn!' : `⏳ ${opponentLabel}'s turn...`}
         rulesTitle="Dice Tug-of-War Rules"
         rules={rules}
       >
         <div className={styles.boardArea}>
           <div className={styles.playerSection}>
             <div className={styles.playerLabel}>
-              👤 Opponent {playerNumber === 1 ? '(P1)' : '(P2)'}
+              👤 {opponentLabel} {playerNumber === 1 ? '(P1)' : '(P2)'}
             </div>
             <div className={`${styles.cardsRow} ${styles.cardsRowOpponent}`}>
               {opCards.map((open: boolean, idx: number) => (
@@ -162,7 +164,7 @@ function ShutTheBoxBoard() {
             </div>
             <div className={styles.diceLabel}>
               {lastRoll ? (
-                <>You rolled a <strong>{lastRoll}</strong>{rolling ? '...' : ''}</>
+                <>{rollOwnerLabel} rolled a <strong>{lastRoll}</strong>{rolling ? '...' : ''}</>
               ) : (
                 'Roll to choose which cards move this turn.'
               )}
@@ -177,7 +179,7 @@ function ShutTheBoxBoard() {
                 ) : (
                   <>
                     <div className={styles.tugHint}>
-                      Opening your own number also pulls the opponent&apos;s matching number back automatically.
+                      Only the exact values you choose pull the opponent back. Example: rolling 4 and choosing 4 sends their 4 back, but choosing 1 + 3 does not.
                     </div>
 
                     {selectedCards.length > 0 && (

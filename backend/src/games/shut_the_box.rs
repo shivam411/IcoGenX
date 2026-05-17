@@ -102,6 +102,7 @@ impl ShutTheBoxGame {
                 opponent_cards[idx] = false;
             }
         }
+        self.resolve_matching_cards_for(player);
 
         // Check win: all 6 cards open
         if self.player1_cards.iter().all(|&c| c) {
@@ -117,6 +118,16 @@ impl ShutTheBoxGame {
         self.needs_roll = true;
         self.last_roll = None;
         Ok(())
+    }
+
+    fn resolve_matching_cards_for(&mut self, player: u8) {
+        for idx in 0..6 {
+            match player {
+                0 if self.player1_cards[idx] => self.player2_cards[idx] = false,
+                1 if self.player2_cards[idx] => self.player1_cards[idx] = false,
+                _ => {}
+            }
+        }
     }
 
     /// Pass turn (if player can't or doesn't want to use the roll)
@@ -191,6 +202,42 @@ mod tests {
 
         assert_eq!(game.player1_cards, [false, false, false, true, false, false]);
         assert_eq!(game.player2_cards, [false, false, false, false, false, false]);
+    }
+
+    #[test]
+    fn player_two_opening_card_pushes_player_one_matching_card_back() {
+        let mut game = ShutTheBoxGame {
+            player1_cards: [false, false, true, false, false, false],
+            player2_cards: [false, false, false, false, false, false],
+            current_player: 1,
+            last_roll: Some(3),
+            needs_roll: false,
+            winner: None,
+            game_over: false,
+        };
+
+        game.apply_combination(1, &[3], "self").unwrap();
+
+        assert_eq!(game.player1_cards, [false, false, false, false, false, false]);
+        assert_eq!(game.player2_cards, [false, false, true, false, false, false]);
+    }
+
+    #[test]
+    fn applied_move_repairs_duplicate_cards_in_favor_of_latest_player() {
+        let mut game = ShutTheBoxGame {
+            player1_cards: [true, true, true, false, false, false],
+            player2_cards: [false, false, true, false, false, false],
+            current_player: 1,
+            last_roll: Some(4),
+            needs_roll: false,
+            winner: None,
+            game_over: false,
+        };
+
+        game.apply_combination(1, &[4], "self").unwrap();
+
+        assert_eq!(game.player1_cards, [true, true, false, false, false, false]);
+        assert_eq!(game.player2_cards, [false, false, true, true, false, false]);
     }
 
     #[test]

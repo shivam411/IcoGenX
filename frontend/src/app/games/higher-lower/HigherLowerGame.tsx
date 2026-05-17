@@ -73,7 +73,7 @@ export function normalizeHigherLowerVariant(variant: string | undefined): Higher
 }
 
 function HigherLowerBoard({ variant }: { variant: HigherLowerVariant }) {
-  const { gameState, playerNumber, sendAction, gameOver, winner } = useGame();
+  const { gameState, playerNumber, opponentName, sendAction, gameOver, winner } = useGame();
   const [guess, setGuess] = useState(50);
 
   const rangeLow: number = gameState?.rangeLow ?? 1;
@@ -89,6 +89,7 @@ function HigherLowerBoard({ variant }: { variant: HigherLowerVariant }) {
   const guesses: GuessEntry[] = gameState.guesses;
   const currentPlayer: number = gameState.currentPlayer;
   const isMyTurn = currentPlayer === playerNumber;
+  const opponentLabel = opponentName || 'Opponent';
 
   const handleGuess = () => {
     sendAction({ game: 'HigherLower', guess });
@@ -102,7 +103,7 @@ function HigherLowerBoard({ variant }: { variant: HigherLowerVariant }) {
     <div className={styles.gameWrapper}>
       <GameFrame
         currentPlayer={currentPlayer}
-        turnText={isMyTurn ? '🎯 Your turn to guess!' : '⏳ Opponent is guessing...'}
+        turnText={isMyTurn ? '🎯 Your turn to guess!' : `⏳ ${opponentLabel} is guessing...`}
         rulesTitle={config.rulesTitle}
         rules={config.rules}
       >
@@ -144,7 +145,7 @@ function HigherLowerBoard({ variant }: { variant: HigherLowerVariant }) {
             {[...guesses].reverse().map((entry: GuessEntry, idx: number) => (
               <div key={idx} className={styles.guessRow}>
                 <span className={styles.guessPlayer}>
-                  {entry.player === playerNumber ? '🎮 You' : '👤 Opponent'}
+                  {entry.player === playerNumber ? '🎮 You' : `👤 ${opponentLabel}`}
                 </span>
                 <span className={styles.guessValue}>{entry.guess}</span>
                 <span className={`${styles.guessHint} ${

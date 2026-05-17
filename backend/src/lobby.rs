@@ -787,6 +787,7 @@ fn check_game_over(game: &GameInstance) -> Option<ServerMessage> {
 #[cfg(test)]
 mod tests {
     use super::{broadcast_same, check_game_over, create_game, handle_message, process_action, reset_game, AppState, GameInstance, Room};
+    use crate::games::shut_the_box::ShutTheBoxGame;
     use crate::games::tic_tac_toe::{TicTacToeGame, TicTacToeVariant};
     use crate::protocol::{ClientMessage, GameAction, ServerMessage};
     use std::sync::Arc;
@@ -876,6 +877,42 @@ mod tests {
             ServerMessage::GameUpdate { game_state } => {
                 assert_eq!(game_state["playerReady"][0], true);
                 assert_eq!(game_state["bothReady"], false);
+            }
+            _ => panic!("expected broadcast update"),
+        }
+    }
+
+    #[test]
+    fn process_action_shut_the_box_player_two_pushes_back_matching_opponent_card() {
+        let mut game = GameInstance::ShutTheBox(ShutTheBoxGame {
+            player1_cards: [false, false, false, true, false, false],
+            player2_cards: [false, false, false, false, false, false],
+            current_player: 1,
+            last_roll: Some(4),
+            needs_roll: false,
+            winner: None,
+            game_over: false,
+        });
+
+        let messages = process_action(
+            &mut game,
+            1,
+            GameAction::ShutTheBox {
+                combination: vec![4],
+                target: "self".into(),
+            },
+            &players(),
+        )
+        .unwrap();
+
+        assert_eq!(messages.len(), 2);
+
+        match &messages[0].1 {
+            ServerMessage::GameUpdate { game_state } => {
+                assert_eq!(game_state["player1Cards"][3], false);
+                assert_eq!(game_state["player2Cards"][3], true);
+                assert_eq!(game_state["currentPlayer"], 0);
+                assert_eq!(game_state["needsRoll"], true);
             }
             _ => panic!("expected broadcast update"),
         }

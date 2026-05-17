@@ -40,6 +40,7 @@ function TicTacToeBoard() {
 
   const p1Name = playerNumber === 0 ? (playerName || 'You') : (opponentName || 'Opponent');
   const p2Name = playerNumber === 1 ? (playerName || 'You') : (opponentName || 'Opponent');
+  const opponentLabel = opponentName || 'Opponent';
 
   const handleClick = (cell: number) => {
     if (!isMyTurn || board[cell] !== null || gameOver) return;
@@ -107,7 +108,7 @@ function TicTacToeBoard() {
               <span className={styles.winEmoji}>✨</span>
               <h2 className={styles.winTitle}>Result!</h2>
               <p className={styles.winSub}>
-                <strong>{xPlayer === playerNumber ? (playerName || 'You') : opponentName}</strong> won the toss and gets ❌!
+                <strong>{xPlayer === playerNumber ? (playerName || 'You') : opponentLabel}</strong> won the toss and gets ❌!
               </p>
             </>
           )}
@@ -134,7 +135,7 @@ function TicTacToeBoard() {
           </div>
 
           <div className={styles.turnIndicator}>
-            {isMyTurn ? '🎯 Your turn!' : '⏳ Opponent\'s turn...'}
+            {isMyTurn ? '🎯 Your turn!' : `⏳ ${opponentLabel}'s turn...`}
           </div>
 
           <div className={styles.board}>

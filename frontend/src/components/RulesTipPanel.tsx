@@ -5,6 +5,9 @@ import { useEffect, useState } from 'react';
 
 import styles from './RulesTipPanel.module.css';
 
+const LAST_TIP_STORAGE_PREFIX = 'icogenx_last_tip_';
+const TIP_KEY_SEPARATOR = '||';
+
 interface RulesTipPanelProps {
   title?: string;
   rules?: string[] | ReactNode;
@@ -13,6 +16,38 @@ interface RulesTipPanelProps {
   compact?: boolean;
   accentColor?: string;
   className?: string;
+}
+
+function tipStorageKey(title: string) {
+  return `${LAST_TIP_STORAGE_PREFIX}${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+}
+
+function pickRandomTip(title: string, tips: string[]) {
+  if (tips.length <= 1 || typeof window === 'undefined') {
+    return tips[0] || null;
+  }
+
+  const key = tipStorageKey(title);
+  let lastTip: string | null = null;
+  try {
+    lastTip = window.localStorage.getItem(key);
+  } catch {
+    lastTip = null;
+  }
+
+  const candidates = tips.filter((tip) => tip !== lastTip);
+  const pool = candidates.length ? candidates : tips;
+  const selectedTip = pool[Math.floor(Math.random() * pool.length)] || null;
+
+  if (selectedTip) {
+    try {
+      window.localStorage.setItem(key, selectedTip);
+    } catch {
+      // Ignore storage failures; the tip still renders for this visit.
+    }
+  }
+
+  return selectedTip;
 }
 
 export default function RulesTipPanel({
@@ -26,14 +61,16 @@ export default function RulesTipPanel({
 }: RulesTipPanelProps) {
   const [open, setOpen] = useState(defaultOpen);
   const [randomTip, setRandomTip] = useState<string | null>(null);
+  const tipsKey = tips.join(TIP_KEY_SEPARATOR);
 
   useEffect(() => {
-    if (!tips.length) {
+    const tipOptions = tipsKey ? tipsKey.split(TIP_KEY_SEPARATOR) : [];
+    if (!tipOptions.length) {
       setRandomTip(null);
       return;
     }
-    setRandomTip(tips[Math.floor(Math.random() * tips.length)]);
-  }, [tips]);
+    setRandomTip(pickRandomTip(title, tipOptions));
+  }, [title, tipsKey]);
 
   const renderedRules = Array.isArray(rules) ? (
     <ul>

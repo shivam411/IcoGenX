@@ -17,7 +17,7 @@ const STOP_CLOCK_RULES = (
 );
 
 function StopClockBoard() {
-  const { gameState, playerNumber, sendAction, gameOver, winner } = useGame();
+  const { gameState, playerNumber, opponentName, sendAction, gameOver, winner } = useGame();
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [stopped, setStopped] = useState(false);
@@ -39,6 +39,7 @@ function StopClockBoard() {
   const p2Time: number | null = gameState.player2Time;
   const myTime = playerNumber === 0 ? p1Time : p2Time;
   const opTime = playerNumber === 0 ? p2Time : p1Time;
+  const opponentLabel = opponentName || 'Opponent';
 
   const handleReady = () => {
     sendAction({ game: 'StopClock', stopped_at_ms: 0 });
@@ -87,7 +88,7 @@ function StopClockBoard() {
                 🎮 You: {playerReady[playerNumber || 0] ? 'Ready ✅' : 'Not Ready'}
               </span>
               <span className={`${styles.readyBadge} ${playerReady[1 - (playerNumber || 0)] ? styles.readyYes : styles.readyNo}`}>
-                👤 Opponent: {playerReady[1 - (playerNumber || 0)] ? 'Ready ✅' : 'Not Ready'}
+                👤 {opponentLabel}: {playerReady[1 - (playerNumber || 0)] ? 'Ready ✅' : 'Not Ready'}
               </span>
             </div>
 
@@ -98,7 +99,7 @@ function StopClockBoard() {
             )}
 
             {playerReady[playerNumber || 0] && (
-              <p className={styles.waitingText}>Waiting for opponent...</p>
+              <p className={styles.waitingText}>Waiting for {opponentLabel}...</p>
             )}
           </div>
         </GameFrame>
@@ -154,13 +155,13 @@ function StopClockBoard() {
   return (
     <div className={styles.gameWrapper}>
       {!gameOver ? (
-        <GameFrame turnText="⏳ You locked your time in. Waiting for the opponent to stop." rulesTitle="Stop Clock Rules" rules={STOP_CLOCK_RULES}>
+        <GameFrame turnText={`⏳ You locked your time in. Waiting for ${opponentLabel} to stop.`} rulesTitle="Stop Clock Rules" rules={STOP_CLOCK_RULES}>
           <div className={styles.clockArea}>
             <h2 className={styles.clockTitle}>You stopped at</h2>
             <div className={`${styles.timerCircle} ${styles.timerStopped}`}>
               <span className={styles.timerValue}>{(myTime || 0).toFixed(2)}s</span>
             </div>
-            <p className={styles.waitingText}>Waiting for opponent to stop...</p>
+            <p className={styles.waitingText}>Waiting for {opponentLabel} to stop...</p>
           </div>
         </GameFrame>
       ) : (
@@ -186,7 +187,7 @@ function StopClockBoard() {
               <div className={`glass-card ${styles.resultCard} ${
                 winner && !winner.includes(`${(playerNumber || 0) + 1}`) ? styles.resultWinner : ''
               }`}>
-                <div className={styles.resultLabel}>👤 Opponent</div>
+                <div className={styles.resultLabel}>👤 {opponentLabel}</div>
                 <div className={styles.resultTime}>{(opTime || 0).toFixed(2)}s</div>
                 <div className={styles.resultDiff}>
                   off by {Math.abs((opTime || 0) - 20).toFixed(2)}s

@@ -29,6 +29,7 @@ function buildGameState(overrides: Record<string, unknown> = {}) {
     variant: null,
     gameStarted: false,
     opponentDisconnected: false,
+    opponentName: null,
     savedSession: null,
     savedSessionSecondsLeft: null,
     opponentReconnectSecondsLeft: null,
@@ -112,6 +113,7 @@ describe('SessionBanner', () => {
         gameType: 'tic_tac_toe',
         variant: 'classic',
         opponentDisconnected: true,
+        opponentName: 'Blair',
         opponentReconnectSecondsLeft: 12,
         leaveRoom,
       }),
@@ -119,8 +121,8 @@ describe('SessionBanner', () => {
 
     render(<SessionBanner />);
 
-    expect(screen.getByText('Opponent left the room')).toBeTruthy();
-    expect(screen.getByText('Waiting for them to return: 00:12')).toBeTruthy();
+    expect(screen.getByText('Blair left the room')).toBeTruthy();
+    expect(screen.getByText('Waiting for Blair to return: 00:12')).toBeTruthy();
     fireEvent.click(screen.getByText('Exit Room'));
     expect(leaveRoom).toHaveBeenCalledTimes(1);
     expect(mockPush).toHaveBeenCalledWith('/');

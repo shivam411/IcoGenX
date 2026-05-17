@@ -135,8 +135,8 @@ export const GAME_CATALOG: GameCatalogItem[] = [
     badgeClass: 'badge-orange',
     gradient: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
     rulesTitle: 'Dice Tug-of-War Rules',
-    rules: ['Roll one die, then choose unopened cards that add up to the roll.', 'Your selected cards move forward automatically.', 'Matching open opponent cards move back automatically.', 'First player to move all six cards forward wins.'],
-    tips: ['A single high card can be stronger than two low cards if it blocks the opponent.', 'Check the opponent row before choosing equal-sum combinations.'],
+    rules: ['Roll one die, then choose unopened cards that add up to the roll.', 'Your selected cards move forward automatically.', 'Exact matching opponent cards move back automatically.', 'First player to move all six cards forward wins.'],
+    tips: ['Pick the exact matching number when you want to pull an opponent card back.', 'A single high card can be stronger than two low cards if it blocks the opponent.', 'Check the opponent row before choosing equal-sum combinations.', 'If the opponent has 3 open, choosing your 3 sends their 3 back.'],
     previewSteps: ['Roll die', 'Pick sum', 'Push track'],
   },
   {

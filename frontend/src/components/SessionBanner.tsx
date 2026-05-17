@@ -22,6 +22,7 @@ export default function SessionBanner() {
     savedSession,
     savedSessionSecondsLeft,
     opponentReconnectSecondsLeft,
+    opponentName,
     joinSavedSession,
     clearSavedSession,
     leaveRoom,
@@ -29,6 +30,7 @@ export default function SessionBanner() {
 
   const currentGamePath = getGamePath(gameType, variant);
   const savedPath = savedSession?.path || currentGamePath || '/';
+  const opponentLabel = opponentName || 'Opponent';
 
   const handleExitRoom = () => {
     leaveRoom();
@@ -42,8 +44,8 @@ export default function SessionBanner() {
         <div className={styles.content}>
           <span className={styles.icon}>⏳</span>
           <div className={styles.textBlock}>
-            <strong>Opponent left the room</strong>
-            <span>{timer ? `Waiting for them to return: ${timer}` : 'They can try to rejoin from their last-game strip.'}</span>
+            <strong>{opponentLabel} left the room</strong>
+            <span>{timer ? `Waiting for ${opponentLabel} to return: ${timer}` : `${opponentLabel} can try to rejoin from their last-game strip.`}</span>
           </div>
         </div>
         <div className={styles.actions}>
