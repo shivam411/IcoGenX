@@ -53,7 +53,14 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
     sendEmoji,
     gameType: currentGameType,
     variant: currentVariant,
+    gameOver,
+    leaveRoom,
+    requestPlayAgain,
+    playAgainRequested,
+    opponentPlayAgainRequested,
     switchVariant,
+    roomActionPromptOpen,
+    closeRoomActionPrompt,
   } = useGame();
   const [joinCode, setJoinCode] = useState('');
   const [name, setName] = useState('');
@@ -72,6 +79,12 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
   const variantOptions = ROOM_VARIANTS[activeGameType] || null;
   const canSwitchVariant = Boolean(roomCode && variantOptions);
   const isCreator = playerNumber === 0;
+  const [pendingVariant, setPendingVariant] = useState(activeVariant || variantOptions?.[0]?.id || '');
+  const showRoomActionModal = gameOver || roomActionPromptOpen;
+
+  useEffect(() => {
+    setPendingVariant(activeVariant || variantOptions?.[0]?.id || '');
+  }, [activeVariant, variantOptions]);
 
   useEffect(() => {
     if (!(roomCode || gameStarted)) {
@@ -182,6 +195,20 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
     switchVariant(nextVariant);
   };
 
+  const handleModalVariantChange = () => {
+    if (!variantOptions || pendingVariant === activeVariant) {
+      return;
+    }
+    switchVariant(pendingVariant);
+    closeRoomActionPrompt();
+  };
+
+  const handleGoHome = () => {
+    closeRoomActionPrompt();
+    leaveRoom();
+    router.push('/');
+  };
+
   const handleReactionDockPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
     const dockElement = reactionDockRef.current;
     if (!dockElement) {
@@ -253,8 +280,6 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
       <>
         {children}
 
-        {renderVariantSwitcher(true)}
-
         <div className={styles.reactionFeed} aria-live="polite">
           {recentEmojis.map((reaction) => (
             <div
@@ -312,6 +337,94 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
                   {emoji}
                 </button>
               ))}
+            </div>
+          </div>
+        )}
+
+        {showRoomActionModal && (
+          <div className={styles.roomActionOverlay} role="dialog" aria-modal="true" aria-labelledby="room-action-title">
+            <div className={`glass-card ${styles.roomActionCard}`}>
+              <div className={styles.roomActionHeader}>
+                <div>
+                  <p className={styles.roomActionEyebrow}>{gameOver ? 'Round Complete' : 'End Game'}</p>
+                  <h2 id="room-action-title" className={styles.roomActionTitle}>
+                    {gameOver ? 'Choose what happens next.' : 'Choose how to leave this room.'}
+                  </h2>
+                </div>
+                {!gameOver && (
+                  <button
+                    type="button"
+                    className={styles.roomActionClose}
+                    onClick={closeRoomActionPrompt}
+                    aria-label="Close room actions"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {gameOver ? (
+                <p className={styles.roomActionText}>
+                  Start another round, switch this room to a different variant, or head back home.
+                </p>
+              ) : (
+                <p className={styles.roomActionText}>
+                  Switch this room to another variant or go back to the home page.
+                </p>
+              )}
+
+              {gameOver && (
+                <div className={styles.roomActionSection}>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={requestPlayAgain}
+                    disabled={playAgainRequested}
+                  >
+                    {playAgainRequested ? 'Waiting for opponent...' : 'Play Again'}
+                  </button>
+                  {opponentPlayAgainRequested && !playAgainRequested && (
+                    <p className={styles.roomActionStatus}>{opponentName || 'Opponent'} wants to play again.</p>
+                  )}
+                </div>
+              )}
+
+              {variantOptions && variantOptions.length > 0 && (
+                <div className={styles.roomActionSection}>
+                  <label className={styles.variantLabel} htmlFor="room-action-variant">Change variant</label>
+                  <div className={styles.roomActionVariantRow}>
+                    <select
+                      id="room-action-variant"
+                      aria-label="Change variant"
+                      className={styles.variantSelect}
+                      value={pendingVariant}
+                      onChange={(event) => setPendingVariant(event.target.value)}
+                      disabled={!isCreator}
+                    >
+                      {variantOptions.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      onClick={handleModalVariantChange}
+                      disabled={!isCreator || pendingVariant === activeVariant}
+                    >
+                      Change Variant
+                    </button>
+                  </div>
+                  <p className={styles.roomActionStatus}>
+                    {isCreator ? 'Only shown here after the round or when ending the game.' : 'Only the creator can change variants.'}
+                  </p>
+                </div>
+              )}
+
+              <button type="button" className="btn btn-ghost" onClick={handleGoHome}>
+                Go to Home Page
+              </button>
             </div>
           </div>
         )}

@@ -15,6 +15,21 @@ const DIE_PIPS: Record<number, number[]> = {
   6: [0, 2, 3, 5, 6, 8],
 };
 
+function hasCombinationSumming(values: number[], target: number) {
+  function search(startIndex: number, sum: number): boolean {
+    if (sum === target) return true;
+    if (sum > target) return false;
+
+    for (let idx = startIndex; idx < values.length; idx += 1) {
+      if (search(idx + 1, sum + values[idx])) return true;
+    }
+
+    return false;
+  }
+
+  return search(0, 0);
+}
+
 function DieFace({ value, rolling }: { value: number; rolling: boolean }) {
   const activePips = new Set(DIE_PIPS[value] || []);
 
@@ -57,6 +72,11 @@ function ShutTheBoxBoard() {
   const selectedSum = selectedCards.reduce((a, b) => a + b, 0);
   const opponentLabel = opponentName || 'Opponent';
   const rollOwnerLabel = isMyTurn ? 'You' : opponentLabel;
+  const availableCards = myCards.reduce<number[]>((values, open, idx) => {
+    if (!open) values.push(idx + 1);
+    return values;
+  }, []);
+  const hasPlayableMove = lastRoll ? hasCombinationSumming(availableCards, lastRoll) : false;
 
   useEffect(() => {
     if (needsRoll) {
@@ -106,6 +126,11 @@ function ShutTheBoxBoard() {
     setSelectedCards([]);
   };
 
+  const handleEndTurn = () => {
+    sendAction({ game: 'ShutTheBox', combination: [], target: 'pass' });
+    setSelectedCards([]);
+  };
+
   const activeRoll = displayRoll ?? lastRoll ?? 1;
 
   return (
@@ -147,7 +172,7 @@ function ShutTheBoxBoard() {
                     selectedCards.includes(idx + 1) ? styles.cardSelected : ''
                   }`}
                   onClick={() => {
-                    if (isMyTurn && !needsRoll && !open) {
+                    if (isMyTurn && !needsRoll && !open && hasPlayableMove) {
                       toggleCard(idx + 1);
                     }
                   }}
@@ -178,11 +203,13 @@ function ShutTheBoxBoard() {
                   </button>
                 ) : (
                   <>
-                    <div className={styles.tugHint}>
-                      Only the exact values you choose pull the opponent back. Example: rolling 4 and choosing 4 sends their 4 back, but choosing 1 + 3 does not.
-                    </div>
+                    {!hasPlayableMove && lastRoll && (
+                      <div className={styles.sumDisplay}>
+                        No available cards can make {lastRoll}. End your turn.
+                      </div>
+                    )}
 
-                    {selectedCards.length > 0 && (
+                    {hasPlayableMove && selectedCards.length > 0 && (
                       <div className={styles.sumDisplay}>
                         Selected: {selectedCards.join(' + ')} = {selectedSum}
                         {selectedSum === lastRoll ? ' ✅' : ` (need ${lastRoll})`}
@@ -190,13 +217,19 @@ function ShutTheBoxBoard() {
                     )}
 
                     <div className={styles.actionRow}>
-                      <button
-                        className="btn btn-primary"
-                        onClick={handleApply}
-                        disabled={selectedSum !== lastRoll}
-                      >
-                        ✅ Advance Cards
-                      </button>
+                      {hasPlayableMove ? (
+                        <button
+                          className="btn btn-primary"
+                          onClick={handleApply}
+                          disabled={selectedSum !== lastRoll}
+                        >
+                          ✅ Advance Cards
+                        </button>
+                      ) : (
+                        <button className="btn btn-primary" onClick={handleEndTurn}>
+                          End Turn
+                        </button>
+                      )}
                     </div>
                   </>
                 )}

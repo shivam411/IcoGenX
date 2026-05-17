@@ -114,6 +114,7 @@ interface WebSocketContextType {
   playAgainRequested: boolean;
   opponentPlayAgainRequested: boolean;
   recentEmojis: EmojiReaction[];
+  roomActionPromptOpen: boolean;
   createRoom: (gameType: string, variant: string | null, playerName: string) => void;
   joinRoom: (roomCode: string, playerName: string, gameType?: string | null, variant?: string | null) => void;
   joinSavedSession: () => void;
@@ -124,6 +125,8 @@ interface WebSocketContextType {
   switchVariant: (variant: string) => void;
   requestPlayAgain: () => void;
   resetGame: () => void;
+  openRoomActionPrompt: () => void;
+  closeRoomActionPrompt: () => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | null>(null);
@@ -152,6 +155,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [playAgainRequested, setPlayAgainRequested] = useState(false);
   const [opponentPlayAgainRequested, setOpponentPlayAgainRequested] = useState(false);
   const [recentEmojis, setRecentEmojis] = useState<EmojiReaction[]>([]);
+  const [roomActionPromptOpen, setRoomActionPromptOpen] = useState(false);
   
   // Refs for stable callbacks
   const playerIdRef = useRef<string | null>(null);
@@ -185,6 +189,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           setPlayAgainRequested(false);
           setOpponentPlayAgainRequested(false);
           setRecentEmojis([]);
+          setRoomActionPromptOpen(false);
           setPlayerNumber(0); // Creator is always player 0
           break;
         case 'PlayerJoined':
@@ -221,6 +226,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           setPlayAgainRequested(false);
           setOpponentPlayAgainRequested(false);
           setRecentEmojis([]);
+          setRoomActionPromptOpen(false);
           if (msg.game_type) {
             localStorage.setItem(STORAGE_GAME_TYPE, msg.game_type);
             if (msg.variant) localStorage.setItem(STORAGE_VARIANT, msg.variant);
@@ -251,6 +257,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         case 'GameOver':
           setGameOver(true);
           setWinner(msg.winner);
+          setRoomActionPromptOpen(false);
           break;
         case 'Error':
           console.error('[WS] Error from server:', msg.message);
@@ -383,6 +390,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     setPlayAgainRequested(false);
     setOpponentPlayAgainRequested(false);
     setRecentEmojis([]);
+    setRoomActionPromptOpen(false);
   }, [roomCode, send]);
 
   const createRoom = useCallback((gameType: string, variant: string | null, playerName: string) => {
@@ -480,6 +488,15 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     setPlayAgainRequested(false);
     setOpponentPlayAgainRequested(false);
     setRecentEmojis([]);
+    setRoomActionPromptOpen(false);
+  }, []);
+
+  const openRoomActionPrompt = useCallback(() => {
+    setRoomActionPromptOpen(true);
+  }, []);
+
+  const closeRoomActionPrompt = useCallback(() => {
+    setRoomActionPromptOpen(false);
   }, []);
 
   const leaveRoom = useCallback(() => {
@@ -519,6 +536,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       playAgainRequested,
       opponentPlayAgainRequested,
       recentEmojis,
+      roomActionPromptOpen,
       createRoom,
       joinRoom,
       joinSavedSession,
@@ -529,6 +547,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       switchVariant,
       requestPlayAgain,
       resetGame,
+      openRoomActionPrompt,
+      closeRoomActionPrompt,
     }}>
       {children}
     </WebSocketContext.Provider>

@@ -132,8 +132,14 @@ impl ShutTheBoxGame {
 
     /// Pass turn (if player can't or doesn't want to use the roll)
     pub fn pass_turn(&mut self, player: u8) -> Result<(), String> {
+        if self.game_over {
+            return Err("Game is over".into());
+        }
         if player != self.current_player {
             return Err("Not your turn".into());
+        }
+        if self.needs_roll {
+            return Err("Roll the dice first".into());
         }
         self.current_player = 1 - self.current_player;
         self.needs_roll = true;
@@ -269,5 +275,14 @@ mod tests {
         assert_eq!(game.current_player, 1);
         assert!(game.needs_roll);
         assert_eq!(game.last_roll, None);
+    }
+
+    #[test]
+    fn passing_turn_before_rolling_is_rejected() {
+        let mut game = ShutTheBoxGame::new();
+
+        let error = game.pass_turn(0).unwrap_err();
+
+        assert_eq!(error, "Roll the dice first");
     }
 }

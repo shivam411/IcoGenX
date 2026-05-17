@@ -35,18 +35,25 @@ function buildGameState(overrides: Record<string, unknown> = {}) {
     connected: true,
     roomCode: null,
     gameStarted: false,
+    gameOver: false,
     playerNumber: 0,
     opponentDisconnected: false,
     error: null,
     createRoom: vi.fn(),
     joinRoom: vi.fn(),
+    leaveRoom: vi.fn(),
     playerName: 'Alex',
     opponentName: 'Blair',
     recentEmojis: [],
     sendEmoji: vi.fn(),
     gameType: 'tic_tac_toe',
     variant: 'classic',
+    requestPlayAgain: vi.fn(),
+    playAgainRequested: false,
+    opponentPlayAgainRequested: false,
     switchVariant: vi.fn(),
+    roomActionPromptOpen: false,
+    closeRoomActionPrompt: vi.fn(),
     ...overrides,
   };
 }
@@ -159,6 +166,26 @@ describe('Lobby', () => {
 
     fireEvent.click(screen.getByLabelText('Send 🎉 reaction'));
     expect(sendEmoji).toHaveBeenCalledWith('🎉');
+    expect(screen.queryByLabelText('Room variant')).toBeNull();
+  });
+
+  it('shows room actions after a game ends instead of the live variant dock', () => {
+    mockUseGame.mockReturnValue(
+      buildGameState({
+        gameStarted: true,
+        gameOver: true,
+      }),
+    );
+
+    render(
+      <Lobby gameType="tic_tac_toe" gameName="Test Game" gameIcon="🎮" accentColor="#123456">
+        <div>In Game</div>
+      </Lobby>,
+    );
+
+    expect(screen.getByText('Choose what happens next.')).toBeTruthy();
+    expect(screen.getByLabelText('Change variant')).toBeTruthy();
+    expect(screen.queryByText('Switch variants without leaving the room.')).toBeNull();
   });
 
   it('lets players hide and show the emoji dock', () => {

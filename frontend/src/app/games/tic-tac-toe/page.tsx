@@ -7,7 +7,7 @@ import styles from './game.module.css';
 import Link from 'next/link';
 
 function TicTacToeBoard() {
-  const { gameState, playerNumber, playerName, opponentName, sendAction, gameOver, winner } = useGame();
+  const { gameState, playerNumber, playerName, opponentName, sendAction, gameOver, winner, openRoomActionPrompt } = useGame();
   const [tossPhase, setTossPhase] = useState<'waiting' | 'flipping' | 'result' | 'done'>('waiting');
 
   useEffect(() => {
@@ -73,7 +73,7 @@ function TicTacToeBoard() {
     return (
       <div className={styles.gameWrapper}>
         <div className={styles.topBar}>
-          <Link href="/" className={`btn btn-ghost btn-sm ${styles.endGameBtn}`}>🛑 End Game</Link>
+          <button type="button" onClick={openRoomActionPrompt} className={`btn btn-ghost btn-sm ${styles.endGameBtn}`}>🛑 End Game</button>
         </div>
         
         <div className={`glass-card ${styles.winCard}`}>
@@ -120,7 +120,7 @@ function TicTacToeBoard() {
   return (
     <div className={styles.gameWrapper}>
       <div className={styles.topBar}>
-        <Link href="/" className={`btn btn-ghost btn-sm ${styles.endGameBtn}`}>🛑 End Game</Link>
+        <button type="button" onClick={openRoomActionPrompt} className={`btn btn-ghost btn-sm ${styles.endGameBtn}`}>🛑 End Game</button>
       </div>
 
       <div className={styles.gameLayout}>

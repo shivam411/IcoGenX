@@ -306,6 +306,86 @@
   line-height: 1.35;
 }
 
+.roomActionOverlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(6, 10, 20, 0.82);
+  backdrop-filter: blur(10px);
+  z-index: 140;
+}
+
+.roomActionCard {
+  width: min(92vw, 440px);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.roomActionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.roomActionEyebrow {
+  margin: 0 0 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.roomActionTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+}
+
+.roomActionClose {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+}
+
+.roomActionText {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.roomActionSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.roomActionVariantRow {
+  display: flex;
+  gap: 10px;
+}
+
+.roomActionVariantRow .variantSelect {
+  flex: 1;
+}
+
+.roomActionStatus {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
 /* Disconnect */
 .disconnectBox {
   width: 100%;

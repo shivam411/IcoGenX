@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { getGamePath, useGame } from '@/context/GameContext';
 import styles from './SessionBanner.module.css';
@@ -12,6 +13,7 @@ function formatSeconds(seconds: number | null) {
 export default function SessionBanner() {
   const router = useRouter();
   const pathname = usePathname();
+  const [joinPending, setJoinPending] = useState(false);
   const {
     connected,
     roomCode,
@@ -31,6 +33,15 @@ export default function SessionBanner() {
   const currentGamePath = getGamePath(gameType, variant);
   const savedPath = savedSession?.path || currentGamePath || '/';
   const opponentLabel = opponentName || 'Opponent';
+
+  useEffect(() => {
+    if (!joinPending || !currentGamePath || pathname === currentGamePath) {
+      return;
+    }
+
+    setJoinPending(false);
+    router.push(currentGamePath);
+  }, [joinPending, currentGamePath, pathname, router]);
 
   const handleExitRoom = () => {
     leaveRoom();
@@ -95,6 +106,7 @@ export default function SessionBanner() {
             className="btn btn-primary btn-sm"
             disabled={!connected}
             onClick={() => {
+              setJoinPending(true);
               joinSavedSession();
               router.push(savedPath);
             }}

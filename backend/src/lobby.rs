@@ -684,7 +684,11 @@ fn process_action(
 
         (GameInstance::ShutTheBox(g), GameAction::ShutTheBox { combination, target }) => {
             if combination.is_empty() {
-                let _roll = g.roll_dice(player)?;
+                if target == "pass" {
+                    g.pass_turn(player)?;
+                } else {
+                    let _roll = g.roll_dice(player)?;
+                }
             } else {
                 g.apply_combination(player, &combination, &target)?;
             }
@@ -913,6 +917,41 @@ mod tests {
                 assert_eq!(game_state["player2Cards"][3], true);
                 assert_eq!(game_state["currentPlayer"], 0);
                 assert_eq!(game_state["needsRoll"], true);
+            }
+            _ => panic!("expected broadcast update"),
+        }
+    }
+
+    #[test]
+    fn process_action_shut_the_box_pass_target_ends_turn_after_roll() {
+        let mut game = GameInstance::ShutTheBox(ShutTheBoxGame {
+            player1_cards: [false, true, false, false, false, false],
+            player2_cards: [false, false, false, false, false, false],
+            current_player: 0,
+            last_roll: Some(2),
+            needs_roll: false,
+            winner: None,
+            game_over: false,
+        });
+
+        let messages = process_action(
+            &mut game,
+            0,
+            GameAction::ShutTheBox {
+                combination: vec![],
+                target: "pass".into(),
+            },
+            &players(),
+        )
+        .unwrap();
+
+        assert_eq!(messages.len(), 2);
+
+        match &messages[0].1 {
+            ServerMessage::GameUpdate { game_state } => {
+                assert_eq!(game_state["currentPlayer"], 1);
+                assert_eq!(game_state["needsRoll"], true);
+                assert_eq!(game_state["lastRoll"], serde_json::Value::Null);
             }
             _ => panic!("expected broadcast update"),
         }

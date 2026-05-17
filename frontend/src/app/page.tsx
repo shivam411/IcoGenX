@@ -11,7 +11,7 @@ const games: GameCatalogItem[] = GAME_CATALOG;
 
 export default function HomePage() {
   const router = useRouter();
-  const { joinRoom, connected, error, gameStarted, gameType, variant } = useGame();
+  const { joinRoom, connected, error, roomCode, gameType, variant } = useGame();
   
   const [filter, setFilter] = useState('All');
   const [page, setPage] = useState(1);
@@ -30,13 +30,13 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (!quickJoinPending || !gameStarted || !gameType) return;
+    if (!quickJoinPending || !roomCode || !gameType) return;
 
     const path = getGamePath(gameType, variant);
     if (!path) return;
     setQuickJoinPending(false);
     router.push(path);
-  }, [quickJoinPending, gameStarted, gameType, variant, router]);
+  }, [quickJoinPending, roomCode, gameType, variant, router]);
 
   useEffect(() => {
     if (error) setQuickJoinPending(false);

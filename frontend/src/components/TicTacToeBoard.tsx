@@ -5,8 +5,6 @@ import styles from '../app/games/tic-tac-toe/game.module.css';
 import CoinToss from '@/components/CoinToss';
 import { useEffect, useRef, useState } from 'react';
 
-import { useRouter } from 'next/navigation';
-
 interface TicTacToeBoardProps {
   variantTitle: string;
   rules: React.ReactNode;
@@ -20,11 +18,10 @@ type GobbletPiece = {
 const sizeLabels = ['S', 'M', 'L'];
 
 export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardProps) {
-  const router = useRouter();
   const { 
     gameState, playerNumber, playerName, opponentName, sendAction, 
     gameOver, winner, scores, requestPlayAgain, 
-    playAgainRequested, opponentPlayAgainRequested, leaveRoom
+    playAgainRequested, opponentPlayAgainRequested, openRoomActionPrompt
   } = useGame();
   
   const [tossComplete, setTossComplete] = useState(false);
@@ -207,8 +204,7 @@ export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardPr
   };
 
   const handleExit = () => {
-    leaveRoom();
-    router.push('/');
+    openRoomActionPrompt();
   };
 
   const getCellClass = (idx: number) => {

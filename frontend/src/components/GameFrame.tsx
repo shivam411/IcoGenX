@@ -25,8 +25,7 @@ export default function GameFrame({
   currentPlayer = null,
   children,
 }: GameFrameProps) {
-  const router = useRouter();
-  const { playerNumber, playerName, opponentName, scores, leaveRoom, gameType, variant } = useGame();
+  const { playerNumber, playerName, opponentName, scores, openRoomActionPrompt, gameType, variant } = useGame();
   const resolvedPlayerNumber = playerNumber === 1 ? 1 : 0;
   const gameInfo = getGameInfo(gameType, variant);
 
@@ -36,8 +35,7 @@ export default function GameFrame({
   const rightName = opponentName || 'Opponent';
 
   const handleExit = () => {
-    leaveRoom();
-    router.push('/');
+    openRoomActionPrompt();
   };
 
   return (
