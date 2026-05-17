@@ -1,6 +1,6 @@
 # Code Of Conduct
 
-Arena welcomes contributors who want to build thoughtful multiplayer games together.
+IcoGenX welcomes contributors who want to build thoughtful multiplayer games together.
 
 ## Expected Behavior
 

@@ -1,5 +1,5 @@
 <svg width="1200" height="520" viewBox="0 0 1200 520" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
-  <title id="title">Arena architecture diagram</title>
+  <title id="title">IcoGenX architecture diagram</title>
   <desc id="desc">Diagram showing players, the Next.js frontend, WebSocket connection, Rust backend, and game engines.</desc>
   <rect width="1200" height="520" rx="32" fill="#080a18"/>
   <text x="70" y="76" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800">How a room works</text>

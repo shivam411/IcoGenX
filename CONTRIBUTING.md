@@ -1,6 +1,6 @@
-# Contributing To Arena
+# Contributing To IcoGenX
 
-Thanks for helping improve Arena. This project is intended to be approachable for new contributors while still keeping game logic reliable and multiplayer-safe.
+Thanks for helping improve IcoGenX. This project is intended to be approachable for new contributors while still keeping game logic reliable and multiplayer-safe.
 
 ## Ways To Contribute
 

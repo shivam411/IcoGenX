@@ -1,10 +1,10 @@
 <svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
-  <title id="title">Arena multiplayer games showcase</title>
+  <title id="title">IcoGenX multiplayer games showcase</title>
   <desc id="desc">A dark interface preview with game cards, a score bar, rules panel, and reaction dock.</desc>
   <rect width="1200" height="630" rx="36" fill="#070817"/>
   <rect x="42" y="42" width="1116" height="546" rx="28" fill="#0d1024" stroke="#2b3158"/>
-  <text x="82" y="105" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="800">Arena</text>
-  <text x="82" y="138" fill="#a9b2d0" font-family="Inter, Arial, sans-serif" font-size="18">Real-time rooms for quick board, card, memory, logic, and reflex games.</text>
+  <text x="82" y="105" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="800">IcoGenX</text>
+  <text x="82" y="138" fill="#a9b2d0" font-family="Inter, Arial, sans-serif" font-size="18">Next Generation Indie Multiplayer gaming</text>
   <g transform="translate(82 184)">
     <rect width="282" height="262" rx="22" fill="#141832" stroke="#343a68"/>
     <rect x="18" y="18" width="246" height="96" rx="18" fill="#7c3aed"/>

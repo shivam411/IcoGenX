@@ -79,7 +79,7 @@ export default function HomePage() {
         {/* Quick Join Header */}
         <div className={styles.topNav}>
           <div className={styles.navLogo}>
-            <span className="text-gradient">Arena</span>
+            <span className="text-gradient">IcoGenX</span>
           </div>
           
           <form onSubmit={handleQuickJoin} className={styles.quickJoinForm}>
@@ -110,9 +110,9 @@ export default function HomePage() {
         {/* Hero */}
         <header className={styles.header}>
           <h1 className={styles.logo}>
-            Choose your <span className="text-gradient">Game</span>
+            <span className="text-gradient">IcoGenX.com</span>
           </h1>
-          <p className={styles.subtitle}>Real-time multiplayer games you can play with friends</p>
+          <p className={styles.subtitle}>Next Generation Indie Multiplayer gaming</p>
         </header>
 
         {/* Filters */}

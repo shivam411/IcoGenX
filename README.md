@@ -1,12 +1,14 @@
-# Arena
+# IcoGenX.com
 
-Arena is an open-source real-time multiplayer game room project. It pairs a Next.js frontend with a Rust WebSocket backend so two players can create a room, share a code, switch variants, react with emoji, reconnect after a drop, and play quick browser-friendly games.
+Next Generation Indie Multiplayer gaming.
 
-![Arena showcase](docs/images/arena-showcase.svg)
+IcoGenX is an open-source real-time multiplayer game room project. It pairs a Next.js frontend with a Rust WebSocket backend so two players can create a room, share a code, switch variants, react with emoji, reconnect after a drop, and play quick browser-friendly games.
+
+![IcoGenX showcase](docs/images/icogenx-showcase.svg)
 
 ## Why This Project Exists
 
-Most casual game portals are fast to browse: category filters, visual cards, clear play buttons, and low-friction starts. Arena takes that browsing rhythm and focuses it into private multiplayer rooms that are easy to host, extend, and self-deploy.
+Most casual game portals are fast to browse: category filters, visual cards, clear play buttons, and low-friction starts. IcoGenX takes that browsing rhythm and focuses it into private multiplayer rooms that are easy to host, extend, and self-deploy.
 
 The current game catalog includes board, card, logic, memory, dice, and reflex games, with reusable UI for rules, tips, scorebars, room lifecycle, and variants.
 
@@ -38,7 +40,7 @@ The current game catalog includes board, card, logic, memory, dice, and reflex g
 
 ## Architecture
 
-![Arena architecture](docs/images/architecture.svg)
+![IcoGenX architecture](docs/images/architecture.svg)
 
 ```text
 frontend/                 Next.js app router UI
