@@ -27,16 +27,47 @@ The current game catalog includes board, card, logic, memory, dice, and reflex g
 
 ## Games
 
-| Game | Type | Notes |
+Each game is two-player, real-time, and authoritative on the backend. Variants share the room and can be switched mid-lobby without leaving.
+
+### 🎯 Tic-Tac-Toe — 7 variants
+The classic 3×3, plus six twists that change how marks behave.
+| Variant | One-line idea |
+| --- | --- |
+| **Classic** | Standard 3×3. First three-in-a-row wins; draws possible. |
+| **Disappearing** | You may keep only 4 marks on the board — your oldest vanishes on the 5th. |
+| **Joker Cell** | One highlighted cell counts as both X *and* O. Any line through it wins. |
+| **Gobblet Gobblers** | Small / medium / large pieces; larger pieces can cover smaller ones, hiding (and later revealing) threats. |
+| **Gravity** | You pick a column; the mark drops to the lowest open slot. Think Connect-4-meets-tic-tac-toe. |
+| **Bidding** | Each player has a chip stack. You auction the right to make the next move; high bid pays and plays. |
+| **Blind Memory** | Squares are numbered, not shown. Call from memory; calling an occupied square wastes your turn. |
+
+### 🔐 Code Breaker — 2 variants
+| Variant | One-line idea |
+| --- | --- |
+| **4-Digit Code** | Both players lock in a secret 4-digit code. Guesses get green (right digit, right spot) / yellow (right digit, wrong spot) clues. Crack the opponent first. |
+| **Number Range** | Guess a hidden 1–100 number with higher/lower hints as the live window shrinks. |
+
+### 🔢 Higher or Lower — 3 variants
+Same core (guess the hidden number; the range shrinks after each miss), three difficulty windows.
+| Variant | Range | Feel |
 | --- | --- | --- |
-| Tic-Tac-Toe Variants | Strategy | Classic, Disappearing, Joker, Gobblet, Gravity, Bidding, and Blind Memory |
-| Dice Tug-of-War | Dice strategy | Roll, advance your cards, and automatically push matching opponent cards back |
-| Code Breaker | Logic | Crack a hidden 4-digit code using positional clues |
-| Number Range | Logic | Higher/lower range guessing as a Code Breaker variant route |
-| Sequence Memory Flip | Memory | Flip cards in order and punish wrong guesses |
-| Higher or Lower | Quick logic | Sprint, Classic, and Expert number ranges |
-| Stop Clock | Reflex | Stop as close to 20.00 seconds as possible |
-| Bluff Card Game | Cards | Play face down, claim ranks, and call bluff |
+| **Sprint** | 1–50 | Fast rounds, quick reads. |
+| **Classic** | 1–100 | The default, balanced. |
+| **Expert** | 1–200 | Wider window, harder narrowing. |
+
+### 🎲 Dice Tug-of-War (Shut the Box)
+Roll one die, pick unopened cards summing to the roll → those cards advance. If the opponent has an open card matching your sum, theirs slides back. First to push all six cards forward wins.
+
+### 🃏 Sequence Memory Flip
+A 3×3 face-down grid of cards 1–9. Flip in order starting at 1. Correct cards stay revealed; a wrong flip ends your turn. First to run 1→9 cleanly wins. Watch your opponent’s misses — they teach you the board.
+
+### ⏱️ The 20-Second Challenge (Stop Clock)
+Start the timer; after 3 s it hides. Try to stop at exactly 20.00 s. Closest to twenty wins. Pure feel and rhythm.
+
+### 🂠 Bluff Card Game
+Standard 52-card deck dealt evenly. The claim rank cycles A → 2 → 3 → … → K → A. On your turn, play 1–4 cards face down as the current rank; the opponent can call bluff *before* their own turn. Wrong claim → bluffer takes the pile. Honest claim → challenger takes the pile. First to empty their hand wins.
+
+> Want to add a variant or a brand-new game? See [Adding A New Game](#adding-a-new-game) — the variant catalog in `frontend/src/lib/gameMetadata.ts` is the single source of truth for rules, tips, and previews.
 
 ## Architecture
 
@@ -119,6 +150,26 @@ On Windows PowerShell:
 $env:NEXT_PUBLIC_WS_URL="ws://localhost:6100/ws"
 npm run dev
 ```
+
+## Play On Your Local Wi-Fi (no cloud, no tunnel)
+
+The whole stack is self-contained, so you can host a party round on your laptop and let phones/tablets on the same Wi-Fi join — no Cloudflare, no public domain.
+
+1. On the host machine, run the backend and frontend with the dev commands above.
+2. Find the host’s LAN IP (e.g. `192.168.1.42`):
+   - Windows: `ipconfig` → look for `IPv4 Address`
+   - macOS/Linux: `ipconfig getifaddr en0` or `hostname -I`
+3. From any other device on the same Wi-Fi, open `http://192.168.1.42:3201`.
+
+The frontend automatically points its WebSocket at the *same* host you typed in the browser when that host is a private LAN IP (`10.x`, `192.168.x`, `172.16–31.x`) or a `*.local` mDNS name. No env-var tweaking required for the common case.
+
+If your network needs an override (different port, custom hostname), set:
+
+```bash
+NEXT_PUBLIC_WS_URL=ws://192.168.1.42:6100/ws npm run dev
+```
+
+> Tip: paste the room URL into a QR-code generator and your guests can join with a single scan.
 
 ## Useful Commands
 

@@ -2,8 +2,25 @@
 
 import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 
-const LOCAL_WS_URL = 'ws://localhost:6100/ws';
+const LOCAL_WS_PORT = 6100;
 const PRODUCTION_WS_URL = 'wss://api.icogenx.com/ws';
+
+// Treat private LAN IPs and *.local mDNS names as local hosts so that
+// the same build can serve devices on the same Wi-Fi without needing
+// a Cloudflare tunnel or external proxy.
+function isPrivateLanHostname(hostname: string): boolean {
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0') return true;
+  if (hostname.endsWith('.local')) return true;
+  if (/^10\./.test(hostname)) return true;
+  if (/^192\.168\./.test(hostname)) return true;
+  // 172.16.0.0 – 172.31.255.255
+  const m = hostname.match(/^172\.(\d{1,3})\./);
+  if (m) {
+    const second = Number(m[1]);
+    if (second >= 16 && second <= 31) return true;
+  }
+  return false;
+}
 
 function resolveWebSocketUrl() {
   const configuredUrl = process.env.NEXT_PUBLIC_WS_URL;
@@ -16,8 +33,11 @@ function resolveWebSocketUrl() {
   }
 
   const hostname = window.location.hostname.toLowerCase();
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0') {
-    return LOCAL_WS_URL;
+  if (isPrivateLanHostname(hostname)) {
+    // Use the same hostname the user typed in the browser so phones/tablets
+    // on the same LAN reach the host machine, not their own loopback.
+    const wsScheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${wsScheme}//${hostname}:${LOCAL_WS_PORT}/ws`;
   }
 
   return PRODUCTION_WS_URL;
@@ -42,7 +62,18 @@ interface EmojiReaction {
   fromSelf: boolean;
 }
 
+export type PendingRoomActionKind = 'creating' | 'joining' | 'rejoining';
+
+export interface PendingRoomAction {
+  kind: PendingRoomActionKind;
+  roomCode: string | null; // null for create until server replies
+  startedAt: number;
+}
+
 const RECONNECT_WINDOW_MS = 20_000;
+const PENDING_ROOM_ACTION_TIMEOUT_MS = 8_000;
+const OUTBOUND_QUEUE_MAX_AGE_MS = 5_000;
+const OUTBOUND_QUEUE_MAX_LEN = 16;
 const STORAGE_ROOM_CODE = 'arena_room_code';
 const STORAGE_PLAYER_NAME = 'arena_player_name';
 const STORAGE_GAME_TYPE = 'arena_game_type';
@@ -115,6 +146,8 @@ interface WebSocketContextType {
   opponentPlayAgainRequested: boolean;
   recentEmojis: EmojiReaction[];
   roomActionPromptOpen: boolean;
+  pendingRoomAction: PendingRoomAction | null;
+  cancelPendingRoomAction: () => void;
   createRoom: (gameType: string, variant: string | null, playerName: string) => void;
   joinRoom: (roomCode: string, playerName: string, gameType?: string | null, variant?: string | null) => void;
   joinSavedSession: () => void;
@@ -134,6 +167,8 @@ const WebSocketContext = createContext<WebSocketContextType | null>(null);
 export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const outboundQueueRef = useRef<{ msg: any; queuedAt: number }[]>([]);
+  const pendingRoomActionRef = useRef<PendingRoomAction | null>(null);
   const [connected, setConnected] = useState(false);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [playerNumber, setPlayerNumber] = useState<number | null>(null);
@@ -156,7 +191,13 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [opponentPlayAgainRequested, setOpponentPlayAgainRequested] = useState(false);
   const [recentEmojis, setRecentEmojis] = useState<EmojiReaction[]>([]);
   const [roomActionPromptOpen, setRoomActionPromptOpen] = useState(false);
-  
+  const [pendingRoomAction, setPendingRoomActionState] = useState<PendingRoomAction | null>(null);
+
+  const setPendingRoomAction = useCallback((next: PendingRoomAction | null) => {
+    pendingRoomActionRef.current = next;
+    setPendingRoomActionState(next);
+  }, []);
+
   // Refs for stable callbacks
   const playerIdRef = useRef<string | null>(null);
   const handleMessageRef = useRef<(event: MessageEvent) => void>(() => {});
@@ -191,6 +232,10 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           setRecentEmojis([]);
           setRoomActionPromptOpen(false);
           setPlayerNumber(0); // Creator is always player 0
+          if (pendingRoomActionRef.current?.kind === 'creating') {
+            pendingRoomActionRef.current = null;
+            setPendingRoomActionState(null);
+          }
           break;
         case 'PlayerJoined':
           if (msg.player_number !== undefined) {
@@ -206,6 +251,12 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
                 localStorage.setItem(STORAGE_GAME_PATH, getGamePath(msg.game_type, msg.variant || null) || '/');
                 localStorage.removeItem(STORAGE_RECONNECT_DEADLINE);
                 setSavedSession(null);
+              }
+              // Joining flow acknowledged by the server
+              const pending = pendingRoomActionRef.current;
+              if (pending && (pending.kind === 'joining' || pending.kind === 'rejoining')) {
+                pendingRoomActionRef.current = null;
+                setPendingRoomActionState(null);
               }
             } else {
               // Someone else joined, they are my opponent
@@ -266,6 +317,12 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
             setSavedSession(null);
             setRoomCode(null);
           }
+          // Any server error cancels an in-flight room action so the UI
+          // surfaces the error instead of hanging on "Joining...".
+          if (pendingRoomActionRef.current) {
+            pendingRoomActionRef.current = null;
+            setPendingRoomActionState(null);
+          }
           setError(msg.message);
           setTimeout(() => setError(null), 5000);
           break;
@@ -303,6 +360,22 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     ws.onopen = () => {
       console.log('[WS] Connected to', wsUrl);
       setConnected(true);
+      // Flush any messages queued while the socket was closed/connecting.
+      const queue = outboundQueueRef.current;
+      outboundQueueRef.current = [];
+      const now = Date.now();
+      for (const entry of queue) {
+        if (now - entry.queuedAt > OUTBOUND_QUEUE_MAX_AGE_MS) {
+          console.warn('[WS] Dropping stale queued message:', entry.msg?.type);
+          continue;
+        }
+        try {
+          ws.send(JSON.stringify(entry.msg));
+          console.log('[WS] → Flushed queued:', entry.msg?.type);
+        } catch (err) {
+          console.error('[WS] Failed to flush queued message', err);
+        }
+      }
     };
 
     ws.onclose = (event) => {
@@ -358,12 +431,41 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(timer);
   }, [savedSession?.reconnectDeadline, opponentReconnectDeadline]);
 
+  // Time-bound any in-flight room action so the UI never gets stuck on
+  // "Joining..." if the server (or the network) silently drops the
+  // request. After PENDING_ROOM_ACTION_TIMEOUT_MS we clear the pending
+  // marker and surface a recoverable error.
+  useEffect(() => {
+    if (!pendingRoomAction) return;
+    const elapsed = Date.now() - pendingRoomAction.startedAt;
+    const remaining = Math.max(0, PENDING_ROOM_ACTION_TIMEOUT_MS - elapsed);
+    const timer = setTimeout(() => {
+      if (pendingRoomActionRef.current !== pendingRoomAction) return;
+      pendingRoomActionRef.current = null;
+      setPendingRoomActionState(null);
+      setError("Couldn't reach the room. Please check your connection and try again.");
+      setTimeout(() => setError(null), 5000);
+    }, remaining);
+    return () => clearTimeout(timer);
+  }, [pendingRoomAction]);
+
   const send = useCallback((msg: any) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       console.log('[WS] → Sending:', msg.type, msg);
       wsRef.current.send(JSON.stringify(msg));
+      return;
+    }
+    // Queue room/identity messages so a transient disconnect doesn't
+    // silently swallow a Join/Create click. Volatile actions like
+    // emojis are dropped instead.
+    const queueable = msg?.type === 'JoinRoom' || msg?.type === 'CreateRoom' || msg?.type === 'LeaveRoom';
+    if (queueable) {
+      const queue = outboundQueueRef.current;
+      if (queue.length >= OUTBOUND_QUEUE_MAX_LEN) queue.shift();
+      queue.push({ msg, queuedAt: Date.now() });
+      console.warn('[WS] Socket not open, queued:', msg.type);
     } else {
-      console.warn('[WS] Cannot send, socket not open. State:', wsRef.current?.readyState);
+      console.warn('[WS] Cannot send (dropped), socket not open. State:', wsRef.current?.readyState, 'type:', msg?.type);
     }
   }, []);
 
@@ -403,8 +505,9 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(STORAGE_GAME_PATH, getGamePath(gameType, variant) || '/');
     localStorage.removeItem(STORAGE_RECONNECT_DEADLINE);
     setPlayerNameState(playerName);
+    setPendingRoomAction({ kind: 'creating', roomCode: null, startedAt: Date.now() });
     send({ type: 'CreateRoom', game_type: gameType, variant, player_name: playerName });
-  }, [prepareForRoomTransition, send]);
+  }, [prepareForRoomTransition, send, setPendingRoomAction]);
 
   const joinRoom = useCallback((code: string, playerName: string, gameType?: string | null, variant?: string | null) => {
     prepareForRoomTransition();
@@ -430,8 +533,9 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     setOpponentPlayAgainRequested(false);
     setGameType(gameType || null);
     setVariant(variant || null);
+    setPendingRoomAction({ kind: 'joining', roomCode: code, startedAt: Date.now() });
     send({ type: 'JoinRoom', room_code: code, player_name: playerName });
-  }, [prepareForRoomTransition, send]);
+  }, [prepareForRoomTransition, send, setPendingRoomAction]);
 
   const joinSavedSession = useCallback(() => {
     const session = readSavedSession();
@@ -440,8 +544,14 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem(STORAGE_RECONNECT_DEADLINE);
     setSavedSession(null);
     setPlayerNameState(session.playerName);
+    setPendingRoomAction({ kind: 'rejoining', roomCode: session.roomCode, startedAt: Date.now() });
     send({ type: 'JoinRoom', room_code: session.roomCode, player_name: session.playerName });
-  }, [send]);
+  }, [send, setPendingRoomAction]);
+
+  const cancelPendingRoomAction = useCallback(() => {
+    pendingRoomActionRef.current = null;
+    setPendingRoomActionState(null);
+  }, []);
 
   const clearSavedSession = useCallback(() => {
     clearSavedSessionStorage();
@@ -537,6 +647,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       opponentPlayAgainRequested,
       recentEmojis,
       roomActionPromptOpen,
+      pendingRoomAction,
+      cancelPendingRoomAction,
       createRoom,
       joinRoom,
       joinSavedSession,

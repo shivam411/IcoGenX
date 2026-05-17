@@ -11,7 +11,7 @@ const games: GameCatalogItem[] = GAME_CATALOG;
 
 export default function HomePage() {
   const router = useRouter();
-  const { joinRoom, connected, error, roomCode, gameType, variant } = useGame();
+  const { joinRoom, connected, error, roomCode, gameType, variant, pendingRoomAction } = useGame();
   
   const [filter, setFilter] = useState('All');
   const [page, setPage] = useState(1);
@@ -21,7 +21,9 @@ export default function HomePage() {
   const [joinName, setJoinName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [joinError, setJoinError] = useState('');
-  const [quickJoinPending, setQuickJoinPending] = useState(false);
+  // We follow the global pendingRoomAction instead of a local flag so we
+  // inherit the 8s timeout + send queue behavior from GameContext.
+  const quickJoinPending = pendingRoomAction?.kind === 'joining';
 
   // Load saved name from storage on mount
   useEffect(() => {
@@ -30,20 +32,18 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    if (!quickJoinPending || !roomCode || !gameType) return;
+    // Once the server confirms the join (roomCode + gameType resolved) and
+    // we are no longer pending, navigate to the right game page.
+    if (pendingRoomAction || !roomCode || !gameType) return;
 
     const path = getGamePath(gameType, variant);
     if (!path) return;
-    setQuickJoinPending(false);
     router.push(path);
-  }, [quickJoinPending, roomCode, gameType, variant, router]);
-
-  useEffect(() => {
-    if (error) setQuickJoinPending(false);
-  }, [error]);
+  }, [pendingRoomAction, roomCode, gameType, variant, router]);
 
   const handleQuickJoin = (e: React.FormEvent) => {
     e.preventDefault();
+    if (quickJoinPending) return; // idempotent: ignore rapid re-clicks
     if (!joinName.trim()) {
       setJoinError('Please enter your name');
       return;
@@ -53,7 +53,6 @@ export default function HomePage() {
       return;
     }
     setJoinError('');
-    setQuickJoinPending(true);
     joinRoom(joinCode.toUpperCase(), joinName.trim());
   };
 
@@ -98,8 +97,8 @@ export default function HomePage() {
               onChange={e => setJoinCode(e.target.value.toUpperCase())}
               maxLength={6}
             />
-            <button type="submit" className={`btn btn-primary btn-sm ${styles.qjBtn}`} disabled={!connected}>
-              {connected ? 'Join' : '...'}
+            <button type="submit" className={`btn btn-primary btn-sm ${styles.qjBtn}`} disabled={!connected || quickJoinPending}>
+              {!connected ? '...' : quickJoinPending ? 'Joining...' : 'Join'}
             </button>
             {(joinError || error) && (
               <div className={styles.qjError}>{joinError || error}</div>

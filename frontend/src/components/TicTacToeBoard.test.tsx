@@ -46,6 +46,7 @@ function buildGameState(overrides: Record<string, unknown> = {}) {
     playAgainRequested: false,
     opponentPlayAgainRequested: false,
     leaveRoom: vi.fn(),
+    openRoomActionPrompt: vi.fn(),
     ...overrides,
   };
 }
@@ -250,11 +251,11 @@ describe('TicTacToeBoard', () => {
 
   it('shows the game over overlay and handles replay plus exit', () => {
     const requestPlayAgain = vi.fn();
-    const leaveRoom = vi.fn();
+    const openRoomActionPrompt = vi.fn();
     mockUseGame.mockReturnValue(
       buildGameState({
         requestPlayAgain,
-        leaveRoom,
+        openRoomActionPrompt,
         gameOver: true,
         winner: 'Player 1',
       }),
@@ -268,8 +269,10 @@ describe('TicTacToeBoard', () => {
     expect(requestPlayAgain).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByText('Change Game'));
-    expect(leaveRoom).toHaveBeenCalledTimes(1);
-    expect(mockPush).toHaveBeenCalledWith('/');
+    // Exit now opens the shared room-action modal owned by Lobby instead of
+    // navigating home, so the page stays mounted while the user decides.
+    expect(openRoomActionPrompt).toHaveBeenCalledTimes(1);
+    expect(mockPush).not.toHaveBeenCalledWith('/');
   });
 
   it('renders a winning line when the game ends', () => {
