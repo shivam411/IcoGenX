@@ -1,0 +1,108 @@
+.panel {
+  --panel-accent: var(--accent-purple);
+  width: 100%;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: rgba(10, 14, 28, 0.72);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+}
+
+.panelCompact {
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: none;
+}
+
+.header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: none;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.06), transparent);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.header:hover {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
+}
+
+.headerText {
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  font-weight: 800;
+}
+
+.headerAction {
+  padding: 5px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid color-mix(in srgb, var(--panel-accent) 48%, transparent);
+  color: var(--panel-accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tipBox {
+  display: grid;
+  gap: 6px;
+  margin: 0 14px 14px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--panel-accent) 28%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--panel-accent) 12%, transparent);
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  animation: tip-in 0.28s ease both;
+}
+
+.tipLabel {
+  color: var(--panel-accent);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.rulesWrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.26s ease;
+}
+
+.panelOpen .rulesWrap {
+  grid-template-rows: 1fr;
+}
+
+.rulesBody {
+  min-height: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  line-height: 1.58;
+}
+
+.rulesBody ul {
+  margin: 0;
+  padding: 0 18px 16px 34px;
+}
+
+.rulesBody li + li {
+  margin-top: 9px;
+}
+
+@keyframes tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

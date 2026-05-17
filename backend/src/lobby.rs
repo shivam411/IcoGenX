@@ -6,6 +6,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use crate::games::{
+    bluff_card::BluffCardGame,
     code_guess::CodeGuessGame,
     higher_lower::HigherLowerGame,
     memory_flip::MemoryFlipGame,
@@ -24,6 +25,7 @@ pub enum GameInstance {
     MemoryFlip(MemoryFlipGame),
     HigherLower(HigherLowerGame),
     StopClock(StopClockGame),
+    BluffCard(BluffCardGame),
 }
 
 /// A game room with two players
@@ -243,28 +245,33 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                         let variant_str = room.variant.clone();
                         let scores = room.scores;
 
-                        let start_info = if is_rejoining_started_game {
-                            room.game.as_ref().map(|game| (get_game_state(game), scores))
+                        let start_messages = if is_rejoining_started_game {
+                            room.game
+                                .as_ref()
+                                .map(|game| build_game_start_messages(game, &players, scores, &game_type_str, &variant_str))
+                                .unwrap_or_default()
                         } else if room.players.len() == 2 {
                             let game = create_game(&game_type_str, variant_str.as_deref());
                             match game {
                                 Some(g) => {
-                                    let game_state = get_game_state(&g);
                                     room.game = Some(g);
                                     room.started = true;
-                                    Some((game_state, scores))
+                                    room.game
+                                        .as_ref()
+                                        .map(|game| build_game_start_messages(game, &players, scores, &game_type_str, &variant_str))
+                                        .unwrap_or_default()
                                 }
-                                None => None,
+                                None => Vec::new(),
                             }
                         } else {
-                            None
+                            Vec::new()
                         };
 
                         if is_rejoining_started_game {
                             tracing::info!("Player {} ({}) rejoined running room {} as player {}", player_id, player_name, room_code, player_num);
                         }
 
-                        Ok((player_num, players, room_code.clone(), start_info, game_type_str, variant_str))
+                        Ok((player_num, players, room_code.clone(), start_messages, game_type_str, variant_str))
                     }
                 }
             };
@@ -276,7 +283,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                         .send_to(player_id, &ServerMessage::Error { message: msg })
                         .await;
                 }
-                Ok((player_num, players, code, start_info, game_type_str, variant_str)) => {
+                Ok((player_num, players, code, start_messages, game_type_str, variant_str)) => {
                     // Register mappings
                     state.player_rooms.write().await
                         .insert(player_id.to_string(), code.clone());
@@ -318,15 +325,11 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                     state.send_to_players(&players, &join_msg).await;
 
                     // Start game if ready
-                    if let Some((game_state, scores)) = start_info {
+                    if !start_messages.is_empty() {
                         tracing::info!("Game starting in room {}", code);
-                        let start_msg = ServerMessage::GameStart {
-                            game_state: game_state.clone(),
-                            scores,
-                            game_type: game_type_str.clone(),
-                            variant: variant_str.clone(),
-                        };
-                        state.send_to_players(&players, &start_msg).await;
+                        for (pid, msg) in &start_messages {
+                            state.send_to(pid, msg).await;
+                        }
                     }
                 }
             }
@@ -477,6 +480,92 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                 }
             }
         }
+        ClientMessage::SwitchVariant { variant } => {
+            let room_code = {
+                let pr = state.player_rooms.read().await;
+                pr.get(player_id).cloned()
+            };
+
+            let player_num = {
+                let pn = state.player_numbers.read().await;
+                pn.get(player_id).copied().unwrap_or(0)
+            };
+
+            if player_num != 0 {
+                state
+                    .send_to(
+                        player_id,
+                        &ServerMessage::Error {
+                            message: "Only the room creator can change variants".into(),
+                        },
+                    )
+                    .await;
+                return;
+            }
+
+            if let Some(code) = room_code {
+                let messages_to_send = {
+                    let mut rooms = state.rooms.write().await;
+                    if let Some(room) = rooms.get_mut(&code) {
+                        room.variant = Some(variant.clone());
+                        room.play_again_votes = [false, false];
+
+                        if room.players.len() == 2 {
+                            match create_game(&room.game_type, room.variant.as_deref()) {
+                                Some(game) => {
+                                    let scores = room.scores;
+                                    room.game = Some(game);
+                                    room.started = true;
+
+                                    room.game
+                                        .as_ref()
+                                        .map(|game| build_game_start_messages(game, &room.players, scores, &room.game_type, &room.variant))
+                                        .unwrap_or_default()
+                                }
+                                None => vec![(
+                                    player_id.to_string(),
+                                    ServerMessage::Error {
+                                        message: "Unable to switch to that variant".into(),
+                                    },
+                                )],
+                            }
+                        } else {
+                            room.game = None;
+                            room.started = false;
+
+                            vec![(
+                                player_id.to_string(),
+                                ServerMessage::RoomCreated {
+                                    room_code: code.clone(),
+                                    game_type: room.game_type.clone(),
+                                    variant: room.variant.clone(),
+                                },
+                            )]
+                        }
+                    } else {
+                        vec![(
+                            player_id.to_string(),
+                            ServerMessage::Error {
+                                message: "Room not found".into(),
+                            },
+                        )]
+                    }
+                };
+
+                for (pid, msg) in &messages_to_send {
+                    state.send_to(pid, msg).await;
+                }
+            } else {
+                state
+                    .send_to(
+                        player_id,
+                        &ServerMessage::Error {
+                            message: "You are not in a room".into(),
+                        },
+                    )
+                    .await;
+            }
+        }
     }
 }
 
@@ -494,6 +583,7 @@ fn create_game(game_type: &str, variant: Option<&str>) -> Option<GameInstance> {
         "memory_flip" => Some(GameInstance::MemoryFlip(MemoryFlipGame::new())),
         "higher_lower" => Some(GameInstance::HigherLower(HigherLowerGame::new_variant(variant.unwrap_or("classic")))),
         "stop_clock" => Some(GameInstance::StopClock(StopClockGame::new())),
+        "bluff_card" => Some(GameInstance::BluffCard(BluffCardGame::new())),
         _ => None,
     }
 }
@@ -517,14 +607,43 @@ fn reset_game(game: &mut GameInstance, _previous_scores: [u32; 2], _current_play
 }
 
 fn get_game_state(game: &GameInstance) -> serde_json::Value {
+    get_game_state_for_player(game, None)
+}
+
+fn get_game_state_for_player(game: &GameInstance, player: Option<u8>) -> serde_json::Value {
     match game {
         GameInstance::TicTacToe(g) => g.state_json(),
         GameInstance::ShutTheBox(g) => g.state_json(),
-        GameInstance::CodeGuess(g) => g.state_json(None),
+        GameInstance::CodeGuess(g) => g.state_json(player),
         GameInstance::MemoryFlip(g) => g.state_json(),
         GameInstance::HigherLower(g) => g.state_json(),
         GameInstance::StopClock(g) => g.state_json(),
+        GameInstance::BluffCard(g) => g.state_json(player),
     }
+}
+
+fn build_game_start_messages(
+    game: &GameInstance,
+    players: &[String],
+    scores: [u32; 2],
+    game_type: &str,
+    variant: &Option<String>,
+) -> Vec<(String, ServerMessage)> {
+    players
+        .iter()
+        .enumerate()
+        .map(|(idx, pid)| {
+            (
+                pid.clone(),
+                ServerMessage::GameStart {
+                    game_state: get_game_state_for_player(game, Some(idx as u8)),
+                    scores,
+                    game_type: game_type.to_string(),
+                    variant: variant.clone(),
+                },
+            )
+        })
+        .collect()
 }
 
 /// Process a game action and return a list of (player_id, message) tuples.
@@ -610,6 +729,21 @@ fn process_action(
             Ok(broadcast_same(players, state))
         }
 
+        (GameInstance::BluffCard(g), GameAction::BluffCard { action, card_indices }) => {
+            match action.as_str() {
+                "play" => g.play_cards(player, &card_indices)?,
+                "challenge" => g.challenge(player)?,
+                _ => return Err("Unknown Bluff action".into()),
+            }
+
+            let mut msgs = Vec::new();
+            for (i, pid) in players.iter().enumerate() {
+                let state = g.state_json(Some(i as u8));
+                msgs.push((pid.clone(), ServerMessage::GameUpdate { game_state: state }));
+            }
+            Ok(msgs)
+        }
+
         _ => Err("Invalid action for this game type".into()),
     }
 }
@@ -637,6 +771,7 @@ fn check_game_over(game: &GameInstance) -> Option<ServerMessage> {
         GameInstance::MemoryFlip(g) => (g.game_over, g.winner.map(|w| format!("Player {}", w + 1))),
         GameInstance::HigherLower(g) => (g.game_over, g.winner.map(|w| format!("Player {}", w + 1))),
         GameInstance::StopClock(g) => (g.game_over, g.winner.map(|w| format!("Player {}", w + 1))),
+        GameInstance::BluffCard(g) => (g.game_over, g.winner.map(|w| format!("Player {}", w + 1))),
     };
 
     if is_over {
@@ -882,6 +1017,128 @@ mod tests {
                 assert_eq!(inner.current_player, 0);
                 assert!(inner.coin_tossed);
             }
+            _ => panic!("expected tic-tac-toe game"),
+        }
+    }
+
+    #[tokio::test]
+    async fn switch_variant_updates_waiting_room_without_leaving_it() {
+        let state = Arc::new(AppState::new());
+
+        state.rooms.write().await.insert(
+            "ROOM42".into(),
+            Room {
+                code: "ROOM42".into(),
+                game_type: "tic_tac_toe".into(),
+                variant: Some("classic".into()),
+                players: vec!["p1".into()],
+                game: None,
+                started: false,
+                scores: [3, 1],
+                play_again_votes: [false, false],
+            },
+        );
+        state.player_rooms.write().await.insert("p1".into(), "ROOM42".into());
+        state.player_numbers.write().await.insert("p1".into(), 0);
+
+        handle_message(
+            &state,
+            "p1",
+            ClientMessage::SwitchVariant {
+                variant: "joker".into(),
+            },
+        )
+        .await;
+
+        let rooms = state.rooms.read().await;
+        let room = rooms.get("ROOM42").unwrap();
+        assert_eq!(room.variant.as_deref(), Some("joker"));
+        assert!(!room.started);
+        assert!(room.game.is_none());
+        assert_eq!(room.scores, [3, 1]);
+    }
+
+    #[tokio::test]
+    async fn switch_variant_recreates_running_game_for_same_players() {
+        let state = Arc::new(AppState::new());
+
+        state.rooms.write().await.insert(
+            "ROOM42".into(),
+            Room {
+                code: "ROOM42".into(),
+                game_type: "tic_tac_toe".into(),
+                variant: Some("classic".into()),
+                players: vec!["p1".into(), "p2".into()],
+                game: create_game("tic_tac_toe", Some("classic")),
+                started: true,
+                scores: [4, 2],
+                play_again_votes: [true, true],
+            },
+        );
+        state.player_rooms.write().await.insert("p1".into(), "ROOM42".into());
+        state.player_rooms.write().await.insert("p2".into(), "ROOM42".into());
+        state.player_numbers.write().await.insert("p1".into(), 0);
+        state.player_numbers.write().await.insert("p2".into(), 1);
+
+        handle_message(
+            &state,
+            "p1",
+            ClientMessage::SwitchVariant {
+                variant: "gravity".into(),
+            },
+        )
+        .await;
+
+        let rooms = state.rooms.read().await;
+        let room = rooms.get("ROOM42").unwrap();
+        assert_eq!(room.variant.as_deref(), Some("gravity"));
+        assert!(room.started);
+        assert_eq!(room.play_again_votes, [false, false]);
+        assert_eq!(room.scores, [4, 2]);
+
+        match room.game.as_ref().unwrap() {
+            GameInstance::TicTacToe(game) => assert_eq!(game.variant, TicTacToeVariant::Gravity),
+            _ => panic!("expected tic-tac-toe game"),
+        }
+    }
+
+    #[tokio::test]
+    async fn only_creator_can_switch_room_variant() {
+        let state = Arc::new(AppState::new());
+
+        state.rooms.write().await.insert(
+            "ROOM42".into(),
+            Room {
+                code: "ROOM42".into(),
+                game_type: "tic_tac_toe".into(),
+                variant: Some("classic".into()),
+                players: vec!["p1".into(), "p2".into()],
+                game: create_game("tic_tac_toe", Some("classic")),
+                started: true,
+                scores: [1, 0],
+                play_again_votes: [false, false],
+            },
+        );
+        state.player_rooms.write().await.insert("p1".into(), "ROOM42".into());
+        state.player_rooms.write().await.insert("p2".into(), "ROOM42".into());
+        state.player_numbers.write().await.insert("p1".into(), 0);
+        state.player_numbers.write().await.insert("p2".into(), 1);
+
+        handle_message(
+            &state,
+            "p2",
+            ClientMessage::SwitchVariant {
+                variant: "joker".into(),
+            },
+        )
+        .await;
+
+        let rooms = state.rooms.read().await;
+        let room = rooms.get("ROOM42").unwrap();
+        assert_eq!(room.variant.as_deref(), Some("classic"));
+
+        match room.game.as_ref().unwrap() {
+            GameInstance::TicTacToe(game) => assert_eq!(game.variant, TicTacToeVariant::Classic),
             _ => panic!("expected tic-tac-toe game"),
         }
     }

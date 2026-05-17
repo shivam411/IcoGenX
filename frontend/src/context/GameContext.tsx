@@ -102,6 +102,7 @@ interface WebSocketContextType {
   leaveRoom: () => void;
   sendAction: (action: any) => void;
   sendEmoji: (emoji: string) => void;
+  switchVariant: (variant: string) => void;
   requestPlayAgain: () => void;
   resetGame: () => void;
 }
@@ -157,7 +158,14 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           setSavedSession(null);
           setRoomCode(msg.room_code);
           setGameType(msg.game_type);
-          if (msg.variant) setVariant(msg.variant);
+          setVariant(msg.variant || null);
+          setGameStarted(false);
+          setGameState(null);
+          setGameOver(false);
+          setWinner(null);
+          setPlayAgainRequested(false);
+          setOpponentPlayAgainRequested(false);
+          setRecentEmojis([]);
           setPlayerNumber(0); // Creator is always player 0
           break;
         case 'PlayerJoined':
@@ -166,7 +174,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
             if (msg.player_id === playerIdRef.current) {
               setPlayerNumber(msg.player_number);
               if (msg.game_type) setGameType(msg.game_type);
-              if (msg.variant) setVariant(msg.variant);
+              setVariant(msg.variant || null);
               if (msg.game_type) {
                 localStorage.setItem(STORAGE_GAME_TYPE, msg.game_type);
                 if (msg.variant) localStorage.setItem(STORAGE_VARIANT, msg.variant);
@@ -188,7 +196,12 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           setGameState(msg.game_state);
           if (msg.scores) setScores(msg.scores);
           if (msg.game_type) setGameType(msg.game_type);
-          if (msg.variant) setVariant(msg.variant);
+          setVariant(msg.variant || null);
+          setGameOver(false);
+          setWinner(null);
+          setPlayAgainRequested(false);
+          setOpponentPlayAgainRequested(false);
+          setRecentEmojis([]);
           if (msg.game_type) {
             localStorage.setItem(STORAGE_GAME_TYPE, msg.game_type);
             if (msg.variant) localStorage.setItem(STORAGE_VARIANT, msg.variant);
@@ -327,7 +340,33 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const prepareForRoomTransition = useCallback(() => {
+    if (roomCode) {
+      send({ type: 'LeaveRoom' });
+    }
+
+    clearSavedSessionStorage();
+    setSavedSession(null);
+    setRoomCode(null);
+    setPlayerNumber(null);
+    setOpponentName(null);
+    setGameState(null);
+    setGameType(null);
+    setVariant(null);
+    setScores([0, 0]);
+    setGameStarted(false);
+    setGameOver(false);
+    setWinner(null);
+    setError(null);
+    setOpponentDisconnected(false);
+    setOpponentReconnectDeadline(null);
+    setPlayAgainRequested(false);
+    setOpponentPlayAgainRequested(false);
+    setRecentEmojis([]);
+  }, [roomCode, send]);
+
   const createRoom = useCallback((gameType: string, variant: string | null, playerName: string) => {
+    prepareForRoomTransition();
     localStorage.setItem(STORAGE_PLAYER_NAME, playerName);
     localStorage.removeItem(STORAGE_ROOM_CODE);
     localStorage.setItem(STORAGE_GAME_TYPE, gameType);
@@ -335,12 +374,12 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     else localStorage.removeItem(STORAGE_VARIANT);
     localStorage.setItem(STORAGE_GAME_PATH, getGamePath(gameType, variant) || '/');
     localStorage.removeItem(STORAGE_RECONNECT_DEADLINE);
-    setSavedSession(null);
     setPlayerNameState(playerName);
     send({ type: 'CreateRoom', game_type: gameType, variant, player_name: playerName });
-  }, [send]);
+  }, [prepareForRoomTransition, send]);
 
   const joinRoom = useCallback((code: string, playerName: string, gameType?: string | null, variant?: string | null) => {
+    prepareForRoomTransition();
     localStorage.setItem(STORAGE_PLAYER_NAME, playerName);
     localStorage.setItem(STORAGE_ROOM_CODE, code);
     if (gameType) {
@@ -350,7 +389,6 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(STORAGE_GAME_PATH, getGamePath(gameType, variant || null) || '/');
     }
     localStorage.removeItem(STORAGE_RECONNECT_DEADLINE);
-    setSavedSession(null);
     setRoomCode(code);
     setPlayerNameState(playerName);
     setGameStarted(false);
@@ -365,7 +403,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     setGameType(gameType || null);
     setVariant(variant || null);
     send({ type: 'JoinRoom', room_code: code, player_name: playerName });
-  }, [send]);
+  }, [prepareForRoomTransition, send]);
 
   const joinSavedSession = useCallback(() => {
     const session = readSavedSession();
@@ -391,6 +429,13 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     send({ type: 'SendEmoji', emoji });
+  }, [send]);
+
+  const switchVariant = useCallback((nextVariant: string) => {
+    if (!nextVariant) {
+      return;
+    }
+    send({ type: 'SwitchVariant', variant: nextVariant });
   }, [send]);
 
   const requestPlayAgain = useCallback(() => {
@@ -461,6 +506,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       leaveRoom,
       sendAction,
       sendEmoji,
+      switchVariant,
       requestPlayAgain,
       resetGame,
     }}>

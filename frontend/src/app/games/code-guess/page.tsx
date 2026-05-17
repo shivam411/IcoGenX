@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import GameFrame from '@/components/GameFrame';
 import Lobby from '@/components/Lobby';
 import { useGame } from '@/context/GameContext';
 import styles from './game.module.css';
@@ -11,6 +12,15 @@ interface Guess {
   correct_position: number;
   correct_digit: number;
 }
+
+const CODE_GUESS_RULES = (
+  <ul>
+    <li>Each player locks in a secret 4-digit code before guessing starts.</li>
+    <li>On your turn, submit one 4-digit guess.</li>
+    <li>🟢 shows digits in the correct spot. 🟡 shows correct digits in the wrong spot.</li>
+    <li>Crack the opponent&rsquo;s code first to win the round.</li>
+  </ul>
+);
 
 function CodeGuessBoard() {
   const { gameState, playerNumber, sendAction, gameOver, winner } = useGame();
@@ -25,7 +35,6 @@ function CodeGuessBoard() {
   const isMyTurn = currentPlayer === playerNumber;
 
   const myGuesses: Guess[] = playerNumber === 0 ? gameState.player1Guesses : gameState.player2Guesses;
-  const opGuesses: Guess[] = playerNumber === 0 ? gameState.player2Guesses : gameState.player1Guesses;
 
   const handleSubmit = () => {
     if (code.length !== 4) return;
@@ -37,26 +46,27 @@ function CodeGuessBoard() {
   if (!myCodeSet) {
     return (
       <div className={styles.gameWrapper}>
-        <Link href="/" className={`btn btn-ghost btn-sm ${styles.backBtn}`}>← Back</Link>
-        <div className={`glass-card ${styles.setupPhase}`} style={{ padding: 40 }}>
-          <h2 className={styles.setupTitle}>🔐 Set Your Secret Code</h2>
-          <p className={styles.setupSub}>Choose a 4-digit number for your opponent to crack</p>
-          <input
-            className={`input ${styles.codeInput}`}
-            type="text"
-            maxLength={4}
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-            placeholder="____"
-          />
-          <button
-            className="btn btn-primary btn-lg"
-            onClick={handleSubmit}
-            disabled={code.length !== 4}
-          >
-            Lock Code 🔒
-          </button>
-        </div>
+        <GameFrame turnText="🔐 Set your secret code to start." rulesTitle="Code Breaker Rules" rules={CODE_GUESS_RULES}>
+          <div className={`glass-card ${styles.setupPhase}`} style={{ padding: 40 }}>
+            <h2 className={styles.setupTitle}>🔐 Set Your Secret Code</h2>
+            <p className={styles.setupSub}>Choose a 4-digit number for your opponent to crack</p>
+            <input
+              className={`input ${styles.codeInput}`}
+              type="text"
+              maxLength={4}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+              placeholder="____"
+            />
+            <button
+              className="btn btn-primary btn-lg"
+              onClick={handleSubmit}
+              disabled={code.length !== 4}
+            >
+              Lock Code 🔒
+            </button>
+          </div>
+        </GameFrame>
       </div>
     );
   }
@@ -65,59 +75,60 @@ function CodeGuessBoard() {
   if (!bothSet) {
     return (
       <div className={styles.gameWrapper}>
-        <Link href="/" className={`btn btn-ghost btn-sm ${styles.backBtn}`}>← Back</Link>
-        <div className={`glass-card ${styles.waitingSetup}`}>
-          <h3>Your code is set! ✅</h3>
-          <p>Waiting for opponent to set their code...</p>
-        </div>
+        <GameFrame turnText="⏳ Waiting for both secret codes to be locked in." rulesTitle="Code Breaker Rules" rules={CODE_GUESS_RULES}>
+          <div className={`glass-card ${styles.waitingSetup}`}>
+            <h3>Your code is set! ✅</h3>
+            <p>Waiting for opponent to set their code...</p>
+          </div>
+        </GameFrame>
       </div>
     );
   }
 
   return (
     <div className={styles.gameWrapper}>
-      <Link href="/" className={`btn btn-ghost btn-sm ${styles.backBtn}`}>← Back</Link>
-
-      <div className={styles.turnInfo}>
-        {isMyTurn ? '🎯 Your turn to guess!' : '⏳ Opponent is guessing...'}
-      </div>
-
-      <div className={styles.gameArea}>
-        {/* Your guesses */}
-        <div className={styles.guessHistory}>
-          {myGuesses.map((g: Guess, idx: number) => (
-            <div key={idx} className={styles.guessRow}>
-              <span className={styles.guessNumber}>{g.guess}</span>
-              <div className={styles.guessResults}>
-                <span className={styles.guessBull}>🟢 {g.correct_position}</span>
-                <span className={styles.guessCow}>🟡 {g.correct_digit}</span>
+      <GameFrame
+        currentPlayer={currentPlayer}
+        turnText={isMyTurn ? '🎯 Your turn to guess!' : '⏳ Opponent is guessing...'}
+        rulesTitle="Code Breaker Rules"
+        rules={CODE_GUESS_RULES}
+      >
+        <div className={styles.gameArea}>
+          <div className={styles.guessHistory}>
+            {myGuesses.map((g: Guess, idx: number) => (
+              <div key={idx} className={styles.guessRow}>
+                <span className={styles.guessNumber}>{g.guess}</span>
+                <div className={styles.guessResults}>
+                  <span className={styles.guessBull}>🟢 {g.correct_position}</span>
+                  <span className={styles.guessCow}>🟡 {g.correct_digit}</span>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-
-        {isMyTurn && !gameOver && (
-          <div className={styles.inputRow}>
-            <input
-              className="input"
-              type="text"
-              maxLength={4}
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-              placeholder="Enter 4 digits"
-              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-            />
-            <button className="btn btn-primary" onClick={handleSubmit} disabled={code.length !== 4}>
-              Guess
-            </button>
+            ))}
           </div>
-        )}
 
-        <div className={styles.legend}>
-          <span className={styles.legendItem}><span className={styles.dotGreen} /> Right place</span>
-          <span className={styles.legendItem}><span className={styles.dotYellow} /> Wrong place</span>
+          {isMyTurn && !gameOver && (
+            <div className={styles.inputRow}>
+              <input
+                className="input"
+                type="text"
+                maxLength={4}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                placeholder="Enter 4 digits"
+                onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+              />
+              <button className="btn btn-primary" onClick={handleSubmit} disabled={code.length !== 4}>
+                Guess
+              </button>
+            </div>
+          )}
+
+          <div className={styles.legend}>
+            <span className={styles.legendItem}><span className={styles.dotGreen} /> Right place</span>
+            <span className={styles.legendItem}><span className={styles.dotYellow} /> Wrong place</span>
+          </div>
         </div>
-      </div>
+      </GameFrame>
 
       {gameOver && (
         <div className={styles.winOverlay}>

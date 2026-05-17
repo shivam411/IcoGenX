@@ -44,13 +44,14 @@ impl ShutTheBoxGame {
         Ok(roll)
     }
 
-    /// Apply a combination of cards. `target` is "self" or "opponent".
+    /// Apply a combination of cards to advance your own track.
+    /// Matching opponent cards are pushed back automatically.
     /// `combination` is a list of card values (1-6) that sum to the dice roll.
     pub fn apply_combination(
         &mut self,
         player: u8,
         combination: &[u8],
-        target: &str,
+        _target: &str,
     ) -> Result<(), String> {
         if self.game_over {
             return Err("Game is over".into());
@@ -85,38 +86,21 @@ impl ShutTheBoxGame {
             seen[idx] = true;
         }
 
-        match target {
-            "self" => {
-                // Open own cards
-                let cards = if player == 0 {
-                    &mut self.player1_cards
-                } else {
-                    &mut self.player2_cards
-                };
-                for &v in combination {
-                    let idx = (v - 1) as usize;
-                    if cards[idx] {
-                        return Err(format!("Card {} is already open", v));
-                    }
-                    cards[idx] = true;
-                }
+        // Open own cards, then pull back any matching opponent cards automatically.
+        let (cards, opponent_cards) = if player == 0 {
+            (&mut self.player1_cards, &mut self.player2_cards)
+        } else {
+            (&mut self.player2_cards, &mut self.player1_cards)
+        };
+        for &v in combination {
+            let idx = (v - 1) as usize;
+            if cards[idx] {
+                return Err(format!("Card {} is already open", v));
             }
-            "opponent" => {
-                // Push opponent cards back (close them)
-                let cards = if player == 0 {
-                    &mut self.player2_cards
-                } else {
-                    &mut self.player1_cards
-                };
-                for &v in combination {
-                    let idx = (v - 1) as usize;
-                    if !cards[idx] {
-                        return Err(format!("Opponent card {} is not open", v));
-                    }
-                    cards[idx] = false;
-                }
+            cards[idx] = true;
+            if opponent_cards[idx] {
+                opponent_cards[idx] = false;
             }
-            _ => return Err("Target must be 'self' or 'opponent'".into()),
         }
 
         // Check win: all 6 cards open
@@ -188,12 +172,24 @@ mod tests {
     }
 
     #[test]
-    fn applying_to_opponent_closes_open_cards() {
+    fn matching_open_opponent_cards_are_pushed_back_automatically() {
         let mut game = rolled_game(3);
         game.player2_cards = [true, true, false, false, false, false];
 
-        game.apply_combination(0, &[1, 2], "opponent").unwrap();
+        game.apply_combination(0, &[1, 2], "self").unwrap();
 
+        assert_eq!(game.player1_cards, [true, true, false, false, false, false]);
+        assert_eq!(game.player2_cards, [false, false, false, false, false, false]);
+    }
+
+    #[test]
+    fn opening_own_card_pushes_opponents_matching_card_back() {
+        let mut game = rolled_game(4);
+        game.player2_cards = [false, false, false, true, false, false];
+
+        game.apply_combination(0, &[4], "self").unwrap();
+
+        assert_eq!(game.player1_cards, [false, false, false, true, false, false]);
         assert_eq!(game.player2_cards, [false, false, false, false, false, false]);
     }
 

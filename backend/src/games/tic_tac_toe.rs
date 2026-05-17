@@ -186,7 +186,7 @@ impl TicTacToeGame {
         self.board[cell] = Some(player);
         moves.push_back(cell);
 
-        self.finish_mark(player, matches!(self.variant, TicTacToeVariant::Classic));
+        self.finish_mark(player, self.variant != TicTacToeVariant::Disappearing);
         Ok(())
     }
 
@@ -371,12 +371,8 @@ impl TicTacToeGame {
             return true;
         }
 
-        if self.variant == TicTacToeVariant::Joker {
-            if let Some(jc) = self.joker_cell {
-                if idx == jc && self.board[idx].is_some() {
-                    return true;
-                }
-            }
+        if self.variant == TicTacToeVariant::Joker && self.joker_cell == Some(idx) {
+            return true;
         }
 
         false
@@ -517,18 +513,32 @@ mod tests {
     }
 
     #[test]
-    fn joker_move_can_end_game_for_the_other_player() {
+    fn joker_line_ends_before_anyone_claims_the_joker_cell() {
         let mut game = ready_game("joker");
         game.joker_cell = Some(4);
 
         game.make_move(0, 0).unwrap();
         game.make_move(1, 1).unwrap();
         game.make_move(0, 8).unwrap();
-        game.make_move(1, 4).unwrap();
 
         assert!(game.game_over);
         assert_eq!(game.winner, Some(0));
         assert_eq!(game.winning_line, Some([0, 4, 8]));
+        assert_eq!(game.make_move(1, 4), Err("Game is over".into()));
+    }
+
+    #[test]
+    fn empty_joker_cell_can_complete_a_winning_line() {
+        let mut game = ready_game("joker");
+        game.joker_cell = Some(8);
+
+        game.make_move(0, 2).unwrap();
+        game.make_move(1, 6).unwrap();
+        game.make_move(0, 5).unwrap();
+
+        assert!(game.game_over);
+        assert_eq!(game.winner, Some(0));
+        assert_eq!(game.winning_line, Some([2, 5, 8]));
     }
 
     #[test]

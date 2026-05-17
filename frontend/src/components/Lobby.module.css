@@ -20,6 +20,19 @@
   animation: float 20s ease-in-out infinite;
 }
 
+.roomShell {
+  width: min(100%, 980px);
+  display: grid;
+  grid-template-columns: minmax(320px, 440px) minmax(280px, 360px);
+  gap: 22px;
+  align-items: start;
+  justify-content: center;
+}
+
+.lobbyRules {
+  margin-top: 12px;
+}
+
 /* Connecting */
 .connectingBox {
   text-align: center;
@@ -237,6 +250,62 @@
   display: inline-block;
 }
 
+.variantPanel {
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.04);
+  text-align: left;
+}
+
+.variantDock {
+  position: fixed;
+  left: 50%;
+  bottom: 88px;
+  transform: translateX(-50%);
+  width: min(92vw, 320px);
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: rgba(10, 14, 28, 0.88);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+  z-index: 110;
+}
+
+.variantLabel {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.variantSelect {
+  width: 100%;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.variantSelect:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.variantHint {
+  margin-top: 8px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
 /* Disconnect */
 .disconnectBox {
   width: 100%;
@@ -321,15 +390,69 @@
   bottom: 20px;
   transform: translateX(-50%);
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 10px;
   padding: 12px 16px;
-  border-radius: var(--radius-full);
+  border-radius: 24px;
   border: 1px solid var(--border-subtle);
   background: rgba(10, 14, 28, 0.82);
   backdrop-filter: blur(16px);
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
   z-index: 90;
+}
+
+.reactionDockHeader {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.reactionDockHandle,
+.reactionDockHide,
+.reactionToggleBtn {
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.reactionDockHandle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+}
+
+.reactionDockHandle:hover,
+.reactionDockHide:hover,
+.reactionToggleBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.reactionDockHide {
+  padding: 8px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.reactionToggleBtn {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  padding: 12px 16px;
+  border-radius: var(--radius-full);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35);
+  z-index: 90;
+  font-weight: 700;
 }
 
 .reactionDockLabel {
@@ -342,6 +465,8 @@
 
 .reactionButtons {
   display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 8px;
 }
 
@@ -389,6 +514,21 @@
 }
 
 @media (max-width: 800px) {
+  .roomShell {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .lobbyCard,
+  .waitingBox {
+    max-width: none;
+  }
+
+  .lobbyRules {
+    order: -1;
+    margin-top: 0;
+  }
+
   .reactionFeed {
     top: 14px;
     right: 14px;
@@ -408,12 +548,16 @@
     max-width: 360px;
     bottom: 14px;
     padding: 10px 12px;
-    flex-wrap: wrap;
-    justify-content: center;
     border-radius: 24px;
   }
 
+  .reactionDockHeader {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
   .reactionDockLabel {
+    order: -1;
     width: 100%;
     text-align: center;
   }
@@ -421,6 +565,12 @@
   .reactionButtons {
     flex-wrap: wrap;
     justify-content: center;
+  }
+
+  .reactionToggleBtn {
+    bottom: 14px;
+    width: calc(100% - 24px);
+    max-width: 220px;
   }
 
   .reactionBtn {

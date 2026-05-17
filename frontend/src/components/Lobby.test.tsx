@@ -4,14 +4,30 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Lobby from './Lobby';
 
 const mockPush = vi.fn();
+const mockReplace = vi.fn();
+const mockUsePathname = vi.fn();
 const mockUseGame = vi.fn();
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
+  usePathname: () => mockUsePathname(),
 }));
 
 vi.mock('@/context/GameContext', () => ({
   useGame: () => mockUseGame(),
+  getGamePath: (gameType: string | null, variant: string | null) => {
+    if (gameType === 'tic_tac_toe') {
+      return `/games/tic-tac-toe/${variant || 'classic'}`;
+    }
+    if (gameType === 'higher_lower') {
+      return variant === 'code_breaker_number'
+        ? '/games/code-guess/number'
+        : variant && variant !== 'classic'
+          ? `/games/higher-lower/${variant}`
+          : '/games/higher-lower';
+    }
+    return '/';
+  },
 }));
 
 function buildGameState(overrides: Record<string, unknown> = {}) {
@@ -28,6 +44,9 @@ function buildGameState(overrides: Record<string, unknown> = {}) {
     opponentName: 'Blair',
     recentEmojis: [],
     sendEmoji: vi.fn(),
+    gameType: 'tic_tac_toe',
+    variant: 'classic',
+    switchVariant: vi.fn(),
     ...overrides,
   };
 }
@@ -36,6 +55,10 @@ describe('Lobby', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     mockPush.mockReset();
+    mockReplace.mockReset();
+    mockUsePathname.mockReset();
+    mockUsePathname.mockReturnValue('/games/tic-tac-toe/classic');
+    window.localStorage.clear();
   });
 
   afterEach(() => {
@@ -96,6 +119,25 @@ describe('Lobby', () => {
     expect(writeText).toHaveBeenCalledWith('AB12CD');
   });
 
+  it('switches variants without leaving the room', () => {
+    const switchVariant = vi.fn();
+    mockUseGame.mockReturnValue(
+      buildGameState({
+        roomCode: 'AB12CD',
+        switchVariant,
+      }),
+    );
+
+    render(
+      <Lobby gameType="tic_tac_toe" variant="classic" gameName="Test Game" gameIcon="🎮" accentColor="#123456">
+        <div>Child</div>
+      </Lobby>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Room variant'), { target: { value: 'joker' } });
+    expect(switchVariant).toHaveBeenCalledWith('joker');
+  });
+
   it('renders in-game reactions and sends emoji clicks', () => {
     const sendEmoji = vi.fn();
     mockUseGame.mockReturnValue(
@@ -117,6 +159,45 @@ describe('Lobby', () => {
 
     fireEvent.click(screen.getByLabelText('Send 🎉 reaction'));
     expect(sendEmoji).toHaveBeenCalledWith('🎉');
+  });
+
+  it('lets players hide and show the emoji dock', () => {
+    mockUseGame.mockReturnValue(
+      buildGameState({
+        gameStarted: true,
+      }),
+    );
+
+    render(
+      <Lobby gameType="tic_tac_toe" gameName="Test Game" gameIcon="🎮" accentColor="#123456">
+        <div>In Game</div>
+      </Lobby>,
+    );
+
+    fireEvent.click(screen.getByLabelText('Hide reactions'));
+    expect(screen.getByLabelText('Show reactions')).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText('Show reactions'));
+    expect(screen.getByLabelText('Hide reactions')).toBeTruthy();
+  });
+
+  it('follows the switched variant route while staying in the room', () => {
+    mockUsePathname.mockReturnValue('/games/tic-tac-toe/classic');
+    mockUseGame.mockReturnValue(
+      buildGameState({
+        roomCode: 'AB12CD',
+        gameStarted: true,
+        variant: 'joker',
+      }),
+    );
+
+    render(
+      <Lobby gameType="tic_tac_toe" variant="classic" gameName="Test Game" gameIcon="🎮" accentColor="#123456">
+        <div>In Game</div>
+      </Lobby>,
+    );
+
+    expect(mockReplace).toHaveBeenCalledWith('/games/tic-tac-toe/joker');
   });
 
   it('keeps the lobby form available when opponent disconnect state is handled globally', () => {

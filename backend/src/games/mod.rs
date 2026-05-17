@@ -1,3 +1,4 @@
+pub mod bluff_card;
 pub mod tic_tac_toe;
 pub mod shut_the_box;
 pub mod code_guess;

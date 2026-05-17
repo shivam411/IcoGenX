@@ -4,180 +4,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getGamePath, useGame } from '@/context/GameContext';
+import { GAME_CATALOG, type GameCatalogItem } from '@/lib/gameMetadata';
 import styles from './page.module.css';
 
-interface GameVariant {
-  id: string;
-  name: string;
-  icon: string;
-  desc: string;
-  path: string;
-}
-
-interface GameCard {
-  id: string;
-  name: string;
-  icon: string;
-  description: string;
-  players: string;
-  category: string;
-  badgeClass: string;
-  gradient: string;
-  variants?: GameVariant[];
-}
-
-const games: GameCard[] = [
-  {
-    id: 'tic-tac-toe',
-    name: 'Tic-Tac-Toe Variants',
-    icon: '❌⭕',
-    description: 'Play Classic, Gobblet, Gravity, Bidding, Blind, and more Tic-Tac-Toe twists.',
-    players: '2 Players',
-    category: 'Strategy',
-    badgeClass: 'badge-purple',
-    gradient: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
-    variants: [
-      {
-        id: 'classic',
-        name: 'Classic',
-        icon: '📝',
-        desc: 'Normal 3x3. Draws are possible.',
-        path: '/games/tic-tac-toe/classic',
-      },
-      {
-        id: 'disappearing',
-        name: 'Disappearing',
-        icon: '🪄',
-        desc: 'Keep 4 marks in play. Your oldest vanishes on the 5th move.',
-        path: '/games/tic-tac-toe/disappearing',
-      },
-      {
-        id: 'joker',
-        name: 'Joker Cell',
-        icon: '🃏',
-        desc: 'One cell is gold and acts as X and O.',
-        path: '/games/tic-tac-toe/joker',
-      },
-      {
-        id: 'gobblet',
-        name: 'Gobblet Gobblers',
-        icon: '🪆',
-        desc: 'Small, medium, and large pieces can cover smaller ones.',
-        path: '/games/tic-tac-toe/gobblet',
-      },
-      {
-        id: 'gravity',
-        name: 'Gravity',
-        icon: '⬇️',
-        desc: 'Drop marks into columns and let them fall to the bottom.',
-        path: '/games/tic-tac-toe/gravity',
-      },
-      {
-        id: 'bidding',
-        name: 'Bidding',
-        icon: '🪙',
-        desc: 'Spend chips in auctions to win the right to place.',
-        path: '/games/tic-tac-toe/bidding',
-      },
-      {
-        id: 'blind',
-        name: 'Blind Memory',
-        icon: '🙈',
-        desc: 'Call numbered squares from memory. Occupied calls lose turns.',
-        path: '/games/tic-tac-toe/blind',
-      },
-    ],
-  },
-  {
-    id: 'shut-the-box',
-    name: 'Dice Tug-of-War',
-    icon: '🎲',
-    description: 'Roll dice, open your cards or push back your opponent\'s. First to open all 6 wins!',
-    players: '2 Players',
-    category: 'Strategy',
-    badgeClass: 'badge-orange',
-    gradient: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
-  },
-  {
-    id: 'code-guess',
-    name: 'Code Breaker',
-    icon: '🔐',
-    description: 'Break a secret 4-digit code or chase a number with higher/lower clues.',
-    players: '2 Players',
-    category: 'Logic',
-    badgeClass: 'badge-cyan',
-    gradient: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
-    variants: [
-      {
-        id: 'digits',
-        name: '4-Digit Code',
-        icon: '🔐',
-        desc: 'Set a secret 4-digit code and crack your opponent\'s first.',
-        path: '/games/code-guess',
-      },
-      {
-        id: 'number-range',
-        name: 'Number Range',
-        icon: '🔎',
-        desc: 'Guess a 1-100 number with greater/less clues.',
-        path: '/games/code-guess/number',
-      },
-    ],
-  },
-  {
-    id: 'memory-flip',
-    name: 'Sequence Memory Flip',
-    icon: '🃏',
-    description: 'Flip cards 1-9 in order. Wrong flip? Everything resets and your opponent gets a chance!',
-    players: '2 Players',
-    category: 'Memory',
-    badgeClass: 'badge-pink',
-    gradient: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
-  },
-  {
-    id: 'higher-lower',
-    name: 'Higher or Lower Variants',
-    icon: '🔢',
-    description: 'Guess hidden numbers across Sprint, Classic, or Expert ranges as the window shrinks.',
-    players: '2 Players',
-    category: 'Quick',
-    badgeClass: 'badge-green',
-    gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-    variants: [
-      {
-        id: 'sprint',
-        name: 'Sprint',
-        icon: '⚡',
-        desc: 'A compact 1-50 range for quick rounds.',
-        path: '/games/higher-lower/sprint',
-      },
-      {
-        id: 'classic',
-        name: 'Classic',
-        icon: '🔢',
-        desc: 'The familiar 1-100 guessing window.',
-        path: '/games/higher-lower',
-      },
-      {
-        id: 'expert',
-        name: 'Expert',
-        icon: '🧩',
-        desc: 'A wider 1-200 range with more pressure.',
-        path: '/games/higher-lower/expert',
-      },
-    ],
-  },
-  {
-    id: 'stop-clock',
-    name: 'The 20-Second Challenge',
-    icon: '⏱️',
-    description: 'Start the timer and stop it at exactly 20 seconds. No peeking! Closest wins.',
-    players: '2 Players',
-    category: 'Reflex',
-    badgeClass: 'badge-blue',
-    gradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-  },
-];
+const games: GameCatalogItem[] = GAME_CATALOG;
 
 export default function HomePage() {
   const router = useRouter();
@@ -185,7 +15,7 @@ export default function HomePage() {
   
   const [filter, setFilter] = useState('All');
   const [page, setPage] = useState(1);
-  const [selectedGame, setSelectedGame] = useState<GameCard | null>(null);
+  const [selectedGame, setSelectedGame] = useState<GameCatalogItem | null>(null);
   
   // Quick Join State
   const [joinName, setJoinName] = useState('');
@@ -312,11 +142,22 @@ export default function HomePage() {
               }}
               className={`glass-card ${styles.gameCard}`}
             >
+              <div className={styles.variantBadge}>
+                {game.variants?.length ? `${game.variants.length} variants` : '1 mode'}
+              </div>
               <div
                 className={styles.cardBanner}
                 style={{ background: game.gradient }}
               >
                 <span>{game.icon}</span>
+                <div className={styles.gameplayPreview}>
+                  <div className={styles.previewTitle}>Gameplay</div>
+                  <div className={styles.previewSteps}>
+                    {game.previewSteps.map((step) => (
+                      <span key={step}>{step}</span>
+                    ))}
+                  </div>
+                </div>
               </div>
               <div className={styles.cardBody}>
                 <div className={`badge ${game.badgeClass}`} style={{ marginBottom: 10 }}>

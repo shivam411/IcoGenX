@@ -10,6 +10,7 @@ pub enum ClientMessage {
     GameAction { action: GameAction },
     SendEmoji { emoji: String },
     RequestPlayAgain,
+    SwitchVariant { variant: String },
 }
 
 
@@ -26,6 +27,7 @@ pub enum GameAction {
     MemoryFlip { card_index: usize },
     HigherLower { guess: u8 },
     StopClock { stopped_at_ms: u64 },
+    BluffCard { action: String, card_indices: Vec<usize> },
 }
 
 /// Messages from the server to the client
@@ -60,6 +62,33 @@ mod tests {
         match message {
             ClientMessage::SendEmoji { emoji } => assert_eq!(emoji, "🎉"),
             _ => panic!("expected send emoji message"),
+        }
+    }
+
+    #[test]
+    fn client_message_deserializes_switch_variant() {
+        let message: ClientMessage =
+            serde_json::from_str(r#"{"type":"SwitchVariant","variant":"joker"}"#).unwrap();
+
+        match message {
+            ClientMessage::SwitchVariant { variant } => assert_eq!(variant, "joker"),
+            _ => panic!("expected switch variant message"),
+        }
+    }
+
+    #[test]
+    fn client_message_deserializes_bluff_card_action() {
+        let message: ClientMessage = serde_json::from_str(
+            r#"{"type":"GameAction","action":{"game":"BluffCard","action":"play","card_indices":[0,2]}}"#,
+        )
+        .unwrap();
+
+        match message {
+            ClientMessage::GameAction { action: super::GameAction::BluffCard { action, card_indices } } => {
+                assert_eq!(action, "play");
+                assert_eq!(card_indices, vec![0, 2]);
+            }
+            _ => panic!("expected bluff card action"),
         }
     }
 

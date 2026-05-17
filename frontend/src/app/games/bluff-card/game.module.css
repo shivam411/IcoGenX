@@ -1,0 +1,259 @@
+.gameWrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+}
+
+.gameWrapper::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 50% 25%, rgba(190, 18, 60, 0.1) 0%, transparent 58%);
+  z-index: -1;
+}
+
+.tableArea {
+  width: 100%;
+  max-width: 680px;
+  display: grid;
+  gap: 18px;
+}
+
+.statusGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.statusCard {
+  padding: 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.05);
+  text-align: center;
+}
+
+.statusCard strong {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+}
+
+.statusLabel {
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.claimCard {
+  border-color: rgba(190, 18, 60, 0.42);
+  box-shadow: 0 0 28px rgba(190, 18, 60, 0.16);
+}
+
+.pileZone {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.cardPile {
+  width: 78px;
+  height: 104px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.02)),
+    repeating-linear-gradient(45deg, rgba(190, 18, 60, 0.52) 0 8px, rgba(124, 58, 237, 0.5) 8px 16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: 900;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
+}
+
+.pileText {
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.pileText strong {
+  color: var(--text-primary);
+}
+
+.challengeBanner {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  animation: slideUp 0.24s ease both;
+}
+
+.challengeBanner strong {
+  font-family: var(--font-display);
+}
+
+.challengeBanner span {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.challengeCaught {
+  border-color: rgba(239, 68, 68, 0.38);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.challengeHonest {
+  border-color: rgba(16, 185, 129, 0.38);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.handPanel {
+  padding: 18px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.handHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.handGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(62px, 1fr));
+  gap: 10px;
+}
+
+.playingCard {
+  aspect-ratio: 2.5 / 3.5;
+  min-height: 86px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #111827;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-family: var(--font-display);
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.playingCard:hover:not(:disabled) {
+  transform: translateY(-5px);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.26);
+}
+
+.playingCard:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.playingCard span:first-child {
+  font-size: 1.18rem;
+}
+
+.playingCard span:last-child {
+  font-size: 1.35rem;
+}
+
+.cardRed {
+  color: #be123c;
+}
+
+.cardSelected {
+  transform: translateY(-10px);
+  border-color: #fbbf24;
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.24), 0 18px 32px rgba(0, 0, 0, 0.28);
+}
+
+.actionRow {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.winOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.3s ease forwards;
+}
+
+.winCard {
+  text-align: center;
+  padding: 48px;
+  max-width: 400px;
+  width: 90%;
+}
+
+.winEmoji {
+  font-size: 4rem;
+  display: block;
+  margin-bottom: 16px;
+}
+
+.winTitle {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.winSub {
+  color: var(--text-secondary);
+}
+
+@media (max-width: 720px) {
+  .gameWrapper {
+    padding: 16px;
+  }
+
+  .statusGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .pileZone {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .cardPile {
+    width: 100%;
+    height: 82px;
+  }
+
+  .handHeader {
+    flex-direction: column;
+  }
+}

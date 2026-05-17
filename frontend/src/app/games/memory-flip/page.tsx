@@ -1,10 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import GameFrame from '@/components/GameFrame';
 import Lobby from '@/components/Lobby';
 import { useGame } from '@/context/GameContext';
 import styles from './game.module.css';
 import Link from 'next/link';
+
+const MEMORY_FLIP_RULES = (
+  <ul>
+    <li>Find the next number in sequence, starting from 1 and moving upward.</li>
+    <li>Cards stay face up once revealed correctly.</li>
+    <li>A wrong flip ends your turn and the race passes to your opponent.</li>
+    <li>Complete the whole sequence first to win.</li>
+  </ul>
+);
 
 function MemoryFlipBoard() {
   const { gameState, playerNumber, sendAction, gameOver, winner } = useGame();
@@ -35,46 +45,49 @@ function MemoryFlipBoard() {
 
   return (
     <div className={styles.gameWrapper}>
-      <Link href="/" className={`btn btn-ghost btn-sm ${styles.backBtn}`}>← Back</Link>
+      <GameFrame
+        currentPlayer={currentPlayer}
+        turnText={isMyTurn ? '🎯 Your turn — find the next card!' : '⏳ Opponent is flipping...'}
+        rulesTitle="Memory Flip Rules"
+        rules={MEMORY_FLIP_RULES}
+      >
+        <div>
+          <div className={styles.progressBar}>
+            <span className={styles.progressItem}>
+              🎮 You: <strong>{playerNumber === 0 ? p1Progress : p2Progress}/9</strong>
+            </span>
+            <span className={styles.progressItem}>
+              👤 Opponent: <strong>{playerNumber === 0 ? p2Progress : p1Progress}/9</strong>
+            </span>
+          </div>
 
-      <div className={styles.turnInfo}>
-        {isMyTurn ? '🎯 Your turn — find the next card!' : '⏳ Opponent is flipping...'}
-      </div>
+          <div className={styles.nextHint}>
+            Looking for: <strong>{nextExpected}</strong>
+          </div>
 
-      <div className={styles.progressBar}>
-        <span className={styles.progressItem}>
-          🎮 You: <strong>{playerNumber === 0 ? p1Progress : p2Progress}/9</strong>
-        </span>
-        <span className={styles.progressItem}>
-          👤 Opponent: <strong>{playerNumber === 0 ? p2Progress : p1Progress}/9</strong>
-        </span>
-      </div>
+          <div className={styles.grid}>
+            {visibleValues.map((val: number | null, idx: number) => {
+              const isRevealed = revealed[idx];
+              const isWrong = wrongFlipIdx === idx;
 
-      <div className={styles.nextHint}>
-        Looking for: <strong>{nextExpected}</strong>
-      </div>
-
-      <div className={styles.grid}>
-        {visibleValues.map((val: number | null, idx: number) => {
-          const isRevealed = revealed[idx];
-          const isWrong = wrongFlipIdx === idx;
-
-          return (
-            <div
-              key={idx}
-              className={`${styles.flipCard} ${isRevealed ? styles.flipped : ''} ${isWrong ? styles.wrongFlip : ''}`}
-              onClick={() => handleFlip(idx)}
-            >
-              <div className={styles.flipCardInner}>
-                <div className={styles.flipFront}>
-                  {val}
+              return (
+                <div
+                  key={idx}
+                  className={`${styles.flipCard} ${isRevealed ? styles.flipped : ''} ${isWrong ? styles.wrongFlip : ''}`}
+                  onClick={() => handleFlip(idx)}
+                >
+                  <div className={styles.flipCardInner}>
+                    <div className={styles.flipFront}>
+                      {val}
+                    </div>
+                    <div className={styles.flipBack} />
+                  </div>
                 </div>
-                <div className={styles.flipBack} />
-              </div>
-            </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
+        </div>
+      </GameFrame>
 
       {gameOver && (
         <div className={styles.winOverlay}>

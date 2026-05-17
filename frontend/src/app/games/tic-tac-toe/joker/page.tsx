@@ -29,7 +29,7 @@ export default function JokerTicTacToePage() {
           <ul className={styles.rulesList}>
             <li><strong>Coin Toss:</strong> Who gets X or O is decided by a coin toss at the start. X always goes first!</li>
             <li><strong>The Joker Cell:</strong> One random cell glows gold. This is the Joker cell!</li>
-            <li><strong>Wildcard:</strong> If you claim the Joker cell, it counts as BOTH an X and an O.</li>
+            <li><strong>Wildcard:</strong> The Joker cell always counts as BOTH an X and an O, even before anyone plays on it.</li>
             <li><strong>Win:</strong> Get 3 in a row. Using the Joker cell makes this much easier!</li>
           </ul>
           <GameDemo steps={demoSteps} />
