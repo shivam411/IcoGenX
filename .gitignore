@@ -8,6 +8,8 @@ backend/target/
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+**.yaml
+.gcloudignore
 
 # Build outputs
 .next/

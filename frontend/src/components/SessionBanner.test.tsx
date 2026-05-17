@@ -12,6 +12,12 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/context/GameContext', () => ({
+  getGamePath: (gameType: string | null, variant: string | null) => {
+    if (!gameType) return null;
+    if (gameType === 'tic_tac_toe') return `/games/tic-tac-toe/${variant || 'classic'}`;
+    if (gameType === 'higher_lower') return variant && variant !== 'classic' ? `/games/higher-lower/${variant}` : '/games/higher-lower';
+    return `/games/${gameType.replace(/_/g, '-')}`;
+  },
   useGame: () => mockUseGame(),
 }));
 
@@ -28,6 +34,7 @@ function buildGameState(overrides: Record<string, unknown> = {}) {
     opponentReconnectSecondsLeft: null,
     joinSavedSession: vi.fn(),
     clearSavedSession: vi.fn(),
+    leaveRoom: vi.fn(),
     ...overrides,
   };
 }
@@ -98,6 +105,7 @@ describe('SessionBanner', () => {
   });
 
   it('shows opponent disconnect timing without taking over the page', () => {
+    const leaveRoom = vi.fn();
     mockUseGame.mockReturnValue(
       buildGameState({
         gameStarted: true,
@@ -105,6 +113,7 @@ describe('SessionBanner', () => {
         variant: 'classic',
         opponentDisconnected: true,
         opponentReconnectSecondsLeft: 12,
+        leaveRoom,
       }),
     );
 
@@ -112,5 +121,8 @@ describe('SessionBanner', () => {
 
     expect(screen.getByText('Opponent left the room')).toBeTruthy();
     expect(screen.getByText('Waiting for them to return: 00:12')).toBeTruthy();
+    fireEvent.click(screen.getByText('Exit Room'));
+    expect(leaveRoom).toHaveBeenCalledTimes(1);
+    expect(mockPush).toHaveBeenCalledWith('/');
   });
 });

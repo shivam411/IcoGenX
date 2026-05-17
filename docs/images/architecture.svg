@@ -1,0 +1,45 @@
+<svg width="1200" height="520" viewBox="0 0 1200 520" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Arena architecture diagram</title>
+  <desc id="desc">Diagram showing players, the Next.js frontend, WebSocket connection, Rust backend, and game engines.</desc>
+  <rect width="1200" height="520" rx="32" fill="#080a18"/>
+  <text x="70" y="76" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800">How a room works</text>
+  <text x="70" y="106" fill="#94a3b8" font-family="Inter, Arial, sans-serif" font-size="17">Two browsers share a room code while the Rust backend stays authoritative for every move.</text>
+
+  <g transform="translate(70 166)">
+    <rect width="220" height="180" rx="22" fill="#12162d" stroke="#34406a"/>
+    <text x="34" y="55" fill="#e2e8f0" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800">Player A</text>
+    <text x="34" y="88" fill="#94a3b8" font-family="Inter, Arial, sans-serif" font-size="15">Browser client</text>
+    <rect x="34" y="116" width="152" height="34" rx="17" fill="#1e1b4b" stroke="#6d5dfc"/>
+    <text x="58" y="138" fill="#c4b5fd" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Room code</text>
+  </g>
+
+  <g transform="translate(70 370)">
+    <rect width="220" height="74" rx="20" fill="#12162d" stroke="#34406a"/>
+    <text x="34" y="45" fill="#e2e8f0" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="800">Player B</text>
+  </g>
+
+  <g transform="translate(410 166)">
+    <rect width="280" height="278" rx="24" fill="#12162d" stroke="#34406a"/>
+    <text x="36" y="55" fill="#e2e8f0" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800">Next.js frontend</text>
+    <text x="36" y="92" fill="#94a3b8" font-family="Inter, Arial, sans-serif" font-size="15">Game pages, Lobby, GameFrame</text>
+    <rect x="36" y="126" width="208" height="38" rx="19" fill="#0f172a" stroke="#334155"/>
+    <text x="58" y="151" fill="#cbd5e1" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Rules and tips metadata</text>
+    <rect x="36" y="182" width="208" height="38" rx="19" fill="#0f172a" stroke="#334155"/>
+    <text x="58" y="207" fill="#cbd5e1" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Reactions and reconnect UI</text>
+  </g>
+
+  <g transform="translate(820 166)">
+    <rect width="310" height="278" rx="24" fill="#12162d" stroke="#34406a"/>
+    <text x="36" y="55" fill="#e2e8f0" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800">Rust backend</text>
+    <text x="36" y="92" fill="#94a3b8" font-family="Inter, Arial, sans-serif" font-size="15">Axum WebSocket server</text>
+    <rect x="36" y="126" width="238" height="38" rx="19" fill="#111827" stroke="#334155"/>
+    <text x="58" y="151" fill="#cbd5e1" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Rooms, players, scores</text>
+    <rect x="36" y="182" width="238" height="38" rx="19" fill="#111827" stroke="#334155"/>
+    <text x="58" y="207" fill="#cbd5e1" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="700">Authoritative game engines</text>
+  </g>
+
+  <path d="M304 246 C342 246 362 246 398 246" stroke="#64748b" stroke-width="3" stroke-linecap="round"/>
+  <path d="M304 406 C342 406 362 326 398 326" stroke="#64748b" stroke-width="3" stroke-linecap="round"/>
+  <path d="M704 304 C746 304 764 304 808 304" stroke="#22d3ee" stroke-width="4" stroke-linecap="round"/>
+  <text x="724" y="286" fill="#67e8f9" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="800">WebSocket</text>
+</svg>

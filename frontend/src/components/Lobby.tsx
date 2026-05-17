@@ -355,7 +355,7 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
               rules={gameInfo.rules}
               tips={gameInfo.tips}
               accentColor={accentColor}
-              defaultOpen={false}
+              defaultOpen
             />
           )}
         </div>

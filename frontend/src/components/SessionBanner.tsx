@@ -1,20 +1,12 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { useGame } from '@/context/GameContext';
+import { getGamePath, useGame } from '@/context/GameContext';
 import styles from './SessionBanner.module.css';
 
 function formatSeconds(seconds: number | null) {
   if (seconds === null) return null;
   return `00:${seconds.toString().padStart(2, '0')}`;
-}
-
-function getCurrentGamePath(gameType: string | null, variant: string | null) {
-  if (!gameType) return null;
-  if (gameType === 'tic_tac_toe') {
-    return `/games/tic-tac-toe/${variant || 'classic'}`;
-  }
-  return `/games/${gameType.replace(/_/g, '-')}`;
 }
 
 export default function SessionBanner() {
@@ -32,10 +24,16 @@ export default function SessionBanner() {
     opponentReconnectSecondsLeft,
     joinSavedSession,
     clearSavedSession,
+    leaveRoom,
   } = useGame();
 
-  const currentGamePath = getCurrentGamePath(gameType, variant);
+  const currentGamePath = getGamePath(gameType, variant);
   const savedPath = savedSession?.path || currentGamePath || '/';
+
+  const handleExitRoom = () => {
+    leaveRoom();
+    router.push('/');
+  };
 
   if (opponentDisconnected && gameStarted) {
     const timer = formatSeconds(opponentReconnectSecondsLeft);
@@ -48,11 +46,16 @@ export default function SessionBanner() {
             <span>{timer ? `Waiting for them to return: ${timer}` : 'They can try to rejoin from their last-game strip.'}</span>
           </div>
         </div>
-        {currentGamePath && pathname !== currentGamePath && (
-          <button className="btn btn-primary btn-sm" onClick={() => router.push(currentGamePath)}>
-            Open Game
+        <div className={styles.actions}>
+          {currentGamePath && pathname !== currentGamePath && (
+            <button className="btn btn-primary btn-sm" onClick={() => router.push(currentGamePath)}>
+              Open Game
+            </button>
+          )}
+          <button className="btn btn-ghost btn-sm" onClick={handleExitRoom}>
+            Exit Room
           </button>
-        )}
+        </div>
       </div>
     );
   }

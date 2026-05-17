@@ -1,0 +1,47 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Arena multiplayer games showcase</title>
+  <desc id="desc">A dark interface preview with game cards, a score bar, rules panel, and reaction dock.</desc>
+  <rect width="1200" height="630" rx="36" fill="#070817"/>
+  <rect x="42" y="42" width="1116" height="546" rx="28" fill="#0d1024" stroke="#2b3158"/>
+  <text x="82" y="105" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="800">Arena</text>
+  <text x="82" y="138" fill="#a9b2d0" font-family="Inter, Arial, sans-serif" font-size="18">Real-time rooms for quick board, card, memory, logic, and reflex games.</text>
+  <g transform="translate(82 184)">
+    <rect width="282" height="262" rx="22" fill="#141832" stroke="#343a68"/>
+    <rect x="18" y="18" width="246" height="96" rx="18" fill="#7c3aed"/>
+    <circle cx="88" cy="66" r="24" fill="#f8fafc" opacity=".95"/>
+    <circle cx="136" cy="66" r="24" fill="#f8fafc" opacity=".95"/>
+    <circle cx="184" cy="66" r="24" fill="#f8fafc" opacity=".95"/>
+    <text x="22" y="152" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800">Bluff Card Game</text>
+    <text x="22" y="184" fill="#a9b2d0" font-family="Inter, Arial, sans-serif" font-size="15">Claim ranks, play face down, call bluff.</text>
+    <rect x="22" y="212" width="86" height="30" rx="15" fill="#271f52" stroke="#5b4bb7"/>
+    <text x="40" y="232" fill="#c4b5fd" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700">Cards</text>
+  </g>
+  <g transform="translate(396 184)">
+    <rect width="282" height="262" rx="22" fill="#141832" stroke="#343a68"/>
+    <rect x="18" y="18" width="246" height="96" rx="18" fill="#ea580c"/>
+    <rect x="70" y="42" width="36" height="52" rx="9" fill="#0d1024" opacity=".65"/>
+    <rect x="123" y="42" width="36" height="52" rx="9" fill="#0d1024" opacity=".65"/>
+    <rect x="176" y="42" width="36" height="52" rx="9" fill="#0d1024" opacity=".65"/>
+    <text x="22" y="152" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800">Dice Tug-of-War</text>
+    <text x="22" y="184" fill="#a9b2d0" font-family="Inter, Arial, sans-serif" font-size="15">Roll, advance cards, push matching cards back.</text>
+    <rect x="22" y="212" width="98" height="30" rx="15" fill="#3b1d12" stroke="#f97316"/>
+    <text x="40" y="232" fill="#fed7aa" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700">Strategy</text>
+  </g>
+  <g transform="translate(710 184)">
+    <rect width="360" height="262" rx="22" fill="#141832" stroke="#343a68"/>
+    <rect x="24" y="24" width="312" height="52" rx="26" fill="#070817" stroke="#343a68"/>
+    <text x="92" y="58" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800">2</text>
+    <text x="170" y="58" fill="#a9b2d0" font-family="Inter, Arial, sans-serif" font-size="18">-</text>
+    <text x="248" y="58" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="800">1</text>
+    <rect x="24" y="102" width="312" height="62" rx="16" fill="#20183f" stroke="#4c357d"/>
+    <text x="44" y="127" fill="#a78bfa" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="800">TIP</text>
+    <text x="44" y="149" fill="#cbd5e1" font-family="Inter, Arial, sans-serif" font-size="14">Call bluff when the rank conflicts with your hand.</text>
+    <rect x="88" y="196" width="184" height="44" rx="22" fill="#0f172a" stroke="#334155"/>
+    <circle cx="124" cy="218" r="16" fill="#22c55e"/>
+    <circle cx="164" cy="218" r="16" fill="#f97316"/>
+    <circle cx="204" cy="218" r="16" fill="#06b6d4"/>
+    <circle cx="244" cy="218" r="16" fill="#a855f7"/>
+  </g>
+  <text x="82" y="528" fill="#e2e8f0" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800">Open-source multiplayer game room starter</text>
+  <text x="82" y="560" fill="#94a3b8" font-family="Inter, Arial, sans-serif" font-size="16">Next.js frontend, Rust WebSocket backend, shared room state, reactions, variants, rules, and tips.</text>
+</svg>
