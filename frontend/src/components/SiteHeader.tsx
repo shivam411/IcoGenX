@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import styles from './SiteHeader.module.css';
@@ -10,10 +10,20 @@ export default function SiteHeader() {
   const [open, setOpen] = useState(false);
   const [guestName, setGuestName] = useState('');
   const [showGuest, setShowGuest] = useState(false);
+  const [role, setRole] = useState<string>('player');
 
   const user = session?.user as
     | { id?: string; name?: string; image?: string; isGuest?: boolean }
     | undefined;
+
+  useEffect(() => {
+    if (!user?.id) { setRole('player'); return; }
+    let cancelled = false;
+    fetch('/api/me').then(r => r.ok ? r.json() : null).then(d => {
+      if (!cancelled && d?.user?.role) setRole(d.user.role);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [user?.id]);
 
   const handleGuest = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +43,11 @@ export default function SiteHeader() {
 
       <nav className={styles.nav} aria-label="Primary">
         <Link href="/" className={styles.navLink}>Games</Link>
+        {user && <Link href="/teams" className={styles.navLink}>Teams</Link>}
+        {user && <Link href="/tournaments" className={styles.navLink}>Tournaments</Link>}
+        {user && (role === 'admin' || role === 'tournament_manager') && (
+          <Link href="/admin" className={styles.navLink}>Admin</Link>
+        )}
         {user && <Link href="/profile" className={styles.navLink}>Profile</Link>}
       </nav>
 

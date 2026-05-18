@@ -1,0 +1,155 @@
+/* Shared page-shell styles used by /teams, /tournaments, /admin */
+.shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 40px 20px 80px;
+  color: var(--text, #e5e7eb);
+}
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.title {
+  font-size: 32px;
+  font-weight: 800;
+  margin: 0 0 4px;
+  background: linear-gradient(135deg, #a78bfa, #60a5fa);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.subtitle { margin: 0; color: rgba(229, 231, 235, 0.7); font-size: 14px; }
+
+.section { margin-top: 32px; }
+.sectionTitle { font-size: 18px; font-weight: 700; margin: 0 0 12px; color: rgba(229, 231, 235, 0.9); }
+
+.card {
+  background: rgba(17, 24, 39, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 16px;
+  backdrop-filter: blur(8px);
+}
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.cardLink {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition: transform .15s ease, border-color .15s ease;
+}
+.cardLink:hover { transform: translateY(-2px); border-color: rgba(167, 139, 250, 0.5); }
+.cardLink .card { height: 100%; }
+
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.rowBetween { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text, #e5e7eb);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+}
+.input:focus,
+.select:focus,
+.textarea:focus { outline: 2px solid rgba(167, 139, 250, 0.6); }
+.textarea { min-height: 80px; resize: vertical; }
+.label { display: block; font-size: 12px; color: rgba(229, 231, 235, 0.7); margin-bottom: 4px; }
+
+.btn {
+  background: linear-gradient(135deg, #a78bfa, #60a5fa);
+  color: #0b1020;
+  border: none;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnGhost {
+  background: transparent;
+  color: rgba(229, 231, 235, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.btnDanger { background: linear-gradient(135deg, #f87171, #fb7185); color: #1a0a0e; }
+.btnSm { padding: 6px 10px; font-size: 12px; }
+
+.pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: rgba(167, 139, 250, 0.15);
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  color: #c4b5fd;
+}
+.pillMuted { background: rgba(148, 163, 184, 0.1); color: #cbd5e1; border-color: rgba(148, 163, 184, 0.3); }
+.pillDanger { background: rgba(248, 113, 113, 0.15); color: #fca5a5; border-color: rgba(248, 113, 113, 0.4); }
+.pillSuccess { background: rgba(74, 222, 128, 0.15); color: #86efac; border-color: rgba(74, 222, 128, 0.4); }
+
+.empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: rgba(229, 231, 235, 0.6);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+}
+.error {
+  color: #fca5a5;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin: 8px 0;
+  font-size: 13px;
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+.stat {
+  background: rgba(17, 24, 39, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 16px;
+  border-radius: 12px;
+  text-align: center;
+}
+.statValue { font-size: 28px; font-weight: 800; color: #c4b5fd; }
+.statLabel { font-size: 12px; color: rgba(229, 231, 235, 0.7); margin-top: 4px; }
+
+table.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+table.table th, table.table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+table.table th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(229, 231, 235, 0.6);
+}

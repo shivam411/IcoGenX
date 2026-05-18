@@ -4,6 +4,7 @@ import { WebSocketProvider } from "@/context/GameContext";
 import SessionBanner from "@/components/SessionBanner";
 import SiteHeader from "@/components/SiteHeader";
 import AuthSessionProvider from "@/components/AuthSessionProvider";
+import ConsentBanner from "@/components/ConsentBanner";
 
 export const metadata: Metadata = {
   title: "IcoGenX.com | Next Generation Indie Multiplayer gaming",
@@ -28,6 +29,7 @@ export default function RootLayout({
             <SiteHeader />
             <SessionBanner />
             {children}
+            <ConsentBanner />
           </WebSocketProvider>
         </AuthSessionProvider>
       </body>

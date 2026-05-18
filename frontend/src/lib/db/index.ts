@@ -35,4 +35,20 @@ export function getDb(): DbAdapter {
   return adapter;
 }
 
-export type { DbAdapter, UserRecord, GameSocialRecord, UserGameInteraction } from './types';
+export type {
+  DbAdapter,
+  UserRecord,
+  UserRole,
+  GameSocialRecord,
+  UserGameInteraction,
+  TeamRecord,
+  TeamMembership,
+  TeamMemberRole,
+  ActiveMatchRecord,
+  TournamentRecord,
+  TournamentParticipant,
+  TournamentMatch,
+  TournamentFormat,
+  TournamentStatus,
+  AnalyticsSnapshot,
+} from './types';

@@ -56,13 +56,22 @@ export const authConfig: NextAuthConfig = {
         token.picture = user.image ?? token.picture;
         (token as { isGuest?: boolean }).isGuest = isGuest;
         try {
-          await getDb().upsertUser({
+          const rec = await getDb().upsertUser({
             id,
             name: token.name ?? 'Guest',
             email: typeof token.email === 'string' ? token.email : undefined,
             image: typeof token.picture === 'string' ? token.picture : undefined,
             isGuest,
           });
+          // Bootstrap: the very first signed-in (non-guest) user becomes admin
+          // so the admin panel is reachable without a manual DB edit.
+          if (!isGuest && rec.role !== 'admin') {
+            const all = await getDb().listUsers(500);
+            const hasAdmin = all.some(u => u.role === 'admin');
+            if (!hasAdmin) {
+              await getDb().setUserRole(id, 'admin');
+            }
+          }
         } catch (err) {
           console.error('[auth] upsertUser failed', err);
         }
