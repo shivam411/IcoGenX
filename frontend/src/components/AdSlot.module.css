@@ -1,0 +1,43 @@
+.slot {
+  display: block;
+  width: 100%;
+  margin: 16px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.leaderboard { height: 90px; max-width: 728px; margin-inline: auto; }
+.rectangle   { height: 250px; max-width: 336px; margin-inline: auto; }
+.sidebar     { height: 600px; max-width: 300px; }
+
+.placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.tag {
+  font-weight: 700;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.label {
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.3);
+}

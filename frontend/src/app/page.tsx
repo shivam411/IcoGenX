@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getGamePath, useGame } from '@/context/GameContext';
 import { GAME_CATALOG, type GameCatalogItem } from '@/lib/gameMetadata';
+import GameCard from '@/components/GameCard';
+import AdSlot from '@/components/AdSlot';
 import styles from './page.module.css';
 
 const games: GameCatalogItem[] = GAME_CATALOG;
@@ -130,48 +132,12 @@ export default function HomePage() {
         {/* Games Grid */}
         <div className={styles.gamesGrid}>
           {paginatedGames.map((game) => (
-            <div
-              key={game.id}
-              onClick={() => {
-                if (game.variants) {
-                  setSelectedGame(game);
-                } else {
-                  router.push(`/games/${game.id}`);
-                }
-              }}
-              className={`glass-card ${styles.gameCard}`}
-            >
-              <div className={styles.variantBadge}>
-                {game.variants?.length ? `${game.variants.length} variants` : '1 mode'}
-              </div>
-              <div
-                className={styles.cardBanner}
-                style={{ background: game.gradient }}
-              >
-                <span>{game.icon}</span>
-                <div className={styles.gameplayPreview}>
-                  <div className={styles.previewTitle}>Gameplay</div>
-                  <div className={styles.previewSteps}>
-                    {game.previewSteps.map((step) => (
-                      <span key={step}>{step}</span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className={styles.cardBody}>
-                <div className={`badge ${game.badgeClass}`} style={{ marginBottom: 10 }}>
-                  {game.category}
-                </div>
-                <h2 className={styles.cardTitle}>{game.name}</h2>
-                <p className={styles.cardDesc}>{game.description}</p>
-                <div className={styles.cardFooter}>
-                  <span className={styles.playerCount}>👥 {game.players}</span>
-                  <span className={`btn btn-primary btn-sm ${styles.playBtn}`}>Play Now →</span>
-                </div>
-              </div>
-            </div>
+            <GameCard key={game.id} game={game} onOpenVariants={setSelectedGame} />
           ))}
         </div>
+
+        {/* Ads only appear in the lobby/homepage flow, never on an active board. */}
+        <AdSlot slotId="home-leaderboard" shape="leaderboard" label="Homepage leaderboard" />
 
         {/* Pagination */}
         {totalPages > 1 && (

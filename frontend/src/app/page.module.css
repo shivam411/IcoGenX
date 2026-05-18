@@ -331,6 +331,12 @@
   min-height: 42px;
 }
 
+.socialRow {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
 .cardFooter {
   display: flex;
   align-items: center;

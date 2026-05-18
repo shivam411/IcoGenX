@@ -171,6 +171,28 @@ NEXT_PUBLIC_WS_URL=ws://192.168.1.42:6100/ws npm run dev
 
 > Tip: paste the room URL into a QR-code generator and your guests can join with a single scan.
 
+## Accounts, Social & Ads (P1)
+
+The app works with **zero configuration** — visitors can play as guest, play counts are tracked, and ad slots render as placeholders. Add env vars to opt into the production features:
+
+| Env var | Where | Effect |
+| --- | --- | --- |
+| `DB_MODE` | [frontend/.env.local.example](frontend/.env.local.example) | `memory` (default, in-process) or `mongo` (persisted) |
+| `MONGODB_URI`, `MONGODB_DB` | frontend | Required when `DB_MODE=mongo` |
+| `AUTH_SECRET` | frontend | Required in production — `openssl rand -base64 32` |
+| `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | frontend | Enables Google sign-in. Without these, only guest login is offered. |
+| `NEXT_PUBLIC_ADSENSE_CLIENT` | frontend | Loads real AdSense in the reserved slots. Without it, the placeholder still reserves space so layout doesn't shift. |
+
+What ships in this milestone:
+
+- **NextAuth (Auth.js v5)** with Google + Guest credentials providers.
+- **Like / Favorite / Play-count** on every game card, persisted per user.
+- **Profile page** at `/profile` showing favorites, recently played, and liked games.
+- **Ad surface policy:** ads only render in the lobby/homepage/profile, never on an active game board. Each slot reserves its height so loading doesn't push the UI around.
+- **Storage adapter** — same interface, two backends ([memory](frontend/src/lib/db/memory.ts) for dev, [mongo](frontend/src/lib/db/mongo.ts) for prod).
+
+Deferred to follow-up milestones (explicit so the next pass is scoped): teams / group matches / spectator (P2), tournaments + brackets (P3), analytics dashboard + admin panel (P4), full AdSense integration with a consent banner (P5).
+
 ## Useful Commands
 
 ### Backend

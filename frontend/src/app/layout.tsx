@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { WebSocketProvider } from "@/context/GameContext";
 import SessionBanner from "@/components/SessionBanner";
+import SiteHeader from "@/components/SiteHeader";
+import AuthSessionProvider from "@/components/AuthSessionProvider";
 
 export const metadata: Metadata = {
   title: "IcoGenX.com | Next Generation Indie Multiplayer gaming",
@@ -21,10 +23,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <WebSocketProvider>
-          <SessionBanner />
-          {children}
-        </WebSocketProvider>
+        <AuthSessionProvider>
+          <WebSocketProvider>
+            <SiteHeader />
+            <SessionBanner />
+            {children}
+          </WebSocketProvider>
+        </AuthSessionProvider>
       </body>
     </html>
   );
