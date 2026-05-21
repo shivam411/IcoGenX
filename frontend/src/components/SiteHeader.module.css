@@ -3,9 +3,11 @@
   align-items: center;
   gap: 16px;
   padding: 12px 24px;
-  background: rgba(10, 12, 24, 0.72);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(180deg, rgba(11, 10, 31, 0.86) 0%, rgba(11, 10, 31, 0.7) 100%);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(167, 139, 250, 0.16);
+  box-shadow: 0 12px 28px -16px rgba(124, 58, 237, 0.4);
   position: sticky;
   top: 0;
   z-index: 50;
@@ -41,7 +43,7 @@
 }
 
 .brandAccent {
-  background: linear-gradient(120deg, #a5b4fc 0%, #22d3ee 60%, #34d399 100%);
+  background: linear-gradient(120deg, #a78bfa 0%, #22d3ee 55%, #f472b6 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -206,22 +208,24 @@
 
 .roomJoinToggle,
 .rejoinBtn {
-  padding: 8px 12px;
-  color: #67e8f9;
-  background: rgba(34, 211, 238, 0.1);
-  border: 1px solid rgba(34, 211, 238, 0.28);
+  padding: 8px 14px;
+  color: #c4b5fd;
+  background: rgba(124, 58, 237, 0.14);
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  letter-spacing: 0.02em;
+  transition: filter 150ms ease, transform 150ms ease, box-shadow 150ms ease;
 }
 
 .rejoinBtn {
-  color: #0a0c18;
-  background: linear-gradient(135deg, #34d399, #22d3ee);
+  color: #fff;
+  background: var(--gradient-cta, linear-gradient(135deg, #f43f5e, #f472b6));
   border-color: transparent;
-  box-shadow: 0 0 20px rgba(34, 211, 238, 0.16);
+  box-shadow: 0 0 24px rgba(244, 63, 94, 0.35);
 }
 
 .roomJoinToggle:hover,
-.rejoinBtn:hover { filter: brightness(1.08); }
-.rejoinBtn:disabled { opacity: 0.55; cursor: not-allowed; }
+.rejoinBtn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.rejoinBtn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
 
 .roomJoinForm {
   display: flex;
@@ -254,11 +258,14 @@
 }
 
 .roomSubmit {
-  padding: 8px 12px;
-  color: #0a0c18;
-  background: linear-gradient(135deg, #34d399, #22d3ee);
+  padding: 8px 14px;
+  color: #fff;
+  background: var(--gradient-primary, linear-gradient(135deg, #7c3aed, #22d3ee));
+  box-shadow: 0 8px 22px rgba(124, 58, 237, 0.32);
+  transition: filter 150ms ease, transform 150ms ease;
 }
-.roomSubmit:disabled { opacity: 0.55; cursor: not-allowed; }
+.roomSubmit:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.roomSubmit:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
 
 .roomCancel {
   width: 32px;

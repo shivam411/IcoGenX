@@ -39,7 +39,7 @@
   height: 460px;
   top: -120px;
   left: -120px;
-  background: radial-gradient(circle, #7c5cff 0%, transparent 70%);
+  background: radial-gradient(circle, #7c3aed 0%, transparent 70%);
 }
 .orb2 {
   width: 380px;
@@ -54,7 +54,7 @@
   height: 420px;
   bottom: -160px;
   left: 30%;
-  background: radial-gradient(circle, #f472b6 0%, transparent 70%);
+  background: radial-gradient(circle, #f43f5e 0%, transparent 70%);
   animation-delay: -12s;
 }
 
@@ -62,10 +62,25 @@
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+    linear-gradient(rgba(167, 139, 250, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 211, 238, 0.06) 1px, transparent 1px);
   background-size: 56px 56px;
   mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+}
+
+.bgScanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.025) 0,
+    rgba(255, 255, 255, 0.025) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+  mix-blend-mode: overlay;
+  opacity: 0.5;
 }
 
 @keyframes float {
@@ -93,15 +108,16 @@
   align-items: center;
   gap: 0.5rem;
   align-self: flex-start;
-  padding: 0.4rem 0.85rem;
+  padding: 0.4rem 0.95rem;
   border-radius: 999px;
-  background: rgba(124, 92, 255, 0.12);
-  border: 1px solid rgba(124, 92, 255, 0.35);
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  background: linear-gradient(120deg, rgba(124, 58, 237, 0.18), rgba(34, 211, 238, 0.12));
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #c4b5fd;
+  color: #e0e7ff;
+  box-shadow: 0 0 24px rgba(124, 58, 237, 0.18);
 }
 
 .dot {
@@ -129,10 +145,11 @@
 }
 
 .heroAccent {
-  background: linear-gradient(120deg, #a5b4fc 0%, #22d3ee 45%, #34d399 100%);
+  background: linear-gradient(120deg, #a78bfa 0%, #22d3ee 45%, #f472b6 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  text-shadow: 0 0 32px rgba(167, 139, 250, 0.18);
 }
 
 .heroSub {
@@ -152,7 +169,8 @@
 
 .heroCta {
   font-size: 0.95rem;
-  padding: 0.85rem 1.4rem;
+  padding: 0.95rem 1.55rem;
+  letter-spacing: 0.02em;
 }
 
 .heroStats {
@@ -201,10 +219,10 @@
   max-width: 380px;
   padding: 1.25rem;
   border-radius: 22px;
-  background: linear-gradient(160deg, rgba(124, 92, 255, 0.18), rgba(34, 211, 238, 0.08));
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: linear-gradient(160deg, rgba(124, 58, 237, 0.22), rgba(34, 211, 238, 0.1));
+  border: 1px solid rgba(167, 139, 250, 0.28);
   backdrop-filter: blur(14px);
-  box-shadow: 0 30px 60px -25px rgba(124, 92, 255, 0.45);
+  box-shadow: 0 30px 60px -25px rgba(124, 58, 237, 0.55), 0 0 0 1px rgba(34, 211, 238, 0.12) inset;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -457,10 +475,10 @@
   transform: translateY(-1px);
 }
 .filterBtnActive {
-  background: linear-gradient(120deg, #a5b4fc 0%, #22d3ee 55%, #34d399 100%);
+  background: linear-gradient(120deg, #a78bfa 0%, #22d3ee 55%, #34d399 100%);
   border-color: transparent;
   color: #0a0a1a;
-  box-shadow: 0 10px 24px rgba(34, 211, 238, 0.18);
+  box-shadow: 0 10px 24px rgba(124, 58, 237, 0.32), 0 0 22px rgba(34, 211, 238, 0.25);
 }
 
 .gamesGrid {
@@ -501,7 +519,7 @@
   inset: -1px;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, rgba(165, 180, 252, 0.55), rgba(34, 211, 238, 0.28), rgba(52, 211, 153, 0.42));
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.7), rgba(34, 211, 238, 0.45), rgba(244, 63, 94, 0.5));
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask-composite: exclude;
   opacity: 0;
@@ -527,8 +545,8 @@
 .gameCard:hover,
 .gameCard:focus-visible {
   transform: translateY(-8px);
-  border-color: rgba(34, 211, 238, 0.36);
-  box-shadow: 0 26px 70px rgba(2, 6, 23, 0.55), 0 0 42px rgba(34, 211, 238, 0.16);
+  border-color: rgba(167, 139, 250, 0.55);
+  box-shadow: 0 26px 70px rgba(2, 6, 23, 0.55), 0 0 42px rgba(124, 58, 237, 0.32);
 }
 
 .gameCard:hover::before,
@@ -814,9 +832,16 @@
 
 .playBtn {
   flex-shrink: 0;
-  padding: 0.58rem 0.9rem;
+  padding: 0.62rem 0.95rem;
   font-size: 0.78rem;
-  box-shadow: 0 12px 24px rgba(34, 211, 238, 0.16);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: 0 12px 28px rgba(244, 63, 94, 0.32);
+  background: var(--gradient-cta);
+}
+.playBtn:hover {
+  box-shadow: 0 16px 36px rgba(244, 63, 94, 0.5);
+  filter: brightness(1.06);
 }
 
 /* ---------- Pagination ---------- */
