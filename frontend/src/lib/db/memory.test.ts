@@ -88,4 +88,18 @@ describe('MemoryDb', () => {
     expect(b.name).toBe('A2');
     expect(b.isGuest).toBe(false);
   });
+
+  it('creates and rotates team join codes', async () => {
+    const db = new MemoryDb();
+    const team = await db.createTeam({ name: 'Blue Team', slug: 'blue-team', ownerId: 'u1' });
+
+    expect(team.joinCode).toMatch(/^[A-Z0-9]{6}$/);
+    await expect(db.getTeamByJoinCode(team.joinCode.toLowerCase())).resolves.toMatchObject({ id: team.id });
+
+    const rotated = await db.rotateTeamJoinCode(team.id);
+    expect(rotated?.joinCode).toMatch(/^[A-Z0-9]{6}$/);
+    expect(rotated?.joinCode).not.toBe(team.joinCode);
+    await expect(db.getTeamByJoinCode(team.joinCode)).resolves.toBeNull();
+    await expect(db.getTeamByJoinCode(rotated?.joinCode ?? '')).resolves.toMatchObject({ id: team.id });
+  });
 });

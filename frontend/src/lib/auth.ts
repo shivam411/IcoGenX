@@ -2,6 +2,7 @@ import NextAuth, { type NextAuthConfig } from 'next-auth';
 import Google from 'next-auth/providers/google';
 import Credentials from 'next-auth/providers/credentials';
 import { getDb } from '@/lib/db';
+import { normalizeTeamJoinCode } from '@/lib/teamCodes';
 
 const hasGoogle = !!process.env.AUTH_GOOGLE_ID && !!process.env.AUTH_GOOGLE_SECRET;
 const authSecret = process.env.AUTH_SECRET
@@ -20,9 +21,8 @@ if (hasGoogle) {
 }
 
 /**
- * Guest provider: lets visitors create an ephemeral profile by name only.
- * The "credential" is just a name. We mint a stable, prefixed id so guest
- * accounts can't collide with OAuth subs.
+ * Guest provider: visitors need a team join code. The code is validated before
+ * auth succeeds, then the guest is registered under that team as a player.
  */
 providers.push(
   Credentials({
@@ -30,12 +30,16 @@ providers.push(
     name: 'Guest',
     credentials: {
       name: { label: 'Display Name', type: 'text' },
+      joinCode: { label: 'Team Code', type: 'text' },
     },
     authorize: async (raw) => {
       const name = typeof raw?.name === 'string' ? raw.name.trim().slice(0, 32) : '';
-      if (!name) return null;
+      const joinCode = typeof raw?.joinCode === 'string' ? normalizeTeamJoinCode(raw.joinCode) : '';
+      if (!name || !joinCode) return null;
+      const team = await getDb().getTeamByJoinCode(joinCode);
+      if (!team) return null;
       const id = `guest_${crypto.randomUUID()}`;
-      return { id, name, email: undefined, image: undefined, isGuest: true } as never;
+      return { id, name, email: undefined, image: undefined, isGuest: true, teamId: team.id } as never;
     },
   }),
 );
@@ -54,6 +58,7 @@ export const authConfig: NextAuthConfig = {
         // On first sign-in, persist user record + mark guest flag on the token.
         const isGuest = account?.provider === 'guest';
         const id = (user as { id?: string }).id ?? token.sub ?? `anon_${crypto.randomUUID()}`;
+        const guestTeamId = isGuest ? (user as { teamId?: string }).teamId : undefined;
         token.sub = id;
         token.name = user.name ?? token.name ?? 'Guest';
         token.email = user.email ?? token.email;
@@ -75,6 +80,9 @@ export const authConfig: NextAuthConfig = {
             if (!hasAdmin) {
               await getDb().setUserRole(id, 'admin');
             }
+          }
+          if (isGuest && guestTeamId) {
+            await getDb().addTeamMember(guestTeamId, id, 'player');
           }
         } catch (err) {
           console.error('[auth] upsertUser failed', err);

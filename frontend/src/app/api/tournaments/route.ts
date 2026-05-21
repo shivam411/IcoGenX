@@ -19,7 +19,7 @@ export async function GET(req: Request) {
 
 /**
  * POST creates a tournament. Allowed roles: admin, tournament_manager, or
- * a team captain (when creating a tournament tied to their team).
+ * team leadership (when creating a tournament tied to their team).
  */
 export async function POST(req: Request) {
   try {
@@ -39,9 +39,9 @@ export async function POST(req: Request) {
     let allowed = user.role === 'admin' || user.role === 'tournament_manager';
     if (!allowed && teamId) {
       const mem = await getDb().getTeamMembership(teamId, user.id);
-      if (mem?.role === 'captain') allowed = true;
+      if (mem?.role === 'captain' || mem?.role === 'manager') allowed = true;
     }
-    if (!allowed) throw httpError(403, 'You need admin / tournament_manager / team captain role');
+    if (!allowed) throw httpError(403, 'You need admin / tournament_manager / team leadership role');
 
     const t = await getDb().createTournament({
       name, gameId, teamId,

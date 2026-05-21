@@ -3,19 +3,61 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname, useRouter } from 'next/navigation';
 import { signIn, signOut, useSession } from 'next-auth/react';
+import { getGamePath, useGame } from '@/context/GameContext';
 import styles from './SiteHeader.module.css';
 
 export default function SiteHeader() {
+  const router = useRouter();
+  const pathname = usePathname();
   const { data: session, status } = useSession();
+  const {
+    connected,
+    roomCode,
+    gameType,
+    variant,
+    savedSession,
+    pendingRoomAction,
+    error: roomError,
+    joinRoom,
+    joinSavedSession,
+  } = useGame();
   const [open, setOpen] = useState(false);
+  const [showRoomJoin, setShowRoomJoin] = useState(false);
+  const [roomJoinPending, setRoomJoinPending] = useState(false);
+  const [roomJoinName, setRoomJoinName] = useState('');
+  const [roomJoinCode, setRoomJoinCode] = useState('');
+  const [roomJoinError, setRoomJoinError] = useState('');
   const [guestName, setGuestName] = useState('');
+  const [guestCode, setGuestCode] = useState('');
+  const [guestError, setGuestError] = useState('');
   const [showGuest, setShowGuest] = useState(false);
   const [role, setRole] = useState<string>('player');
 
   const user = session?.user as
     | { id?: string; name?: string; image?: string; isGuest?: boolean }
     | undefined;
+
+  const currentGamePath = getGamePath(gameType, variant);
+  const savedPath = savedSession?.path || currentGamePath || '/';
+  const quickJoinPending = pendingRoomAction?.kind === 'joining';
+  const rejoinPending = pendingRoomAction?.kind === 'rejoining';
+  const canJoinBack = !!savedSession && !roomCode;
+  const canOpenGame = !!roomCode && !!currentGamePath && pathname !== currentGamePath;
+
+  useEffect(() => {
+    const savedName = localStorage.getItem('arena_player_name');
+    if (savedName) setRoomJoinName(savedName);
+  }, []);
+
+  useEffect(() => {
+    if (!roomJoinPending || pendingRoomAction || !roomCode || !currentGamePath) return;
+    setRoomJoinPending(false);
+    setShowRoomJoin(false);
+    setRoomJoinCode('');
+    router.push(currentGamePath);
+  }, [roomJoinPending, pendingRoomAction, roomCode, currentGamePath, router]);
 
   useEffect(() => {
     if (!user?.id) { setRole('player'); return; }
@@ -28,17 +70,54 @@ export default function SiteHeader() {
 
   const handleGuest = async (e: React.FormEvent) => {
     e.preventDefault();
+    setGuestError('');
     const name = guestName.trim();
-    if (!name) return;
-    await signIn('guest', { name, redirect: false });
+    const joinCode = guestCode.trim().toUpperCase();
+    if (!name || !joinCode) {
+      setGuestError('Name and team code are required.');
+      return;
+    }
+    const result = await signIn('guest', { name, joinCode, redirect: false });
+    if (result?.error) {
+      setGuestError('That team code was not found.');
+      return;
+    }
     setShowGuest(false);
     setGuestName('');
+    setGuestCode('');
+  };
+
+  const handleQuickRoomJoin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (quickJoinPending) return;
+    const name = roomJoinName.trim() || user?.name?.trim() || '';
+    const code = roomJoinCode.trim().toUpperCase();
+    if (!name) {
+      setRoomJoinError('Enter your name.');
+      return;
+    }
+    if (!code) {
+      setRoomJoinError('Enter a room code.');
+      return;
+    }
+    setRoomJoinError('');
+    setRoomJoinPending(true);
+    joinRoom(code, name);
+  };
+
+  const handleJoinBack = () => {
+    setRoomJoinPending(true);
+    joinSavedSession();
+    router.push(savedPath);
   };
 
   return (
     <header className={styles.header} role="banner">
-      <Link href="/" className={styles.brand} aria-label="Home">
-        <Image src="/logo.svg" alt="IcoGenX" width={164} height={46} className={styles.brandLogo} priority />
+      <Link href="/" className={styles.brand} aria-label="IcoGenX home">
+        <Image src="/icon.svg" alt="" width={36} height={36} className={styles.brandMark} priority />
+        <span className={styles.brandWordmark}>
+          Ico<span className={styles.brandAccent}>GenX</span>
+        </span>
       </Link>
 
       <nav className={styles.nav} aria-label="Primary">
@@ -103,8 +182,18 @@ export default function SiteHeader() {
               autoFocus
               aria-label="Display name"
             />
+            <input
+              type="text"
+              value={guestCode}
+              onChange={e => setGuestCode(e.target.value.toUpperCase())}
+              placeholder="Team code"
+              maxLength={8}
+              className={`${styles.guestInput} ${styles.guestCodeInput}`}
+              aria-label="Team join code"
+            />
             <button type="submit" className={styles.primaryBtn}>Continue</button>
-            <button type="button" className={styles.ghostBtn} onClick={() => setShowGuest(false)}>Cancel</button>
+            <button type="button" className={styles.ghostBtn} onClick={() => { setShowGuest(false); setGuestError(''); }}>Cancel</button>
+            {guestError && <div className={styles.guestError}>{guestError}</div>}
           </form>
         ) : (
           <div className={styles.signedOut}>
@@ -124,6 +213,59 @@ export default function SiteHeader() {
             </button>
           </div>
         )}
+
+        <div className={styles.roomArea}>
+          {canJoinBack && (
+            <button
+              type="button"
+              className={styles.rejoinBtn}
+              disabled={!connected || rejoinPending}
+              onClick={handleJoinBack}
+              title={`Return to room ${savedSession.roomCode}`}
+            >
+              {rejoinPending ? 'Joining…' : `Join back ${savedSession.roomCode}`}
+            </button>
+          )}
+          {canOpenGame && (
+            <button type="button" className={styles.rejoinBtn} onClick={() => router.push(currentGamePath)}>
+              Open game
+            </button>
+          )}
+          {showRoomJoin ? (
+            <form className={styles.roomJoinForm} onSubmit={handleQuickRoomJoin}>
+              <input
+                type="text"
+                value={roomJoinName}
+                onChange={(e) => setRoomJoinName(e.target.value)}
+                placeholder="Name"
+                maxLength={15}
+                className={styles.roomInput}
+                aria-label="Player name"
+              />
+              <input
+                type="text"
+                value={roomJoinCode}
+                onChange={(e) => setRoomJoinCode(e.target.value.toUpperCase())}
+                placeholder="Room code"
+                maxLength={8}
+                className={`${styles.roomInput} ${styles.roomCodeInput}`}
+                aria-label="Room code"
+                autoFocus
+              />
+              <button type="submit" className={styles.roomSubmit} disabled={!connected || quickJoinPending}>
+                {!connected ? 'Connecting…' : quickJoinPending ? 'Joining…' : 'Join'}
+              </button>
+              <button type="button" className={styles.roomCancel} onClick={() => { setShowRoomJoin(false); setRoomJoinError(''); }}>
+                ×
+              </button>
+              {(roomJoinError || roomError) && <div className={styles.roomError}>{roomJoinError || roomError}</div>}
+            </form>
+          ) : (
+            <button type="button" className={styles.roomJoinToggle} onClick={() => setShowRoomJoin(true)}>
+              Join room
+            </button>
+          )}
+        </div>
       </div>
     </header>
   );

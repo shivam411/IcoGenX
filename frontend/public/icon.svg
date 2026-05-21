@@ -1,40 +1,31 @@
-<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="IcoGenX">
   <defs>
-    <linearGradient id="bg" x1="16" y1="12" x2="112" y2="116" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#06111F" />
-      <stop offset="1" stop-color="#10233D" />
+    <linearGradient id="bg" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1a103d"/>
+      <stop offset="1" stop-color="#06091a"/>
     </linearGradient>
-    <linearGradient id="frame" x1="24" y1="28" x2="104" y2="102" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#53E6FF" />
-      <stop offset="0.5" stop-color="#87F6B8" />
-      <stop offset="1" stop-color="#FF8652" />
+    <linearGradient id="ring" x1="20" y1="14" x2="108" y2="114" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7c5cff"/>
+      <stop offset="0.55" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#34d399"/>
     </linearGradient>
-    <linearGradient id="crossA" x1="40" y1="42" x2="88" y2="86" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#53E6FF" />
-      <stop offset="1" stop-color="#0EA5E9" />
+    <linearGradient id="play" x1="48" y1="44" x2="92" y2="86" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#f8fafc"/>
+      <stop offset="1" stop-color="#a5b4fc"/>
     </linearGradient>
-    <linearGradient id="crossB" x1="88" y1="42" x2="40" y2="86" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFB36B" />
-      <stop offset="1" stop-color="#FB7185" />
-    </linearGradient>
-    <filter id="glow" x="18" y="18" width="92" height="92" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
-      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
-      <feGaussianBlur stdDeviation="6" result="effect1_foregroundBlur"/>
-    </filter>
   </defs>
 
-  <rect x="8" y="8" width="112" height="112" rx="30" fill="url(#bg)"/>
-  <rect x="8.5" y="8.5" width="111" height="111" rx="29.5" stroke="rgba(255,255,255,0.14)"/>
+  <rect x="6" y="6" width="116" height="116" rx="28" fill="url(#bg)"/>
+  <rect x="6.5" y="6.5" width="115" height="115" rx="27.5" stroke="rgba(255,255,255,0.08)"/>
 
-  <path d="M64 18L95 36V92L64 110L33 92V36L64 18Z" fill="none" stroke="url(#frame)" stroke-width="7.5" stroke-linejoin="round"/>
+  <!-- Arena hex -->
+  <path d="M64 18L102 40V88L64 110L26 88V40L64 18Z"
+        fill="none" stroke="url(#ring)" stroke-width="6" stroke-linejoin="round"/>
 
-  <g filter="url(#glow)">
-    <path d="M41 42H55L87 86H73L41 42Z" fill="url(#crossA)"/>
-    <path d="M87 42H73L41 86H55L87 42Z" fill="url(#crossB)"/>
-  </g>
+  <!-- Inner play triangle -->
+  <path d="M55 48L88 64L55 80V48Z" fill="url(#play)"/>
 
-  <circle cx="40" cy="40" r="5" fill="#53E6FF"/>
-  <circle cx="88" cy="40" r="5" fill="#FFD166"/>
-  <circle cx="64" cy="94" r="5.5" fill="#87F6B8"/>
+  <!-- Multiplayer dots -->
+  <circle cx="26" cy="64" r="6" fill="#22d3ee"/>
+  <circle cx="102" cy="64" r="6" fill="#f472b6"/>
 </svg>

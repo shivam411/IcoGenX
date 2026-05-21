@@ -29,7 +29,7 @@ export default function TournamentsPage() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [myRole, setMyRole] = useState<string>('player');
-  const [myTeams, setMyTeams] = useState<Array<{ id: string; name: string; role: 'captain' | 'player' }>>([]);
+  const [myTeams, setMyTeams] = useState<Array<{ id: string; name: string; role: 'captain' | 'manager' | 'player' }>>([]);
 
   const reload = async () => {
     setLoading(true);
@@ -47,7 +47,7 @@ export default function TournamentsPage() {
   };
   useEffect(() => { void reload(); }, []);
 
-  const canCreate = myRole === 'admin' || myRole === 'tournament_manager' || myTeams.some(t => t.role === 'captain');
+  const canCreate = myRole === 'admin' || myRole === 'tournament_manager' || myTeams.some(t => t.role === 'captain' || t.role === 'manager');
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,7 +102,7 @@ export default function TournamentsPage() {
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Create a tournament</h2>
           {!canCreate ? (
-            <div className={styles.empty}>You need an admin / tournament_manager role, or to be a team captain, to create tournaments.</div>
+            <div className={styles.empty}>You need an admin / tournament_manager role, or team leadership access, to create tournaments.</div>
           ) : (
             <form className={styles.card} onSubmit={handleCreate} style={{ display: 'grid', gap: 12 }}>
               <div>
@@ -119,7 +119,7 @@ export default function TournamentsPage() {
                 <label className={styles.label}>Team (optional)</label>
                 <select className={styles.select} value={teamId} onChange={e => setTeamId(e.target.value)}>
                   <option value="">— None —</option>
-                  {myTeams.map(t => <option key={t.id} value={t.id}>{t.name}{t.role === 'captain' ? ' (captain)' : ''}</option>)}
+                  {myTeams.map(t => <option key={t.id} value={t.id}>{t.name}{t.role === 'captain' || t.role === 'manager' ? ` (${t.role})` : ''}</option>)}
                 </select>
               </div>
               {error && <div className={styles.error}>{error}</div>}
