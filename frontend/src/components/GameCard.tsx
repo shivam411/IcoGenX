@@ -19,6 +19,7 @@ export default function GameCard({ game, onOpenVariants }: Props) {
   const router = useRouter();
   const { recordPlay } = useGameSocial(game.id);
   const previewLead = game.rules[0] || game.description;
+  const previewSteps = game.previewSteps.slice(0, 3);
 
   const handleOpen = () => {
     void recordPlay();
@@ -46,7 +47,19 @@ export default function GameCard({ game, onOpenVariants }: Props) {
         {game.variants?.length ? `${game.variants.length} variants` : '1 mode'}
       </div>
       <div className={styles.cardBanner} style={{ background: game.gradient }}>
-        <span>{game.icon}</span>
+        <span className={styles.cardIcon}>{game.icon}</span>
+        <div className={styles.previewScene} aria-hidden>
+          <div className={styles.previewArena}>
+            {Array.from({ length: 6 }).map((_, index) => (
+              <span key={index} className={styles.previewNode} />
+            ))}
+          </div>
+          <div className={styles.previewTimeline}>
+            {previewSteps.map((step) => (
+              <span key={step}>{step}</span>
+            ))}
+          </div>
+        </div>
         <div className={styles.gameplayPreview}>
           <div className={styles.previewTitle}>How It Plays</div>
           <p className={styles.previewLead}>{previewLead}</p>
