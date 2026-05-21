@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MemoryDb } from './memory';
+import { getVariantMetricId } from '../socialMetrics';
 
 describe('MemoryDb', () => {
   it('starts with zero counters for any game', async () => {
@@ -57,6 +58,17 @@ describe('MemoryDb', () => {
     expect(i?.plays).toBe(2);
     const s = await db.getGameSocial('g');
     expect(s.plays).toBe(2);
+  });
+
+  it('keeps variant metrics out of top-level analytics', async () => {
+    const db = new MemoryDb();
+    await db.incrementPlay(null, 'g');
+    await db.incrementPlay(null, getVariantMetricId('g', 'classic'));
+
+    const analytics = await db.getAnalytics();
+
+    expect(analytics.totalPlays).toBe(1);
+    expect(analytics.topGames).toEqual([{ gameId: 'g', plays: 1, likes: 0, favorites: 0 }]);
   });
 
   it('getInteractionsForUser returns only this user records', async () => {

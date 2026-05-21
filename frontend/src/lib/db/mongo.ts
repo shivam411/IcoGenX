@@ -15,6 +15,7 @@ import type {
   UserRecord,
   UserRole,
 } from './types';
+import { isVariantMetricId } from '../socialMetrics';
 
 type UserDoc = UserRecord;
 type SocialDoc = GameSocialRecord & { _id?: string };
@@ -316,12 +317,16 @@ export class MongoDb implements DbAdapter {
       socialC.find({}).toArray(),
     ]);
     let totalPlays = 0, totalLikes = 0, totalFavorites = 0;
-    const topGames = socialDocs.map(s => {
-      totalPlays += s.plays ?? 0;
-      totalLikes += s.likes ?? 0;
-      totalFavorites += s.favorites ?? 0;
-      return { gameId: s.gameId, plays: s.plays ?? 0, likes: s.likes ?? 0, favorites: s.favorites ?? 0 };
-    }).sort((a, b) => b.plays - a.plays).slice(0, 10);
+    const topGames = socialDocs
+      .filter((s) => !isVariantMetricId(s.gameId))
+      .map(s => {
+        totalPlays += s.plays ?? 0;
+        totalLikes += s.likes ?? 0;
+        totalFavorites += s.favorites ?? 0;
+        return { gameId: s.gameId, plays: s.plays ?? 0, likes: s.likes ?? 0, favorites: s.favorites ?? 0 };
+      })
+      .sort((a, b) => b.plays - a.plays)
+      .slice(0, 10);
     return { totalUsers, totalGuests, totalTeams, totalTournaments, totalActiveMatches, totalPlays, totalLikes, totalFavorites, topGames };
   }
 }

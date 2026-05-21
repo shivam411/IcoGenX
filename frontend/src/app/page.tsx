@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { getGamePath, useGame } from '@/context/GameContext';
 import { GAME_CATALOG, type GameCatalogItem } from '@/lib/gameMetadata';
+import { getVariantMetricId } from '@/lib/socialMetrics';
+import { recordGamePlay } from '@/lib/useGameSocial';
 import GameCard from '@/components/GameCard';
 import AdSlot from '@/components/AdSlot';
 import styles from './page.module.css';
@@ -18,6 +21,7 @@ export default function HomePage() {
   const [filter, setFilter] = useState('All');
   const [page, setPage] = useState(1);
   const [selectedGame, setSelectedGame] = useState<GameCatalogItem | null>(null);
+  const [variantPlayCounts, setVariantPlayCounts] = useState<Record<string, number>>({});
   
   // Quick Join State
   const [joinName, setJoinName] = useState('');
@@ -42,6 +46,38 @@ export default function HomePage() {
     if (!path) return;
     router.push(path);
   }, [pendingRoomAction, roomCode, gameType, variant, router]);
+
+  useEffect(() => {
+    if (!selectedGame?.variants?.length) {
+      return;
+    }
+
+    const metricIds = selectedGame.variants.map((item) => getVariantMetricId(selectedGame.id, item.id));
+    let cancelled = false;
+
+    fetch(`/api/games/social?ids=${metricIds.join(',')}`, { cache: 'no-store' })
+      .then((res) => {
+        if (!res.ok) throw new Error(`variant_social_${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        const nextCounts: Record<string, number> = {};
+        for (const metricId of metricIds) {
+          nextCounts[metricId] = data.social?.[metricId]?.plays ?? 0;
+        }
+        setVariantPlayCounts((current) => ({ ...current, ...nextCounts }));
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setVariantPlayCounts((current) => ({ ...current }));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedGame]);
 
   const handleQuickJoin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +116,7 @@ export default function HomePage() {
         {/* Quick Join Header */}
         <div className={styles.topNav}>
           <div className={styles.navLogo}>
-            <span className="text-gradient">IcoGenX</span>
+            <Image src="/logo.svg" alt="IcoGenX" width={176} height={48} className={styles.navLogoMark} priority />
           </div>
           
           <form onSubmit={handleQuickJoin} className={styles.quickJoinForm}>
@@ -111,7 +147,7 @@ export default function HomePage() {
         {/* Hero */}
         <header className={styles.header}>
           <h1 className={styles.logo}>
-            <span className="text-gradient">IcoGenX.com</span>
+            <Image src="/logo.svg" alt="IcoGenX" width={420} height={116} className={styles.heroLogo} priority />
           </h1>
           <p className={styles.subtitle}>Next Generation Indie Multiplayer gaming</p>
         </header>
@@ -170,10 +206,27 @@ export default function HomePage() {
             
             <div className={styles.variantList}>
               {selectedGame.variants.map(v => (
-                <Link key={v.id} href={v.path} className={styles.variantItem}>
+                <Link
+                  key={v.id}
+                  href={v.path}
+                  className={styles.variantItem}
+                  onClick={() => {
+                    const metricId = getVariantMetricId(selectedGame.id, v.id);
+                    setVariantPlayCounts((current) => ({
+                      ...current,
+                      [metricId]: (current[metricId] ?? 0) + 1,
+                    }));
+                    void recordGamePlay(metricId);
+                  }}
+                >
                   <div className={styles.variantIcon}>{v.icon}</div>
-                  <div>
-                    <h3 className={styles.variantName}>{v.name}</h3>
+                  <div className={styles.variantBody}>
+                    <div className={styles.variantMetaRow}>
+                      <h3 className={styles.variantName}>{v.name}</h3>
+                      <span className={styles.variantPlays}>
+                        ▶ {variantPlayCounts[getVariantMetricId(selectedGame.id, v.id)] ?? 0}
+                      </span>
+                    </div>
                     <p className={styles.variantDesc}>{v.desc}</p>
                   </div>
                   <div className={styles.variantArrow}>→</div>

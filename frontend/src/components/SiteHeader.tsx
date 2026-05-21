@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import styles from './SiteHeader.module.css';
 
@@ -37,8 +38,7 @@ export default function SiteHeader() {
   return (
     <header className={styles.header} role="banner">
       <Link href="/" className={styles.brand} aria-label="Home">
-        <span className={styles.logoDot} aria-hidden />
-        <span className={styles.brandText}>icoGenX</span>
+        <Image src="/logo.svg" alt="IcoGenX" width={164} height={46} className={styles.brandLogo} priority />
       </Link>
 
       <nav className={styles.nav} aria-label="Primary">

@@ -14,6 +14,7 @@ import type {
   UserRecord,
   UserRole,
 } from './types';
+import { isVariantMetricId } from '../socialMetrics';
 
 /**
  * In-process storage. Resets on server restart. Fine for dev + LAN play.
@@ -292,6 +293,7 @@ export class MemoryDb implements DbAdapter {
     let totalPlays = 0, totalLikes = 0, totalFavorites = 0;
     const games: Array<{ gameId: string; plays: number; likes: number; favorites: number }> = [];
     for (const s of this.social.values()) {
+      if (isVariantMetricId(s.gameId)) continue;
       totalPlays += s.plays; totalLikes += s.likes; totalFavorites += s.favorites;
       games.push({ gameId: s.gameId, plays: s.plays, likes: s.likes, favorites: s.favorites });
     }

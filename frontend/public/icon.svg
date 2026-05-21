@@ -1,0 +1,40 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="16" y1="12" x2="112" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#06111F" />
+      <stop offset="1" stop-color="#10233D" />
+    </linearGradient>
+    <linearGradient id="frame" x1="24" y1="28" x2="104" y2="102" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#53E6FF" />
+      <stop offset="0.5" stop-color="#87F6B8" />
+      <stop offset="1" stop-color="#FF8652" />
+    </linearGradient>
+    <linearGradient id="crossA" x1="40" y1="42" x2="88" y2="86" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#53E6FF" />
+      <stop offset="1" stop-color="#0EA5E9" />
+    </linearGradient>
+    <linearGradient id="crossB" x1="88" y1="42" x2="40" y2="86" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFB36B" />
+      <stop offset="1" stop-color="#FB7185" />
+    </linearGradient>
+    <filter id="glow" x="18" y="18" width="92" height="92" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+      <feGaussianBlur stdDeviation="6" result="effect1_foregroundBlur"/>
+    </filter>
+  </defs>
+
+  <rect x="8" y="8" width="112" height="112" rx="30" fill="url(#bg)"/>
+  <rect x="8.5" y="8.5" width="111" height="111" rx="29.5" stroke="rgba(255,255,255,0.14)"/>
+
+  <path d="M64 18L95 36V92L64 110L33 92V36L64 18Z" fill="none" stroke="url(#frame)" stroke-width="7.5" stroke-linejoin="round"/>
+
+  <g filter="url(#glow)">
+    <path d="M41 42H55L87 86H73L41 42Z" fill="url(#crossA)"/>
+    <path d="M87 42H73L41 86H55L87 42Z" fill="url(#crossB)"/>
+  </g>
+
+  <circle cx="40" cy="40" r="5" fill="#53E6FF"/>
+  <circle cx="88" cy="40" r="5" fill="#FFD166"/>
+  <circle cx="64" cy="94" r="5.5" fill="#87F6B8"/>
+</svg>

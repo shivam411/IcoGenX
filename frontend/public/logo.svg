@@ -1,0 +1,42 @@
+<svg width="520" height="144" viewBox="0 0 520 144" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="16" y1="12" x2="112" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#06111F" />
+      <stop offset="1" stop-color="#10233D" />
+    </linearGradient>
+    <linearGradient id="frame" x1="24" y1="28" x2="104" y2="102" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#53E6FF" />
+      <stop offset="0.5" stop-color="#87F6B8" />
+      <stop offset="1" stop-color="#FF8652" />
+    </linearGradient>
+    <linearGradient id="crossA" x1="40" y1="42" x2="88" y2="86" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#53E6FF" />
+      <stop offset="1" stop-color="#0EA5E9" />
+    </linearGradient>
+    <linearGradient id="crossB" x1="88" y1="42" x2="40" y2="86" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFB36B" />
+      <stop offset="1" stop-color="#FB7185" />
+    </linearGradient>
+    <linearGradient id="wordAccent" x1="266" y1="28" x2="420" y2="90" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#53E6FF" />
+      <stop offset="0.5" stop-color="#87F6B8" />
+      <stop offset="1" stop-color="#FF9B71" />
+    </linearGradient>
+  </defs>
+
+  <rect x="8" y="16" width="112" height="112" rx="30" fill="url(#bg)"/>
+  <rect x="8.5" y="16.5" width="111" height="111" rx="29.5" stroke="rgba(255,255,255,0.14)"/>
+  <path d="M64 26L95 44V100L64 118L33 100V44L64 26Z" fill="none" stroke="url(#frame)" stroke-width="7.5" stroke-linejoin="round"/>
+  <path d="M41 50H55L87 94H73L41 50Z" fill="url(#crossA)"/>
+  <path d="M87 50H73L41 94H55L87 50Z" fill="url(#crossB)"/>
+  <circle cx="40" cy="48" r="5" fill="#53E6FF"/>
+  <circle cx="88" cy="48" r="5" fill="#FFD166"/>
+  <circle cx="64" cy="102" r="5.5" fill="#87F6B8"/>
+
+  <text x="146" y="68" fill="#F8FAFC" font-family="Segoe UI, Arial, sans-serif" font-size="46" font-weight="800" letter-spacing="0.5">
+    Ico<tspan fill="url(#wordAccent)">GenX</tspan>
+  </text>
+  <text x="148" y="98" fill="#9BB1C9" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="600" letter-spacing="1.8">
+    REAL-TIME INDIE MULTIPLAYER
+  </text>
+</svg>

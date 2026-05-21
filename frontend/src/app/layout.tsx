@@ -9,6 +9,10 @@ import ConsentBanner from "@/components/ConsentBanner";
 export const metadata: Metadata = {
   title: "IcoGenX.com | Next Generation Indie Multiplayer gaming",
   description: "Next Generation Indie Multiplayer gaming with real-time browser rooms, quick variants, and friend-ready matches.",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+  },
 };
 
 export const viewport: Viewport = {

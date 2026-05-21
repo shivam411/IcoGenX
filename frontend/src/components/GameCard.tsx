@@ -18,6 +18,7 @@ interface Props {
 export default function GameCard({ game, onOpenVariants }: Props) {
   const router = useRouter();
   const { recordPlay } = useGameSocial(game.id);
+  const previewLead = game.rules[0] || game.description;
 
   const handleOpen = () => {
     void recordPlay();
@@ -47,7 +48,8 @@ export default function GameCard({ game, onOpenVariants }: Props) {
       <div className={styles.cardBanner} style={{ background: game.gradient }}>
         <span>{game.icon}</span>
         <div className={styles.gameplayPreview}>
-          <div className={styles.previewTitle}>Gameplay</div>
+          <div className={styles.previewTitle}>How It Plays</div>
+          <p className={styles.previewLead}>{previewLead}</p>
           <div className={styles.previewSteps}>
             {game.previewSteps.map((step) => (
               <span key={step}>{step}</span>
