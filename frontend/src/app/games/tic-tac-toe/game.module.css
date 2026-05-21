@@ -336,8 +336,15 @@
   font-size: 1.2rem;
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   min-height: 30px;
+}
+
+.turnTimerRow {
+  min-height: 42px;
+  margin-bottom: 18px;
+  display: flex;
+  justify-content: center;
 }
 
 .warningText {

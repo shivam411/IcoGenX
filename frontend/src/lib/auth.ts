@@ -4,6 +4,9 @@ import Credentials from 'next-auth/providers/credentials';
 import { getDb } from '@/lib/db';
 
 const hasGoogle = !!process.env.AUTH_GOOGLE_ID && !!process.env.AUTH_GOOGLE_SECRET;
+const authSecret = process.env.AUTH_SECRET
+  ?? process.env.NEXTAUTH_SECRET
+  ?? (process.env.NODE_ENV !== 'production' ? 'online-multi-games-dev-auth-secret' : undefined);
 
 const providers: NextAuthConfig['providers'] = [];
 
@@ -39,6 +42,7 @@ providers.push(
 
 export const authConfig: NextAuthConfig = {
   providers,
+  secret: authSecret,
   session: { strategy: 'jwt' },
   trustHost: true,
   pages: {

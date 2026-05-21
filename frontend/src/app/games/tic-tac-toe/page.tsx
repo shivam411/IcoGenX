@@ -1,13 +1,14 @@
 'use client';
 
 import Lobby from '@/components/Lobby';
+import TurnTimer from '@/components/TurnTimer';
 import { useGame } from '@/context/GameContext';
 import { useState, useEffect } from 'react';
 import styles from './game.module.css';
 import Link from 'next/link';
 
 function TicTacToeBoard() {
-  const { gameState, playerNumber, playerName, opponentName, sendAction, gameOver, winner, openRoomActionPrompt } = useGame();
+  const { gameState, playerNumber, playerName, opponentName, sendAction, gameOver, winner, openRoomActionPrompt, turnStartedAt } = useGame();
   const [tossPhase, setTossPhase] = useState<'waiting' | 'flipping' | 'result' | 'done'>('waiting');
 
   useEffect(() => {
@@ -136,6 +137,10 @@ function TicTacToeBoard() {
 
           <div className={styles.turnIndicator}>
             {isMyTurn ? '🎯 Your turn!' : `⏳ ${opponentLabel}'s turn...`}
+          </div>
+
+          <div className={styles.turnTimerRow}>
+            <TurnTimer active={isMyTurn} startedAt={turnStartedAt} />
           </div>
 
           <div className={styles.board}>
