@@ -161,8 +161,10 @@ interface WebSocketContextType {
   recentEmojis: EmojiReaction[];
   roomActionPromptOpen: boolean;
   pendingRoomAction: PendingRoomAction | null;
+  matchFormat: 'single' | 'series_5';
+  gameOverReason: string | null;
   cancelPendingRoomAction: () => void;
-  createRoom: (gameType: string, variant: string | null, playerName: string) => void;
+  createRoom: (gameType: string, variant: string | null, playerName: string, format?: 'single' | 'series_5') => void;
   joinRoom: (roomCode: string, playerName: string, gameType?: string | null, variant?: string | null) => void;
   joinSavedSession: () => void;
   clearSavedSession: () => void;
@@ -170,6 +172,7 @@ interface WebSocketContextType {
   sendAction: (action: any) => void;
   sendEmoji: (emoji: string) => void;
   switchVariant: (variant: string) => void;
+  changeMatchFormat: (format: 'single' | 'series_5') => void;
   requestPlayAgain: () => void;
   resetGame: () => void;
   openRoomActionPrompt: () => void;
@@ -208,6 +211,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [recentEmojis, setRecentEmojis] = useState<EmojiReaction[]>([]);
   const [roomActionPromptOpen, setRoomActionPromptOpen] = useState(false);
   const [pendingRoomAction, setPendingRoomActionState] = useState<PendingRoomAction | null>(null);
+  const [matchFormat, setMatchFormat] = useState<'single' | 'series_5'>('single');
+  const [gameOverReason, setGameOverReason] = useState<string | null>(null);
 
   const setPendingRoomAction = useCallback((next: PendingRoomAction | null) => {
     pendingRoomActionRef.current = next;
@@ -259,10 +264,12 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           setRoomCode(msg.room_code);
           setGameType(msg.game_type);
           setVariant(msg.variant || null);
+          if (msg.match_format) setMatchFormat(msg.match_format);
           setGameStarted(false);
           syncGameState(null);
           setGameOver(false);
           setWinner(null);
+          setGameOverReason(null);
           setPlayAgainRequested(false);
           setOpponentPlayAgainRequested(false);
           setRecentEmojis([]);
@@ -280,6 +287,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
               setPlayerNumber(msg.player_number);
               if (msg.game_type) setGameType(msg.game_type);
               setVariant(msg.variant || null);
+              if (msg.match_format) setMatchFormat(msg.match_format);
               if (msg.game_type) {
                 localStorage.setItem(STORAGE_GAME_TYPE, msg.game_type);
                 if (msg.variant) localStorage.setItem(STORAGE_VARIANT, msg.variant);
@@ -299,6 +307,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
               setOpponentName(msg.player_name);
               setOpponentDisconnected(false);
               setOpponentReconnectDeadline(null);
+              if (msg.match_format) setMatchFormat(msg.match_format);
             }
           }
           break;
@@ -308,8 +317,10 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           if (msg.scores) setScores(msg.scores);
           if (msg.game_type) setGameType(msg.game_type);
           setVariant(msg.variant || null);
+          if (msg.match_format) setMatchFormat(msg.match_format);
           setGameOver(false);
           setWinner(null);
+          setGameOverReason(null);
           setPlayAgainRequested(false);
           setOpponentPlayAgainRequested(false);
           setRecentEmojis([]);
@@ -344,6 +355,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         case 'GameOver':
           setGameOver(true);
           setWinner(msg.winner);
+          setGameOverReason(msg.reason || null);
           currentTurnOwnerRef.current = null;
           setTurnStartedAt(null);
           setRoomActionPromptOpen(false);
@@ -376,8 +388,12 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           if (msg.scores) setScores(msg.scores);
           setGameOver(false);
           setWinner(null);
+          setGameOverReason(null);
           setPlayAgainRequested(false);
           setOpponentPlayAgainRequested(false);
+          break;
+        case 'MatchFormatChanged':
+          if (msg.format) setMatchFormat(msg.format);
           break;
       }
     } catch (e) {
@@ -530,6 +546,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     setGameType(null);
     setVariant(null);
     setScores([0, 0]);
+    setMatchFormat('single');
+    setGameOverReason(null);
     setGameStarted(false);
     setGameOver(false);
     setWinner(null);
@@ -542,7 +560,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     setRoomActionPromptOpen(false);
   }, [roomCode, send]);
 
-  const createRoom = useCallback((gameType: string, variant: string | null, playerName: string) => {
+  const createRoom = useCallback((gameType: string, variant: string | null, playerName: string, format: 'single' | 'series_5' = 'single') => {
     prepareForRoomTransition();
     localStorage.setItem(STORAGE_PLAYER_NAME, playerName);
     localStorage.removeItem(STORAGE_ROOM_CODE);
@@ -552,8 +570,9 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(STORAGE_GAME_PATH, getGamePath(gameType, variant) || '/');
     localStorage.removeItem(STORAGE_RECONNECT_DEADLINE);
     setPlayerNameState(playerName);
+    setMatchFormat(format);
     setPendingRoomAction({ kind: 'creating', roomCode: null, startedAt: Date.now() });
-    send({ type: 'CreateRoom', game_type: gameType, variant, player_name: playerName });
+    send({ type: 'CreateRoom', game_type: gameType, variant, player_name: playerName, match_format: format });
   }, [prepareForRoomTransition, send, setPendingRoomAction]);
 
   const joinRoom = useCallback((code: string, playerName: string, gameType?: string | null, variant?: string | null) => {
@@ -633,6 +652,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     setGameStarted(false);
     setGameOver(false);
     setWinner(null);
+    setGameOverReason(null);
     setRoomCode(null);
     setPlayerNumber(null);
     setPlayerNameState(null);
@@ -642,6 +662,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     setGameType(null);
     setVariant(null);
     setScores([0, 0]);
+    setMatchFormat('single');
     setPlayAgainRequested(false);
     setOpponentPlayAgainRequested(false);
     setRecentEmojis([]);
@@ -655,6 +676,11 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const closeRoomActionPrompt = useCallback(() => {
     setRoomActionPromptOpen(false);
   }, []);
+
+  const changeMatchFormat = useCallback((format: 'single' | 'series_5') => {
+    setMatchFormat(format);
+    send({ type: 'SetMatchFormat', format });
+  }, [send]);
 
   const leaveRoom = useCallback(() => {
     clearSavedSessionStorage();
@@ -696,6 +722,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       recentEmojis,
       roomActionPromptOpen,
       pendingRoomAction,
+      matchFormat,
+      gameOverReason,
       cancelPendingRoomAction,
       createRoom,
       joinRoom,
@@ -705,6 +733,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       sendAction,
       sendEmoji,
       switchVariant,
+      changeMatchFormat,
       requestPlayAgain,
       resetGame,
       openRoomActionPrompt,

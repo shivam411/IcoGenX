@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { getGamePath, useGame } from '@/context/GameContext';
 import { getGameInfo } from '@/lib/gameMetadata';
 import RulesTipPanel from './RulesTipPanel';
+import { Celebration } from './Celebration';
 import styles from './Lobby.module.css';
 
 interface LobbyProps {
@@ -61,10 +62,18 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
     switchVariant,
     roomActionPromptOpen,
     closeRoomActionPrompt,
+    matchFormat,
+    gameOverReason,
+    scores,
+    winner,
+    changeMatchFormat,
   } = useGame();
   const [joinCode, setJoinCode] = useState('');
   const [name, setName] = useState('');
   const [nameError, setNameError] = useState(false);
+  const [selectedFormat, setSelectedFormat] = useState<'single' | 'series_5'>('single');
+  const [showCelebration, setShowCelebration] = useState(false);
+  const celebratedRef = useRef(false);
   const [reactionDockHidden, setReactionDockHidden] = useState(false);
   const [reactionDockPosition, setReactionDockPosition] = useState<{ x: number; y: number } | null>(null);
   const [reactionDockDragging, setReactionDockDragging] = useState(false);
@@ -72,6 +81,16 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
   const reactionDragRef = useRef<{ offsetX: number; offsetY: number } | null>(null);
   const router = useRouter();
   const pathname = usePathname();
+
+  const player1Name = playerNumber === 0 ? (playerName || 'Player 1') : (opponentName || 'Player 1');
+  const player2Name = playerNumber === 1 ? (playerName || 'Player 2') : (opponentName || 'Player 2');
+
+  const getWinnerDisplayName = (w: string | null) => {
+    if (!w) return 'Nobody';
+    if (w === 'Player 1') return playerNumber === 0 ? (playerName || 'Player 1') : (opponentName || 'Player 1');
+    if (w === 'Player 2') return playerNumber === 1 ? (playerName || 'Player 2') : (opponentName || 'Player 2');
+    return w;
+  };
 
   const activeGameType = currentGameType || gameType;
   const activeVariant = currentVariant || variant || null;
@@ -137,6 +156,18 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
   }, [reactionDockPosition]);
 
   useEffect(() => {
+    if (gameOver && gameOverReason === 'SeriesCompleted') {
+      if (!celebratedRef.current) {
+        setShowCelebration(true);
+        celebratedRef.current = true;
+      }
+    } else {
+      celebratedRef.current = false;
+      setShowCelebration(false);
+    }
+  }, [gameOver, gameOverReason]);
+
+  useEffect(() => {
     if (!reactionDockDragging) {
       return;
     }
@@ -177,7 +208,7 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
       setNameError(true);
       return;
     }
-    createRoom(gameType, variant || null, name.trim());
+    createRoom(gameType, variant || null, name.trim(), selectedFormat);
   };
 
   const handleJoin = () => {
@@ -259,6 +290,30 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
         </select>
         <p className={styles.variantHint}>
           {isCreator ? 'Switch variants without leaving the room.' : 'Only the creator can switch variants.'}
+        </p>
+      </div>
+    );
+  };
+
+  const renderMatchFormatSwitcher = () => {
+    if (!roomCode) return null;
+
+    return (
+      <div className={styles.variantPanel} style={{ marginTop: '12px' }}>
+        <label className={styles.variantLabel} htmlFor="room-match-format">Match Format</label>
+        <select
+          id="room-match-format"
+          aria-label="Match Format"
+          className={styles.variantSelect}
+          value={matchFormat}
+          onChange={(event) => changeMatchFormat(event.target.value as 'single' | 'series_5')}
+          disabled={!isCreator}
+        >
+          <option value="single">Single Match</option>
+          <option value="series_5">5-Match Series (Best of 5)</option>
+        </select>
+        <p className={styles.variantHint}>
+          {isCreator ? 'Switch match format without leaving the room.' : 'Only the creator can change the match format.'}
         </p>
       </div>
     );
@@ -364,9 +419,33 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
               </div>
 
               {gameOver ? (
-                <p className={styles.roomActionText}>
-                  Start another round, switch this room to a different variant, or head back home.
-                </p>
+                matchFormat === 'series_5' ? (
+                  <div className={styles.seriesStatusBox}>
+                    <p className={styles.seriesStatusLabel}>
+                      {gameOverReason === 'SeriesCompleted' ? '🏆 Series Completed' : '⚡ Series in Progress'}
+                    </p>
+                    <div className={styles.seriesScoreRow}>
+                      <span className={`${styles.seriesPlayerName} ${winner === 'Player 1' ? styles.seriesWinnerNameHighlight : ''}`}>
+                        {player1Name}
+                      </span>
+                      <span className={styles.seriesScoreDisplay}>
+                        {scores[0]} - {scores[1]}
+                      </span>
+                      <span className={`${styles.seriesPlayerName} ${winner === 'Player 2' ? styles.seriesWinnerNameHighlight : ''}`}>
+                        {player2Name}
+                      </span>
+                    </div>
+                    <p className={styles.seriesStatusHint}>
+                      {gameOverReason === 'SeriesCompleted'
+                        ? `${getWinnerDisplayName(winner)} wins the 5-match series!`
+                        : `First to 3 wins. Play the next game!`}
+                    </p>
+                  </div>
+                ) : (
+                  <p className={styles.roomActionText}>
+                    Start another round, switch this room to a different variant, or head back home.
+                  </p>
+                )
               ) : (
                 <p className={styles.roomActionText}>
                   Switch this room to another variant or go back to the home page.
@@ -381,7 +460,13 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
                     onClick={requestPlayAgain}
                     disabled={playAgainRequested}
                   >
-                    {playAgainRequested ? 'Waiting for opponent...' : 'Play Again'}
+                    {playAgainRequested
+                      ? 'Waiting for opponent...'
+                      : matchFormat === 'series_5'
+                      ? gameOverReason === 'SeriesCompleted'
+                        ? '🏆 Start New Series'
+                        : '⚡ Play Next Game'
+                      : '🔄 Play Again'}
                   </button>
                   {opponentPlayAgainRequested && !playAgainRequested && (
                     <p className={styles.roomActionStatus}>{opponentName || 'Opponent'} wants to play again.</p>
@@ -428,6 +513,13 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
             </div>
           </div>
         )}
+        {showCelebration && (
+          <Celebration
+            type="series"
+            winnerName={getWinnerDisplayName(winner)}
+            onComplete={() => setShowCelebration(false)}
+          />
+        )}
       </>
     );
   }
@@ -459,6 +551,7 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
             </p>
 
             {renderVariantSwitcher(false)}
+            {renderMatchFormatSwitcher()}
           </div>
 
           {gameInfo && (
@@ -510,6 +603,26 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
                 ⚠️ Please enter your name first
               </div>
             )}
+          </div>
+
+          <div className={styles.formatSection}>
+            <label className={styles.formatLabel}>Match Format</label>
+            <div className={styles.formatSelector}>
+              <button
+                type="button"
+                className={`${styles.formatBtn} ${selectedFormat === 'single' ? styles.formatBtnActive : ''}`}
+                onClick={() => setSelectedFormat('single')}
+              >
+                ⚡ Single Match
+              </button>
+              <button
+                type="button"
+                className={`${styles.formatBtn} ${selectedFormat === 'series_5' ? styles.formatBtnActive : ''}`}
+                onClick={() => setSelectedFormat('series_5')}
+              >
+                🏆 5-Match Series
+              </button>
+            </div>
           </div>
 
           <div className={styles.actions}>
