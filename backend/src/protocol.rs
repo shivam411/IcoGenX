@@ -4,13 +4,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type")]
 pub enum ClientMessage {
-    CreateRoom { game_type: String, variant: Option<String>, player_name: String },
+    CreateRoom { game_type: String, variant: Option<String>, player_name: String, match_format: Option<String> },
     JoinRoom { room_code: String, player_name: String },
     LeaveRoom,
     GameAction { action: GameAction },
     SendEmoji { emoji: String },
     RequestPlayAgain,
     SwitchVariant { variant: String },
+    SetMatchFormat { format: String },
 }
 
 
@@ -35,16 +36,17 @@ pub enum GameAction {
 #[serde(tag = "type")]
 pub enum ServerMessage {
     Welcome { player_id: String },
-    RoomCreated { room_code: String, game_type: String, variant: Option<String> },
-    PlayerJoined { player_id: String, player_number: u8, player_name: String, game_type: String, variant: Option<String> },
+    RoomCreated { room_code: String, game_type: String, variant: Option<String>, match_format: String },
+    PlayerJoined { player_id: String, player_number: u8, player_name: String, game_type: String, variant: Option<String>, match_format: String },
 
-    GameStart { game_state: serde_json::Value, scores: [u32; 2], game_type: String, variant: Option<String> },
+    GameStart { game_state: serde_json::Value, scores: [u32; 2], game_type: String, variant: Option<String>, match_format: String },
     GameUpdate { game_state: serde_json::Value },
     EmojiSent { player_id: String, emoji: String },
     GameOver { winner: Option<String>, reason: String },
     Error { message: String },
     OpponentDisconnected,
     YourTurn { message: String },
+    MatchFormatChanged { format: String },
     
     // Play again flow
     PlayAgainRequested { by_player: u8 },
