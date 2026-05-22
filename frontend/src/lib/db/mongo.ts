@@ -91,7 +91,7 @@ export class MongoDb implements DbAdapter {
 
   private isJoinCodeConflict(error: unknown): boolean {
     if (!(error instanceof MongoServerError) || error.code !== 11000) return false;
-    const keyPattern = (error as MongoServerError & { keyPattern?: Record<string, number> }).keyPattern;
+    const keyPattern = error.keyPattern as Record<string, number> | undefined;
     return keyPattern?.joinCode === 1 || error.message.includes('joinCode');
   }
 
