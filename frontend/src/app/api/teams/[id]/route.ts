@@ -69,6 +69,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     const body = (await req.json().catch(() => null)) as { rotateJoinCode?: boolean } | null;
     if (!body?.rotateJoinCode) throw httpError(400, 'rotateJoinCode required');
     const updated = await getDb().rotateTeamJoinCode(id);
+    if (!updated) throw httpError(404, 'Team not found');
     return Response.json({ team: updated });
   } catch (err) { return toErrorResponse(err); }
 }
