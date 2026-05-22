@@ -136,8 +136,17 @@ export default function TeamDetailPage({ params }: { params: Promise<{ id: strin
 
   const handleCopyCode = async () => {
     if (!detail?.team.joinCode) return;
-    await navigator.clipboard?.writeText(detail.team.joinCode);
-    setNotice('Team code copied.');
+    setError('');
+    setNotice('');
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error('Clipboard copy is not supported in this browser');
+      }
+      await navigator.clipboard.writeText(detail.team.joinCode);
+      setNotice('Team code copied.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to copy team code');
+    }
   };
 
   const handleAnnounce = async (event: React.FormEvent) => {
