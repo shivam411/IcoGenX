@@ -5,7 +5,7 @@
  *  - admin              : full access (admin panel)
  *  - tournament_manager : create/manage tournaments
  *  - player (default)
- *  - team_captain is per-team, tracked on TeamMembership.role
+ *  - team roles are per-team, tracked on TeamMembership.role
  */
 
 export type UserRole = 'admin' | 'tournament_manager' | 'player';
@@ -38,12 +38,13 @@ export interface UserGameInteraction {
 
 // ---------- Teams ----------
 
-export type TeamMemberRole = 'captain' | 'player';
+export type TeamMemberRole = 'captain' | 'manager' | 'player';
 
 export interface TeamRecord {
   id: string;
   name: string;
   slug: string;
+  joinCode: string;
   description?: string;
   ownerId: string;
   createdAt: number;
@@ -147,6 +148,8 @@ export interface DbAdapter {
   createTeam(input: { name: string; slug: string; description?: string; ownerId: string }): Promise<TeamRecord>;
   getTeam(id: string): Promise<TeamRecord | null>;
   getTeamBySlug(slug: string): Promise<TeamRecord | null>;
+  getTeamByJoinCode(joinCode: string): Promise<TeamRecord | null>;
+  rotateTeamJoinCode(teamId: string): Promise<TeamRecord | null>;
   listTeams(limit?: number): Promise<TeamRecord[]>;
   listTeamsForUser(userId: string): Promise<Array<TeamRecord & { role: TeamMemberRole }>>;
   addTeamMember(teamId: string, userId: string, role: TeamMemberRole): Promise<TeamMembership>;

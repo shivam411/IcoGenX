@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useGame } from '@/context/GameContext';
 import { getGameInfo } from '@/lib/gameMetadata';
 import RulesTipPanel from './RulesTipPanel';
+import TurnTimer from './TurnTimer';
 import styles from './GameFrame.module.css';
 
 interface GameFrameProps {
@@ -25,9 +26,10 @@ export default function GameFrame({
   currentPlayer = null,
   children,
 }: GameFrameProps) {
-  const { playerNumber, playerName, opponentName, scores, openRoomActionPrompt, gameType, variant } = useGame();
+  const { playerNumber, playerName, opponentName, scores, openRoomActionPrompt, gameType, variant, turnStartedAt } = useGame();
   const resolvedPlayerNumber = playerNumber === 1 ? 1 : 0;
   const gameInfo = getGameInfo(gameType, variant);
+  const isMyTurn = currentPlayer !== null && currentPlayer === resolvedPlayerNumber;
 
   const myScore = resolvedPlayerNumber === 0 ? scores[0] : scores[1];
   const opponentScore = resolvedPlayerNumber === 0 ? scores[1] : scores[0];
@@ -76,6 +78,9 @@ export default function GameFrame({
           </div>
 
           <div className={styles.turnIndicator}>{turnText}</div>
+          <div className={styles.turnTimerRow}>
+            <TurnTimer active={isMyTurn} startedAt={turnStartedAt} />
+          </div>
 
           <div className={styles.content}>{children}</div>
         </div>

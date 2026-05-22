@@ -14,6 +14,8 @@ import type {
   UserRecord,
   UserRole,
 } from './types';
+import { isVariantMetricId } from '../socialMetrics';
+import { generateTeamJoinCode, normalizeTeamJoinCode } from '../teamCodes';
 
 /**
  * In-process storage. Resets on server restart. Fine for dev + LAN play.
@@ -28,6 +30,7 @@ export class MemoryDb implements DbAdapter {
 
   private teams = new Map<string, TeamRecord>();
   private teamSlugs = new Map<string, string>(); // slug -> id
+  private teamJoinCodes = new Map<string, string>(); // joinCode -> id
   private memberships = new Map<string, TeamMembership>(); // `${teamId}:${userId}`
   private activeMatches = new Map<string, ActiveMatchRecord>();
 
@@ -41,6 +44,14 @@ export class MemoryDb implements DbAdapter {
     (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
       ? crypto.randomUUID()
       : `id_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+
+  private createUniqueTeamJoinCode(): string {
+    for (let i = 0; i < 20; i += 1) {
+      const code = generateTeamJoinCode();
+      if (!this.teamJoinCodes.has(code)) return code;
+    }
+    throw new Error('unable to allocate team join code');
+  }
 
   private ensureSocial(gameId: string): GameSocialRecord {
     let rec = this.social.get(gameId);
@@ -138,12 +149,14 @@ export class MemoryDb implements DbAdapter {
       throw new Error(`team slug already taken: ${input.slug}`);
     }
     const id = this.uuid();
+    const joinCode = this.createUniqueTeamJoinCode();
     const rec: TeamRecord = {
       id, name: input.name, slug: input.slug, description: input.description,
-      ownerId: input.ownerId, createdAt: Date.now(),
+      joinCode, ownerId: input.ownerId, createdAt: Date.now(),
     };
     this.teams.set(id, rec);
     this.teamSlugs.set(input.slug, id);
+    this.teamJoinCodes.set(joinCode, id);
     // Owner is the first captain.
     const mem: TeamMembership = { teamId: id, userId: input.ownerId, role: 'captain', joinedAt: Date.now() };
     this.memberships.set(this.memKey(id, input.ownerId), mem);
@@ -153,6 +166,18 @@ export class MemoryDb implements DbAdapter {
   async getTeamBySlug(slug: string) {
     const id = this.teamSlugs.get(slug);
     return id ? this.getTeam(id) : null;
+  }
+  async getTeamByJoinCode(joinCode: string) {
+    const id = this.teamJoinCodes.get(normalizeTeamJoinCode(joinCode));
+    return id ? this.getTeam(id) : null;
+  }
+  async rotateTeamJoinCode(teamId: string) {
+    const team = this.teams.get(teamId);
+    if (!team) return null;
+    this.teamJoinCodes.delete(team.joinCode);
+    team.joinCode = this.createUniqueTeamJoinCode();
+    this.teamJoinCodes.set(team.joinCode, teamId);
+    return { ...team };
   }
   async listTeams(limit = 200) {
     return Array.from(this.teams.values()).sort((a, b) => b.createdAt - a.createdAt).slice(0, limit).map(t => ({ ...t }));
@@ -292,6 +317,7 @@ export class MemoryDb implements DbAdapter {
     let totalPlays = 0, totalLikes = 0, totalFavorites = 0;
     const games: Array<{ gameId: string; plays: number; likes: number; favorites: number }> = [];
     for (const s of this.social.values()) {
+      if (isVariantMetricId(s.gameId)) continue;
       totalPlays += s.plays; totalLikes += s.likes; totalFavorites += s.favorites;
       games.push({ gameId: s.gameId, plays: s.plays, likes: s.likes, favorites: s.favorites });
     }

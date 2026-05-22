@@ -100,12 +100,19 @@
 
 .turnIndicator {
   min-height: 32px;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   text-align: center;
   font-family: var(--font-display);
   font-size: 1.18rem;
   font-weight: 700;
   color: var(--text-primary);
+}
+
+.turnTimerRow {
+  min-height: 42px;
+  margin-bottom: 18px;
+  display: flex;
+  justify-content: center;
 }
 
 .content {

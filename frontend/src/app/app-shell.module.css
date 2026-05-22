@@ -104,6 +104,30 @@
 .pillMuted { background: rgba(148, 163, 184, 0.1); color: #cbd5e1; border-color: rgba(148, 163, 184, 0.3); }
 .pillDanger { background: rgba(248, 113, 113, 0.15); color: #fca5a5; border-color: rgba(248, 113, 113, 0.4); }
 .pillSuccess { background: rgba(74, 222, 128, 0.15); color: #86efac; border-color: rgba(74, 222, 128, 0.4); }
+.codeLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: rgba(229, 231, 235, 0.72);
+  font-size: 12px;
+}
+.codeLine strong {
+  letter-spacing: 0.14em;
+  color: #67e8f9;
+}
+.codeBox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 106px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: rgba(34, 211, 238, 0.12);
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  color: #67e8f9;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
 
 .empty {
   text-align: center;
@@ -120,6 +144,21 @@
   border-radius: 8px;
   margin: 8px 0;
   font-size: 13px;
+}
+.success {
+  color: #86efac;
+  background: rgba(74, 222, 128, 0.1);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin: 8px 0;
+  font-size: 13px;
+}
+.mutedText {
+  margin: 0;
+  color: rgba(229, 231, 235, 0.68);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .statGrid {

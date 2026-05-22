@@ -50,6 +50,12 @@ async function mutate(gameId: string, action: SocialAction): Promise<SocialState
   };
 }
 
+export async function recordGamePlay(gameId: string) {
+  const next = await mutate(gameId, 'play');
+  setCached(gameId, next);
+  return next;
+}
+
 export function useGameSocial(gameId: string) {
   const [state, setState] = useState<SocialState | null>(() => cache.get(gameId) ?? null);
   const [busy, setBusy] = useState(false);
@@ -108,8 +114,7 @@ export function useGameSocial(gameId: string) {
 
   const recordPlay = useCallback(async () => {
     try {
-      const next = await mutate(gameId, 'play');
-      setCached(gameId, next);
+      await recordGamePlay(gameId);
     } catch (err) {
       console.warn('[social] play failed', err);
     }

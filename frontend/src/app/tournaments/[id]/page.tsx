@@ -1,7 +1,8 @@
 'use client';
 
-import { use, useEffect, useState, useCallback } from 'react';
+import { use, useEffect, useState, useCallback, useRef } from 'react';
 import { useSession } from 'next-auth/react';
+import { Celebration } from '@/components/Celebration';
 import styles from '../../app-shell.module.css';
 
 interface Participant { id: string; name: string; seed: number; userId?: string; teamId?: string; }
@@ -21,6 +22,30 @@ export default function TournamentDetailPage({ params }: { params: Promise<{ id:
   const [error, setError] = useState('');
   const [draftParticipants, setDraftParticipants] = useState<Participant[]>([]);
   const [newName, setNewName] = useState('');
+  const [showCelebration, setShowCelebration] = useState(false);
+  const celebratedRef = useRef(false);
+
+  const getTournamentWinnerName = () => {
+    if (!t || t.status !== 'completed' || !t.matches || t.matches.length === 0) return null;
+    const highestRound = Math.max(...t.matches.map(m => m.round));
+    const finalMatch = t.matches.find(m => m.round === highestRound);
+    if (!finalMatch || !finalMatch.winnerId) return null;
+    return t.participants.find(p => p.id === finalMatch.winnerId)?.name || 'Champion';
+  };
+
+  const championName = getTournamentWinnerName();
+
+  useEffect(() => {
+    if (t?.status === 'completed' && championName) {
+      if (!celebratedRef.current) {
+        setShowCelebration(true);
+        celebratedRef.current = true;
+      }
+    } else {
+      celebratedRef.current = false;
+      setShowCelebration(false);
+    }
+  }, [t?.status, championName]);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -171,6 +196,13 @@ export default function TournamentDetailPage({ params }: { params: Promise<{ id:
           </div>
         )}
       </section>
+      {showCelebration && championName && (
+        <Celebration
+          type="tournament"
+          winnerName={championName}
+          onComplete={() => setShowCelebration(false)}
+        />
+      )}
     </div>
   );
 }

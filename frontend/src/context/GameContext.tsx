@@ -4,6 +4,19 @@ import { createContext, useContext, useEffect, useRef, useState, useCallback } f
 
 const LOCAL_WS_PORT = 6100;
 const PRODUCTION_WS_URL = 'wss://api.icogenx.com/ws';
+const WS_DEBUG = process.env.NEXT_PUBLIC_DEBUG_WS === '1';
+
+function wsLog(...args: unknown[]) {
+  if (WS_DEBUG) console.log(...args);
+}
+
+function wsWarn(...args: unknown[]) {
+  if (WS_DEBUG) console.warn(...args);
+}
+
+function wsError(...args: unknown[]) {
+  if (WS_DEBUG) console.error(...args);
+}
 
 // Treat private LAN IPs and *.local mDNS names as local hosts so that
 // the same build can serve devices on the same Wi-Fi without needing
@@ -133,6 +146,7 @@ interface WebSocketContextType {
   gameState: GameState | null;
   gameType: string | null;
   variant: string | null;
+  turnStartedAt: number | null;
   scores: [number, number];
   gameStarted: boolean;
   gameOver: boolean;
@@ -147,8 +161,10 @@ interface WebSocketContextType {
   recentEmojis: EmojiReaction[];
   roomActionPromptOpen: boolean;
   pendingRoomAction: PendingRoomAction | null;
+  matchFormat: 'single' | 'series_5';
+  gameOverReason: string | null;
   cancelPendingRoomAction: () => void;
-  createRoom: (gameType: string, variant: string | null, playerName: string) => void;
+  createRoom: (gameType: string, variant: string | null, playerName: string, format?: 'single' | 'series_5') => void;
   joinRoom: (roomCode: string, playerName: string, gameType?: string | null, variant?: string | null) => void;
   joinSavedSession: () => void;
   clearSavedSession: () => void;
@@ -156,6 +172,7 @@ interface WebSocketContextType {
   sendAction: (action: any) => void;
   sendEmoji: (emoji: string) => void;
   switchVariant: (variant: string) => void;
+  changeMatchFormat: (format: 'single' | 'series_5') => void;
   requestPlayAgain: () => void;
   resetGame: () => void;
   openRoomActionPrompt: () => void;
@@ -166,6 +183,7 @@ const WebSocketContext = createContext<WebSocketContextType | null>(null);
 
 export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const wsRef = useRef<WebSocket | null>(null);
+  const intentionalCloseRef = useRef(false);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const outboundQueueRef = useRef<{ msg: any; queuedAt: number }[]>([]);
   const pendingRoomActionRef = useRef<PendingRoomAction | null>(null);
@@ -178,6 +196,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [gameType, setGameType] = useState<string | null>(null);
   const [variant, setVariant] = useState<string | null>(null);
+  const [turnStartedAt, setTurnStartedAt] = useState<number | null>(null);
   const [scores, setScores] = useState<[number, number]>([0, 0]);
   const [gameStarted, setGameStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
@@ -192,6 +211,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [recentEmojis, setRecentEmojis] = useState<EmojiReaction[]>([]);
   const [roomActionPromptOpen, setRoomActionPromptOpen] = useState(false);
   const [pendingRoomAction, setPendingRoomActionState] = useState<PendingRoomAction | null>(null);
+  const [matchFormat, setMatchFormat] = useState<'single' | 'series_5'>('single');
+  const [gameOverReason, setGameOverReason] = useState<string | null>(null);
 
   const setPendingRoomAction = useCallback((next: PendingRoomAction | null) => {
     pendingRoomActionRef.current = next;
@@ -200,12 +221,32 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
   // Refs for stable callbacks
   const playerIdRef = useRef<string | null>(null);
+  const currentTurnOwnerRef = useRef<number | null>(null);
   const handleMessageRef = useRef<(event: MessageEvent) => void>(() => {});
+
+  const syncGameState = useCallback((nextState: GameState | null, options?: { resetTurnClock?: boolean }) => {
+    setGameState(nextState);
+
+    const nextTurnOwner = typeof nextState?.currentPlayer === 'number'
+      ? nextState.currentPlayer
+      : null;
+
+    if (nextTurnOwner === null) {
+      currentTurnOwnerRef.current = null;
+      setTurnStartedAt(null);
+      return;
+    }
+
+    if (options?.resetTurnClock || currentTurnOwnerRef.current !== nextTurnOwner) {
+      currentTurnOwnerRef.current = nextTurnOwner;
+      setTurnStartedAt(Date.now());
+    }
+  }, []);
 
   const handleMessage = useCallback((event: MessageEvent) => {
     try {
       const msg = JSON.parse(event.data);
-      console.log('[WS] ← Received:', msg.type, msg);
+      wsLog('[WS] ← Received:', msg.type, msg);
       switch (msg.type) {
         case 'Welcome':
           setPlayerId(msg.player_id);
@@ -223,10 +264,12 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           setRoomCode(msg.room_code);
           setGameType(msg.game_type);
           setVariant(msg.variant || null);
+          if (msg.match_format) setMatchFormat(msg.match_format);
           setGameStarted(false);
-          setGameState(null);
+          syncGameState(null);
           setGameOver(false);
           setWinner(null);
+          setGameOverReason(null);
           setPlayAgainRequested(false);
           setOpponentPlayAgainRequested(false);
           setRecentEmojis([]);
@@ -244,6 +287,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
               setPlayerNumber(msg.player_number);
               if (msg.game_type) setGameType(msg.game_type);
               setVariant(msg.variant || null);
+              if (msg.match_format) setMatchFormat(msg.match_format);
               if (msg.game_type) {
                 localStorage.setItem(STORAGE_GAME_TYPE, msg.game_type);
                 if (msg.variant) localStorage.setItem(STORAGE_VARIANT, msg.variant);
@@ -263,17 +307,20 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
               setOpponentName(msg.player_name);
               setOpponentDisconnected(false);
               setOpponentReconnectDeadline(null);
+              if (msg.match_format) setMatchFormat(msg.match_format);
             }
           }
           break;
         case 'GameStart':
           setGameStarted(true);
-          setGameState(msg.game_state);
+          syncGameState(msg.game_state, { resetTurnClock: true });
           if (msg.scores) setScores(msg.scores);
           if (msg.game_type) setGameType(msg.game_type);
           setVariant(msg.variant || null);
+          if (msg.match_format) setMatchFormat(msg.match_format);
           setGameOver(false);
           setWinner(null);
+          setGameOverReason(null);
           setPlayAgainRequested(false);
           setOpponentPlayAgainRequested(false);
           setRecentEmojis([]);
@@ -288,7 +335,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           }
           break;
         case 'GameUpdate':
-          setGameState(msg.game_state);
+          syncGameState(msg.game_state);
           break;
         case 'EmojiSent': {
           const reactionId = Date.now() + Math.random();
@@ -308,10 +355,13 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         case 'GameOver':
           setGameOver(true);
           setWinner(msg.winner);
+          setGameOverReason(msg.reason || null);
+          currentTurnOwnerRef.current = null;
+          setTurnStartedAt(null);
           setRoomActionPromptOpen(false);
           break;
         case 'Error':
-          console.error('[WS] Error from server:', msg.message);
+          wsWarn('[WS] Error from server:', msg.message);
           if (msg.message === 'Room not found' || msg.message === 'Room is full') {
             clearSavedSessionStorage();
             setSavedSession(null);
@@ -334,18 +384,22 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           setOpponentPlayAgainRequested(true);
           break;
         case 'PlayAgainAccepted':
-          setGameState(msg.game_state);
+          syncGameState(msg.game_state, { resetTurnClock: true });
           if (msg.scores) setScores(msg.scores);
           setGameOver(false);
           setWinner(null);
+          setGameOverReason(null);
           setPlayAgainRequested(false);
           setOpponentPlayAgainRequested(false);
           break;
+        case 'MatchFormatChanged':
+          if (msg.format) setMatchFormat(msg.format);
+          break;
       }
     } catch (e) {
-      console.error('[WS] Failed to parse message:', e);
+      wsError('[WS] Failed to parse message:', e);
     }
-  }, []); // No dependencies
+  }, [syncGameState]);
 
   const connectWs = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
@@ -353,12 +407,13 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     }
 
     const wsUrl = resolveWebSocketUrl();
-    console.log('[WS] Connecting to', wsUrl);
+    intentionalCloseRef.current = false;
+    wsLog('[WS] Connecting to', wsUrl);
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {
-      console.log('[WS] Connected to', wsUrl);
+      wsLog('[WS] Connected to', wsUrl);
       setConnected(true);
       // Flush any messages queued while the socket was closed/connecting.
       const queue = outboundQueueRef.current;
@@ -366,24 +421,30 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       const now = Date.now();
       for (const entry of queue) {
         if (now - entry.queuedAt > OUTBOUND_QUEUE_MAX_AGE_MS) {
-          console.warn('[WS] Dropping stale queued message:', entry.msg?.type);
+          wsWarn('[WS] Dropping stale queued message:', entry.msg?.type);
           continue;
         }
         try {
           ws.send(JSON.stringify(entry.msg));
-          console.log('[WS] → Flushed queued:', entry.msg?.type);
+          wsLog('[WS] → Flushed queued:', entry.msg?.type);
         } catch (err) {
-          console.error('[WS] Failed to flush queued message', err);
+          wsError('[WS] Failed to flush queued message', err);
         }
       }
     };
 
     ws.onclose = (event) => {
-      console.log(`[WS] Disconnected (code: ${event.code}, reason: ${event.reason || 'none'})`);
+      if (wsRef.current === ws) {
+        wsRef.current = null;
+      }
+      wsLog(`[WS] Disconnected (code: ${event.code}, reason: ${event.reason || 'none'})`);
       setConnected(false);
-      // Only reconnect if we haven't intentionally cleaned up
+      if (intentionalCloseRef.current) {
+        intentionalCloseRef.current = false;
+        return;
+      }
       if (reconnectTimerRef.current === null) {
-        console.log('[WS] Attempting to reconnect in 2s...');
+        wsLog('[WS] Attempting to reconnect in 2s...');
         reconnectTimerRef.current = setTimeout(() => {
           reconnectTimerRef.current = null;
           connectWs();
@@ -392,7 +453,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     };
 
     ws.onerror = (err) => {
-      console.error('[WS] Error Event:', err);
+      wsError('[WS] Error Event:', err);
     };
 
     ws.onmessage = (e) => handleMessageRef.current(e);
@@ -417,7 +478,9 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         clearTimeout(reconnectTimerRef.current);
         reconnectTimerRef.current = null as any;
       }
+      intentionalCloseRef.current = true;
       wsRef.current?.close();
+      wsRef.current = null;
     };
   }, [connectWs]);
 
@@ -451,7 +514,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
   const send = useCallback((msg: any) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      console.log('[WS] → Sending:', msg.type, msg);
+      wsLog('[WS] → Sending:', msg.type, msg);
       wsRef.current.send(JSON.stringify(msg));
       return;
     }
@@ -463,9 +526,9 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       const queue = outboundQueueRef.current;
       if (queue.length >= OUTBOUND_QUEUE_MAX_LEN) queue.shift();
       queue.push({ msg, queuedAt: Date.now() });
-      console.warn('[WS] Socket not open, queued:', msg.type);
+      wsWarn('[WS] Socket not open, queued:', msg.type);
     } else {
-      console.warn('[WS] Cannot send (dropped), socket not open. State:', wsRef.current?.readyState, 'type:', msg?.type);
+      wsWarn('[WS] Cannot send (dropped), socket not open. State:', wsRef.current?.readyState, 'type:', msg?.type);
     }
   }, []);
 
@@ -479,10 +542,12 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     setRoomCode(null);
     setPlayerNumber(null);
     setOpponentName(null);
-    setGameState(null);
+    syncGameState(null);
     setGameType(null);
     setVariant(null);
     setScores([0, 0]);
+    setMatchFormat('single');
+    setGameOverReason(null);
     setGameStarted(false);
     setGameOver(false);
     setWinner(null);
@@ -495,7 +560,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     setRoomActionPromptOpen(false);
   }, [roomCode, send]);
 
-  const createRoom = useCallback((gameType: string, variant: string | null, playerName: string) => {
+  const createRoom = useCallback((gameType: string, variant: string | null, playerName: string, format: 'single' | 'series_5' = 'single') => {
     prepareForRoomTransition();
     localStorage.setItem(STORAGE_PLAYER_NAME, playerName);
     localStorage.removeItem(STORAGE_ROOM_CODE);
@@ -505,8 +570,9 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(STORAGE_GAME_PATH, getGamePath(gameType, variant) || '/');
     localStorage.removeItem(STORAGE_RECONNECT_DEADLINE);
     setPlayerNameState(playerName);
+    setMatchFormat(format);
     setPendingRoomAction({ kind: 'creating', roomCode: null, startedAt: Date.now() });
-    send({ type: 'CreateRoom', game_type: gameType, variant, player_name: playerName });
+    send({ type: 'CreateRoom', game_type: gameType, variant, player_name: playerName, match_format: format });
   }, [prepareForRoomTransition, send, setPendingRoomAction]);
 
   const joinRoom = useCallback((code: string, playerName: string, gameType?: string | null, variant?: string | null) => {
@@ -523,7 +589,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     setRoomCode(code);
     setPlayerNameState(playerName);
     setGameStarted(false);
-    setGameState(null);
+    syncGameState(null);
     setGameOver(false);
     setWinner(null);
     setScores([0, 0]);
@@ -582,10 +648,11 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   }, [send]);
 
   const resetGame = useCallback(() => {
-    setGameState(null);
+    syncGameState(null);
     setGameStarted(false);
     setGameOver(false);
     setWinner(null);
+    setGameOverReason(null);
     setRoomCode(null);
     setPlayerNumber(null);
     setPlayerNameState(null);
@@ -595,11 +662,12 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     setGameType(null);
     setVariant(null);
     setScores([0, 0]);
+    setMatchFormat('single');
     setPlayAgainRequested(false);
     setOpponentPlayAgainRequested(false);
     setRecentEmojis([]);
     setRoomActionPromptOpen(false);
-  }, []);
+  }, [syncGameState]);
 
   const openRoomActionPrompt = useCallback(() => {
     setRoomActionPromptOpen(true);
@@ -608,6 +676,11 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const closeRoomActionPrompt = useCallback(() => {
     setRoomActionPromptOpen(false);
   }, []);
+
+  const changeMatchFormat = useCallback((format: 'single' | 'series_5') => {
+    setMatchFormat(format);
+    send({ type: 'SetMatchFormat', format });
+  }, [send]);
 
   const leaveRoom = useCallback(() => {
     clearSavedSessionStorage();
@@ -634,6 +707,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       gameState,
       gameType,
       variant,
+      turnStartedAt,
       scores,
       gameStarted,
       gameOver,
@@ -648,6 +722,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       recentEmojis,
       roomActionPromptOpen,
       pendingRoomAction,
+      matchFormat,
+      gameOverReason,
       cancelPendingRoomAction,
       createRoom,
       joinRoom,
@@ -657,6 +733,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       sendAction,
       sendEmoji,
       switchVariant,
+      changeMatchFormat,
       requestPlayAgain,
       resetGame,
       openRoomActionPrompt,

@@ -15,7 +15,7 @@ async function assertOrganizer(user: SessionUser, t: TournamentRecord) {
   if (t.organizerId === user.id) return;
   if (t.teamId) {
     const mem = await getDb().getTeamMembership(t.teamId, user.id);
-    if (mem?.role === 'captain') return;
+    if (mem?.role === 'captain' || mem?.role === 'manager') return;
   }
   throw httpError(403, 'Only the organizer / captain / manager can edit this tournament');
 }

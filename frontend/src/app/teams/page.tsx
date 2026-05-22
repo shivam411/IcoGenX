@@ -9,8 +9,10 @@ interface TeamSummary {
   id: string;
   name: string;
   slug: string;
+  joinCode?: string;
   description?: string;
-  role: 'captain' | 'player';
+  role: 'captain' | 'manager' | 'player';
+  globalManager?: boolean;
   createdAt: number;
 }
 
@@ -94,6 +96,12 @@ export default function TeamsPage() {
                     <span className={`${styles.pill} ${t.role === 'captain' ? '' : styles.pillMuted}`}>{t.role}</span>
                   </div>
                   <div style={{ fontSize: 12, color: 'rgba(229,231,235,0.6)', marginTop: 4 }}>/{t.slug}</div>
+                  {(t.role === 'captain' || t.role === 'manager') && t.joinCode && (
+                    <div className={styles.codeLine} style={{ marginTop: 8 }}>
+                      Join code <strong>{t.joinCode}</strong>
+                    </div>
+                  )}
+                  {t.globalManager && <div style={{ marginTop: 8 }}><span className={styles.pill}>tournament manager access</span></div>}
                   {t.description && <p style={{ marginTop: 8, fontSize: 13, color: 'rgba(229,231,235,0.8)' }}>{t.description}</p>}
                 </div>
               </Link>

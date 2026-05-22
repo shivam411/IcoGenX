@@ -1,4 +1,4 @@
-import { MongoClient, type Db, type Collection } from 'mongodb';
+import { MongoClient, MongoServerError, type Db, type Collection } from 'mongodb';
 import type {
   ActiveMatchRecord,
   AnalyticsSnapshot,
@@ -15,6 +15,8 @@ import type {
   UserRecord,
   UserRole,
 } from './types';
+import { isVariantMetricId } from '../socialMetrics';
+import { generateTeamJoinCode, normalizeTeamJoinCode } from '../teamCodes';
 
 type UserDoc = UserRecord;
 type SocialDoc = GameSocialRecord & { _id?: string };
@@ -58,6 +60,7 @@ export class MongoDb implements DbAdapter {
           db.collection('user_game').createIndex({ userId: 1, gameId: 1 }, { unique: true }),
           db.collection('teams').createIndex({ id: 1 }, { unique: true }),
           db.collection('teams').createIndex({ slug: 1 }, { unique: true }),
+          db.collection('teams').createIndex({ joinCode: 1 }, { unique: true, sparse: true }),
           db.collection('team_members').createIndex({ teamId: 1, userId: 1 }, { unique: true }),
           db.collection('team_members').createIndex({ userId: 1 }),
           db.collection('active_matches').createIndex({ teamId: 1, endedAt: 1 }),
@@ -85,6 +88,57 @@ export class MongoDb implements DbAdapter {
     (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
       ? crypto.randomUUID()
       : `id_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+
+  private isJoinCodeConflict(error: unknown): boolean {
+    if (!(error instanceof MongoServerError) || error.code !== 11000) return false;
+    const keyPattern = error.keyPattern as Record<string, number> | undefined;
+    const keyValue = error.keyValue as Record<string, unknown> | undefined;
+    return keyPattern?.joinCode === 1 || keyValue?.joinCode != null;
+  }
+
+  private teamDocToRecord(doc: TeamDoc): TeamRecord {
+    const { _id, ...team } = doc;
+    void _id;
+    return team;
+  }
+
+  private async uniqueTeamJoinCode(): Promise<string> {
+    const teams = await this.teamsCol();
+    for (let i = 0; i < 20; i += 1) {
+      const code = generateTeamJoinCode();
+      const existing = await teams.findOne({ joinCode: code });
+      if (!existing) return code;
+    }
+    throw new Error('unable to allocate team join code');
+  }
+
+  private async ensureTeamJoinCode(doc: TeamDoc | null): Promise<TeamRecord | null> {
+    if (!doc) return null;
+    const team = this.teamDocToRecord(doc);
+    if (team.joinCode) return team;
+    const teams = await this.teamsCol();
+    for (let i = 0; i < 20; i += 1) {
+      const current = await teams.findOne({ id: team.id });
+      if (!current) return null;
+      const currentTeam = this.teamDocToRecord(current);
+      if (currentTeam.joinCode) return currentTeam;
+
+      const joinCode = await this.uniqueTeamJoinCode();
+      try {
+        const result = await teams.updateOne(
+          { id: team.id, joinCode: { $exists: false } },
+          { $set: { joinCode } },
+        );
+        if (result.modifiedCount === 1) return { ...currentTeam, joinCode };
+      } catch (error) {
+        if (!this.isJoinCodeConflict(error)) throw error;
+      }
+    }
+
+    const current = await teams.findOne({ id: team.id });
+    if (current?.joinCode) return this.teamDocToRecord(current);
+    throw new Error('unable to allocate team join code');
+  }
 
   // ---------- users
   async upsertUser(input: Omit<UserRecord, 'createdAt'> & { createdAt?: number }) {
@@ -179,11 +233,23 @@ export class MongoDb implements DbAdapter {
   // ---------- teams
   async createTeam(input: { name: string; slug: string; description?: string; ownerId: string }) {
     const id = this.uuid();
-    const rec: TeamRecord = {
-      id, name: input.name, slug: input.slug, description: input.description,
-      ownerId: input.ownerId, createdAt: Date.now(),
-    };
-    await (await this.teamsCol()).insertOne(rec);
+    const teams = await this.teamsCol();
+    let rec: TeamRecord | null = null;
+    for (let i = 0; i < 20; i += 1) {
+      const joinCode = await this.uniqueTeamJoinCode();
+      const candidate: TeamRecord = {
+        id, name: input.name, slug: input.slug, description: input.description,
+        joinCode, ownerId: input.ownerId, createdAt: Date.now(),
+      };
+      try {
+        await teams.insertOne(candidate);
+        rec = candidate;
+        break;
+      } catch (error) {
+        if (!this.isJoinCodeConflict(error)) throw error;
+      }
+    }
+    if (!rec) throw new Error('unable to allocate team join code');
     const mem: TeamMembership = { teamId: id, userId: input.ownerId, role: 'captain', joinedAt: Date.now() };
     await (await this.members()).updateOne(
       { _id: this.memKey(id, input.ownerId) },
@@ -191,10 +257,28 @@ export class MongoDb implements DbAdapter {
     );
     return rec;
   }
-  async getTeam(id: string) { return (await this.teamsCol()).findOne({ id }); }
-  async getTeamBySlug(slug: string) { return (await this.teamsCol()).findOne({ slug }); }
+  async getTeam(id: string) { return this.ensureTeamJoinCode(await (await this.teamsCol()).findOne({ id })); }
+  async getTeamBySlug(slug: string) { return this.ensureTeamJoinCode(await (await this.teamsCol()).findOne({ slug })); }
+  async getTeamByJoinCode(joinCode: string) {
+    return this.ensureTeamJoinCode(await (await this.teamsCol()).findOne({ joinCode: normalizeTeamJoinCode(joinCode) }));
+  }
+  async rotateTeamJoinCode(teamId: string) {
+    const teams = await this.teamsCol();
+    for (let i = 0; i < 20; i += 1) {
+      const joinCode = await this.uniqueTeamJoinCode();
+      try {
+        const result = await teams.updateOne({ id: teamId }, { $set: { joinCode } });
+        if (result.matchedCount === 0) return null;
+        return this.getTeam(teamId);
+      } catch (error) {
+        if (!this.isJoinCodeConflict(error)) throw error;
+      }
+    }
+    throw new Error('unable to allocate team join code');
+  }
   async listTeams(limit = 200) {
-    return (await this.teamsCol()).find({}).sort({ createdAt: -1 }).limit(limit).toArray();
+    const docs = await (await this.teamsCol()).find({}).sort({ createdAt: -1 }).limit(limit).toArray();
+    return (await Promise.all(docs.map((doc) => this.ensureTeamJoinCode(doc)))).filter((team): team is TeamRecord => !!team);
   }
   async listTeamsForUser(userId: string) {
     const memberships = await (await this.members()).find({ userId }).toArray();
@@ -206,9 +290,8 @@ export class MongoDb implements DbAdapter {
     for (const m of memberships) {
       const t = byId.get(m.teamId);
       if (!t) continue;
-      const { _id, ...rest } = t;
-      void _id;
-      out.push({ ...rest, role: m.role });
+      const rest = await this.ensureTeamJoinCode(t);
+      if (rest) out.push({ ...rest, role: m.role });
     }
     return out.sort((a, b) => b.createdAt - a.createdAt);
   }
@@ -316,12 +399,16 @@ export class MongoDb implements DbAdapter {
       socialC.find({}).toArray(),
     ]);
     let totalPlays = 0, totalLikes = 0, totalFavorites = 0;
-    const topGames = socialDocs.map(s => {
-      totalPlays += s.plays ?? 0;
-      totalLikes += s.likes ?? 0;
-      totalFavorites += s.favorites ?? 0;
-      return { gameId: s.gameId, plays: s.plays ?? 0, likes: s.likes ?? 0, favorites: s.favorites ?? 0 };
-    }).sort((a, b) => b.plays - a.plays).slice(0, 10);
+    const topGames = socialDocs
+      .filter((s) => !isVariantMetricId(s.gameId))
+      .map(s => {
+        totalPlays += s.plays ?? 0;
+        totalLikes += s.likes ?? 0;
+        totalFavorites += s.favorites ?? 0;
+        return { gameId: s.gameId, plays: s.plays ?? 0, likes: s.likes ?? 0, favorites: s.favorites ?? 0 };
+      })
+      .sort((a, b) => b.plays - a.plays)
+      .slice(0, 10);
     return { totalUsers, totalGuests, totalTeams, totalTournaments, totalActiveMatches, totalPlays, totalLikes, totalFavorites, topGames };
   }
 }

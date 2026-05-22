@@ -17,7 +17,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     const user = await requireUser();
     const { id: teamId } = await ctx.params;
     const mem = await getDb().getTeamMembership(teamId, user.id);
-    if (!mem && user.role !== 'admin') throw httpError(403, 'Members only');
+    if (!mem && user.role !== 'admin' && user.role !== 'tournament_manager') throw httpError(403, 'Members only');
     const matches = await getDb().listActiveMatches(teamId);
     return Response.json({ matches });
   } catch (err) { return toErrorResponse(err); }
@@ -32,6 +32,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const { id: teamId } = await ctx.params;
     const mem = await getDb().getTeamMembership(teamId, user.id);
     if (!mem) throw httpError(403, 'Members only');
+    if (mem.role === 'manager') throw httpError(403, 'Team managers support the team but do not play matches');
     const body = (await req.json().catch(() => null)) as { gameId?: string; roomCode?: string; variant?: string } | null;
     const gameId = body?.gameId?.trim();
     const roomCode = body?.roomCode?.trim().toUpperCase();
@@ -57,9 +58,12 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
     const match = matches.find(m => m.id === matchId);
     if (!match) return Response.json({ ok: true });
     const mem = await getDb().getTeamMembership(teamId, user.id);
-    const isCaptain = mem?.role === 'captain';
-    if (match.hostUserId !== user.id && !isCaptain && user.role !== 'admin') {
-      throw httpError(403, 'Only the host or a captain can end this match');
+    const canSupport = mem?.role === 'captain'
+      || mem?.role === 'manager'
+      || user.role === 'admin'
+      || user.role === 'tournament_manager';
+    if (match.hostUserId !== user.id && !canSupport) {
+      throw httpError(403, 'Only the host or team leadership can end this match');
     }
     await getDb().endMatch(matchId);
     return Response.json({ ok: true });
