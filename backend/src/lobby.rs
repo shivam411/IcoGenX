@@ -115,6 +115,16 @@ impl AppState {
     }
 }
 
+const DEFAULT_MATCH_FORMAT: &str = "single";
+
+fn normalize_match_format(format: &str) -> Option<&'static str> {
+    match format {
+        "single" => Some("single"),
+        "series_5" => Some("series_5"),
+        _ => None,
+    }
+}
+
 fn generate_room_code() -> String {
     use rand::Rng;
     let mut rng = rand::thread_rng();
@@ -137,7 +147,23 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
             let code = generate_room_code();
             tracing::info!("Player {} ({}) creating room {} for game {} (variant: {:?})", player_id, player_name, code, game_type, variant);
 
-            let format_val = match_format.unwrap_or_else(|| "single".to_string());
+            let format_val = match match_format.as_deref() {
+                Some(format) => match normalize_match_format(format) {
+                    Some(valid) => valid.to_string(),
+                    None => {
+                        state
+                            .send_to(
+                                player_id,
+                                &ServerMessage::Error {
+                                    message: "Invalid match format".into(),
+                                },
+                            )
+                            .await;
+                        return;
+                    }
+                },
+                None => DEFAULT_MATCH_FORMAT.to_string(),
+            };
             let room = Room {
                 code: code.clone(),
                 game_type: game_type.clone(),
@@ -589,6 +615,20 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
             }
         }
         ClientMessage::SetMatchFormat { format } => {
+            let normalized_format = match normalize_match_format(&format) {
+                Some(valid) => valid.to_string(),
+                None => {
+                    state
+                        .send_to(
+                            player_id,
+                            &ServerMessage::Error {
+                                message: "Invalid match format".into(),
+                            },
+                        )
+                        .await;
+                    return;
+                }
+            };
             let room_code = {
                 let pr = state.player_rooms.read().await;
                 pr.get(player_id).cloned()
@@ -615,8 +655,8 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                 let messages_to_send = {
                     let mut rooms = state.rooms.write().await;
                     if let Some(room) = rooms.get_mut(&code) {
-                        room.match_format = format.clone();
-                        let msg = ServerMessage::MatchFormatChanged { format };
+                        room.match_format = normalized_format.clone();
+                        let msg = ServerMessage::MatchFormatChanged { format: normalized_format.clone() };
                         room.players.iter()
                             .map(|pid| (pid.clone(), msg.clone()))
                             .collect::<Vec<_>>()
@@ -1351,5 +1391,61 @@ mod tests {
         let room = rooms.get("ROOM42").unwrap();
         assert_eq!(room.scores, [0, 0]); // scores reset to 0-0
     }
-}
 
+    #[tokio::test]
+    async fn create_room_rejects_invalid_match_format() {
+        let state = Arc::new(AppState::new());
+
+        handle_message(
+            &state,
+            "p1",
+            ClientMessage::CreateRoom {
+                game_type: "tic_tac_toe".into(),
+                variant: Some("classic".into()),
+                player_name: "Player 1".into(),
+                match_format: Some("best_of_7".into()),
+            },
+        )
+        .await;
+
+        assert!(state.rooms.read().await.is_empty());
+        assert!(state.player_rooms.read().await.is_empty());
+        assert!(state.player_numbers.read().await.is_empty());
+        assert!(state.player_names.read().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn set_match_format_rejects_invalid_values() {
+        let state = Arc::new(AppState::new());
+
+        state.rooms.write().await.insert(
+            "ROOM42".into(),
+            Room {
+                code: "ROOM42".into(),
+                game_type: "tic_tac_toe".into(),
+                variant: Some("classic".into()),
+                match_format: "single".into(),
+                players: vec!["p1".into(), "p2".into()],
+                game: create_game("tic_tac_toe", Some("classic")),
+                started: true,
+                scores: [0, 0],
+                play_again_votes: [false, false],
+            },
+        );
+        state.player_rooms.write().await.insert("p1".into(), "ROOM42".into());
+        state.player_numbers.write().await.insert("p1".into(), 0);
+
+        handle_message(
+            &state,
+            "p1",
+            ClientMessage::SetMatchFormat {
+                format: "best_of_7".into(),
+            },
+        )
+        .await;
+
+        let rooms = state.rooms.read().await;
+        let room = rooms.get("ROOM42").unwrap();
+        assert_eq!(room.match_format, "single");
+    }
+}

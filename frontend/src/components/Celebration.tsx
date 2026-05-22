@@ -298,7 +298,7 @@ export function Celebration({ type, winnerName, onComplete }: CelebrationProps) 
       {showOverlay && (
         <div style={styles.overlayContainer}>
           {type === 'tournament' ? (
-            <div style={styles.trophyWrapper} className="animate-fade-in-up">
+            <div style={styles.trophyWrapper}>
               {/* Grand golden floating trophy */}
               <div style={styles.trophyGlow} />
               <svg
@@ -329,7 +329,7 @@ export function Celebration({ type, winnerName, onComplete }: CelebrationProps) 
               </button>
             </div>
           ) : (
-            <div style={styles.seriesWrapper} className="animate-fade-in-up">
+            <div style={styles.seriesWrapper}>
               <div style={styles.seriesMedal}>
                 <svg
                   style={styles.medalIcon}
