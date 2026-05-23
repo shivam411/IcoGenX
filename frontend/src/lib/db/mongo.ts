@@ -91,8 +91,9 @@ export class MongoDb implements DbAdapter {
 
   private isJoinCodeConflict(error: unknown): boolean {
     if (!(error instanceof MongoServerError) || error.code !== 11000) return false;
-    const keyPattern = (error as MongoServerError & { keyPattern?: Record<string, number> }).keyPattern;
-    return keyPattern?.joinCode === 1 || error.message.includes('joinCode');
+    const keyPattern = error.keyPattern as Record<string, number> | undefined;
+    const keyValue = error.keyValue as Record<string, unknown> | undefined;
+    return keyPattern?.joinCode === 1 || keyValue?.joinCode != null;
   }
 
   private teamDocToRecord(doc: TeamDoc): TeamRecord {
