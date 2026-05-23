@@ -1,4 +1,6 @@
 use serde::Serialize;
+use crate::game_trait::{self, Game};
+use crate::protocol::ServerMessage;
 
 /// 4-Digit Code Guesser (Mastermind)
 #[derive(Debug, Clone, Serialize)]
@@ -151,6 +153,52 @@ impl CodeGuessGame {
             "gameOver": self.game_over,
             "myCodeSet": for_player.map(|p| self.codes_set[p as usize]),
         })
+    }
+}
+
+impl Game for CodeGuessGame {
+    fn process_action(
+        &mut self,
+        player: u8,
+        action: serde_json::Value,
+        players: &[String],
+    ) -> Result<Vec<(String, ServerMessage)>, String> {
+        let guess = action
+            .get("guess")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "Missing 'guess' field".to_string())?;
+
+        if !self.codes_set[player as usize] {
+            self.set_code(player, guess)?;
+        } else {
+            self.make_guess(player, guess)?;
+        }
+
+        let msgs = game_trait::broadcast_per_player(players, |p| self.state_json(Some(p)));
+        Ok(msgs)
+    }
+
+    fn check_game_over(&self) -> Option<ServerMessage> {
+        if self.game_over {
+            Some(ServerMessage::GameOver {
+                winner: self.winner.map(|w| format!("Player {}", w + 1)),
+                reason: "Code cracked!".to_string(),
+            })
+        } else {
+            None
+        }
+    }
+
+    fn state_for_player(&self, player: Option<u8>) -> serde_json::Value {
+        self.state_json(player)
+    }
+
+    fn reset(&mut self) {
+        *self = CodeGuessGame::new();
+    }
+
+    fn game_type(&self) -> &str {
+        "code_guess"
     }
 }
 

@@ -7,28 +7,11 @@ pub enum ClientMessage {
     CreateRoom { game_type: String, variant: Option<String>, player_name: String, match_format: Option<String> },
     JoinRoom { room_code: String, player_name: String },
     LeaveRoom,
-    GameAction { action: GameAction },
+    GameAction { action: serde_json::Value },
     SendEmoji { emoji: String },
     RequestPlayAgain,
     SwitchVariant { variant: String },
     SetMatchFormat { format: String },
-}
-
-
-/// Game-specific actions
-#[derive(Debug, Deserialize)]
-#[serde(tag = "game")]
-pub enum GameAction {
-    TicTacToe { cell: usize },
-    TicTacToeGobble { from: Option<usize>, to: usize, size: u8 },
-    TicTacToeBid { bid: u8 },
-    TicTacToeTossCoin,
-    ShutTheBox { combination: Vec<u8>, target: String },
-    CodeGuess { guess: String },
-    MemoryFlip { card_index: usize },
-    HigherLower { guess: u8 },
-    StopClock { stopped_at_ms: u64 },
-    BluffCard { action: String, card_indices: Vec<usize> },
 }
 
 /// Messages from the server to the client
@@ -79,18 +62,20 @@ mod tests {
     }
 
     #[test]
-    fn client_message_deserializes_bluff_card_action() {
+    fn client_message_deserializes_generic_game_action() {
         let message: ClientMessage = serde_json::from_str(
             r#"{"type":"GameAction","action":{"game":"BluffCard","action":"play","card_indices":[0,2]}}"#,
         )
         .unwrap();
 
         match message {
-            ClientMessage::GameAction { action: super::GameAction::BluffCard { action, card_indices } } => {
-                assert_eq!(action, "play");
-                assert_eq!(card_indices, vec![0, 2]);
+            ClientMessage::GameAction { action } => {
+                assert_eq!(action["game"], "BluffCard");
+                assert_eq!(action["action"], "play");
+                assert_eq!(action["card_indices"][0], 0);
+                assert_eq!(action["card_indices"][1], 2);
             }
-            _ => panic!("expected bluff card action"),
+            _ => panic!("expected game action"),
         }
     }
 

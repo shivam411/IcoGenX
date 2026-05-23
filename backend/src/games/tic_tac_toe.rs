@@ -1,6 +1,9 @@
 use serde::Serialize;
 use std::collections::VecDeque;
 
+use crate::game_trait::{self, Game};
+use crate::protocol::ServerMessage;
+
 /// Tic-Tac-Toe game variant
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -445,6 +448,76 @@ impl TicTacToeGame {
             "biddingPhase": self.bidding_phase,
             "lastEvent": self.last_event,
         })
+    }
+}
+
+impl Game for TicTacToeGame {
+    fn process_action(
+        &mut self,
+        player: u8,
+        action: serde_json::Value,
+        players: &[String],
+    ) -> Result<Vec<(String, ServerMessage)>, String> {
+        let game_tag = action.get("game").and_then(|v| v.as_str()).unwrap_or("");
+
+        match game_tag {
+            "TicTacToe" => {
+                let cell = action.get("cell")
+                    .and_then(|v| v.as_u64())
+                    .ok_or_else(|| "Missing 'cell' field".to_string())? as usize;
+                self.make_move(player, cell)?;
+            }
+            "TicTacToeGobble" => {
+                let from = action.get("from")
+                    .and_then(|v| if v.is_null() { None } else { v.as_u64().map(|n| n as usize) });
+                let to = action.get("to")
+                    .and_then(|v| v.as_u64())
+                    .ok_or_else(|| "Missing 'to' field".to_string())? as usize;
+                let size = action.get("size")
+                    .and_then(|v| v.as_u64())
+                    .ok_or_else(|| "Missing 'size' field".to_string())? as u8;
+                self.make_gobblet_move(player, from, to, size)?;
+            }
+            "TicTacToeBid" => {
+                let bid = action.get("bid")
+                    .and_then(|v| v.as_u64())
+                    .ok_or_else(|| "Missing 'bid' field".to_string())? as u8;
+                self.submit_bid(player, bid)?;
+            }
+            "TicTacToeTossCoin" => {
+                if player != 0 {
+                    return Err("Only player 1 can toss the coin".into());
+                }
+                self.toss_coin()?;
+            }
+            _ => return Err(format!("Unknown TicTacToe action: {}", game_tag)),
+        }
+
+        let state = self.state_json();
+        Ok(game_trait::broadcast_same(players, state))
+    }
+
+    fn check_game_over(&self) -> Option<ServerMessage> {
+        if !self.game_over {
+            return None;
+        }
+        let winner = self.winner.map(|w| format!("Player {}", w + 1));
+        Some(ServerMessage::GameOver {
+            winner,
+            reason: "Game completed".into(),
+        })
+    }
+
+    fn state_for_player(&self, _player: Option<u8>) -> serde_json::Value {
+        self.state_json()
+    }
+
+    fn reset(&mut self) {
+        self.reset();
+    }
+
+    fn game_type(&self) -> &str {
+        "tic_tac_toe"
     }
 }
 

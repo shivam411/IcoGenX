@@ -1,4 +1,6 @@
 use serde::Serialize;
+use crate::game_trait::Game;
+use crate::protocol::ServerMessage;
 
 /// Higher/Lower: guess a hidden number inside the variant range.
 #[derive(Debug, Clone, Serialize)]
@@ -99,6 +101,61 @@ impl HigherLowerGame {
             "winner": self.winner,
             "gameOver": self.game_over,
         })
+    }
+}
+
+fn broadcast_same(players: &[String], state: serde_json::Value) -> Vec<(String, ServerMessage)> {
+    players
+        .iter()
+        .map(|pid| {
+            (
+                pid.clone(),
+                ServerMessage::GameUpdate {
+                    game_state: state.clone(),
+                },
+            )
+        })
+        .collect()
+}
+
+impl Game for HigherLowerGame {
+    fn process_action(
+        &mut self,
+        player: u8,
+        action: serde_json::Value,
+        players: &[String],
+    ) -> Result<Vec<(String, ServerMessage)>, String> {
+        let guess = action
+            .get("guess")
+            .and_then(|v| v.as_u64())
+            .ok_or_else(|| "Missing or invalid 'guess' field".to_string())? as u8;
+
+        self.make_guess(player, guess)?;
+
+        Ok(broadcast_same(players, self.state_json()))
+    }
+
+    fn check_game_over(&self) -> Option<ServerMessage> {
+        if self.game_over {
+            Some(ServerMessage::GameOver {
+                winner: self.winner.map(|w| format!("Player {}", w + 1)),
+                reason: "Number guessed correctly!".to_string(),
+            })
+        } else {
+            None
+        }
+    }
+
+    fn state_for_player(&self, _player: Option<u8>) -> serde_json::Value {
+        self.state_json()
+    }
+
+    fn reset(&mut self) {
+        *self = HigherLowerGame::new_variant(&self.variant);
+    }
+
+    fn game_type(&self) -> &str {
+        "higher_lower"
     }
 }
 

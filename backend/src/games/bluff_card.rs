@@ -1,6 +1,9 @@
 use rand::seq::SliceRandom;
 use serde::Serialize;
 
+use crate::game_trait::{self, Game};
+use crate::protocol::ServerMessage;
+
 const RANKS: [&str; 13] = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 const SUITS: [&str; 4] = ["S", "H", "D", "C"];
 
@@ -206,6 +209,63 @@ impl BluffCardGame {
         } else {
             &mut self.player2_hand
         }
+    }
+}
+
+impl Game for BluffCardGame {
+    fn process_action(
+        &mut self,
+        player: u8,
+        action: serde_json::Value,
+        players: &[String],
+    ) -> Result<Vec<(String, ServerMessage)>, String> {
+        let action_str = action["action"]
+            .as_str()
+            .ok_or_else(|| "Missing 'action' field".to_string())?;
+
+        match action_str {
+            "play" => {
+                let card_indices: Vec<usize> = action["card_indices"]
+                    .as_array()
+                    .ok_or_else(|| "Missing 'card_indices' field".to_string())?
+                    .iter()
+                    .map(|v| v.as_u64().unwrap_or(0) as usize)
+                    .collect();
+                self.play_cards(player, &card_indices)?;
+            }
+            "challenge" => {
+                self.challenge(player)?;
+            }
+            other => return Err(format!("Unknown action: {}", other)),
+        }
+
+        let msgs = game_trait::broadcast_per_player(players, |p| self.state_json(Some(p)));
+        Ok(msgs)
+    }
+
+    fn check_game_over(&self) -> Option<ServerMessage> {
+        if self.game_over {
+            let reason = match self.winner {
+                Some(w) => format!("Player {} wins!", w + 1),
+                None => "Game over!".to_string(),
+            };
+            let winner = self.winner.map(|w| format!("Player {}", w + 1));
+            Some(ServerMessage::GameOver { winner, reason })
+        } else {
+            None
+        }
+    }
+
+    fn state_for_player(&self, player: Option<u8>) -> serde_json::Value {
+        self.state_json(player)
+    }
+
+    fn reset(&mut self) {
+        *self = BluffCardGame::new();
+    }
+
+    fn game_type(&self) -> &str {
+        "bluff_card"
     }
 }
 
