@@ -5,41 +5,37 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use crate::games::{
-    bluff_card::BluffCardGame,
-    code_guess::CodeGuessGame,
-    higher_lower::HigherLowerGame,
-    memory_flip::MemoryFlipGame,
-    shut_the_box::ShutTheBoxGame,
-    stop_clock::StopClockGame,
-    tic_tac_toe::TicTacToeGame,
-};
-use crate::protocol::{ClientMessage, GameAction, ServerMessage};
-
-/// The type of game being played
-#[derive(Debug, Clone)]
-pub enum GameInstance {
-    TicTacToe(TicTacToeGame),
-    ShutTheBox(ShutTheBoxGame),
-    CodeGuess(CodeGuessGame),
-    MemoryFlip(MemoryFlipGame),
-    HigherLower(HigherLowerGame),
-    StopClock(StopClockGame),
-    BluffCard(BluffCardGame),
-}
+use crate::game_registry::GameRegistry;
+use crate::game_trait::Game;
+use crate::protocol::{ClientMessage, ServerMessage};
 
 /// A game room with two players
-#[derive(Debug, Clone)]
 pub struct Room {
     pub code: String,
     pub game_type: String,
     pub variant: Option<String>,
     pub match_format: String,
     pub players: Vec<String>,   // player IDs
-    pub game: Option<GameInstance>,
+    pub game: Option<Box<dyn Game>>,
     pub started: bool,
-    pub scores: [u32; 2],
-    pub play_again_votes: [bool; 2],
+    pub scores: Vec<u32>,
+    pub play_again_votes: Vec<bool>,
+}
+
+impl std::fmt::Debug for Room {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Room")
+            .field("code", &self.code)
+            .field("game_type", &self.game_type)
+            .field("variant", &self.variant)
+            .field("match_format", &self.match_format)
+            .field("players", &self.players)
+            .field("started", &self.started)
+            .field("scores", &self.scores)
+            .field("play_again_votes", &self.play_again_votes)
+            .field("game", &self.game.as_ref().map(|g| g.game_type()))
+            .finish()
+    }
 }
 
 type Sender = SplitSink<WebSocket, Message>;
@@ -50,6 +46,7 @@ pub struct AppState {
     pub player_numbers: RwLock<HashMap<String, u8>>,          // player_id -> 0 or 1
     pub player_names: RwLock<HashMap<String, String>>,          // player_id -> name
     pub senders: RwLock<HashMap<String, Arc<RwLock<Sender>>>>, // player_id -> ws sender
+    pub registry: GameRegistry,
 }
 
 impl AppState {
@@ -60,6 +57,7 @@ impl AppState {
             player_numbers: RwLock::new(HashMap::new()),
             player_names: RwLock::new(HashMap::new()),
             senders: RwLock::new(HashMap::new()),
+            registry: GameRegistry::new(),
         }
     }
 
@@ -279,17 +277,17 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                         let start_messages = if is_rejoining_started_game {
                             room.game
                                 .as_ref()
-                                .map(|game| build_game_start_messages(game, &players, scores, &game_type_str, &variant_str, &match_format_str))
+                                .map(|game| build_game_start_messages(game.as_ref(), &players, scores, &game_type_str, &variant_str, &match_format_str))
                                 .unwrap_or_default()
                         } else if room.players.len() == 2 {
-                            let game = create_game(&game_type_str, variant_str.as_deref());
+                            let game = state.registry.create(&game_type_str, variant_str.as_deref());
                             match game {
                                 Some(g) => {
                                     room.game = Some(g);
                                     room.started = true;
                                     room.game
                                         .as_ref()
-                                        .map(|game| build_game_start_messages(game, &players, scores, &game_type_str, &variant_str, &match_format_str))
+                                        .map(|game| build_game_start_messages(game.as_ref(), &players, scores, &game_type_str, &variant_str, &match_format_str))
                                         .unwrap_or_default()
                                 }
                                 None => Vec::new(),
@@ -386,12 +384,12 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                     if let Some(room) = rooms.get_mut(&code) {
                         if let Some(ref mut game) = room.game {
                             let players = room.players.clone();
-                            let result = process_action(game, player_num, action, &players);
+                            let result = game.process_action(player_num, action, &players);
 
                             match result {
                                 Ok(msgs) => {
                                     // Also check for game over
-                                    let over = check_game_over(game);
+                                    let over = game.check_game_over();
                                     let mut all_msgs = msgs;
                                     if let Some(mut over_msg) = over {
                                         // Update scores if there's a winner
@@ -495,8 +493,9 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                                 if room.match_format == "series_5" && (room.scores[0] >= 3 || room.scores[1] >= 3) {
                                     room.scores = [0, 0];
                                 }
-                                reset_game(game, room.scores, player_num);
-                                let state_json = get_game_state(game);
+                                let last_winner = game.last_winner();
+                                game.reset_with_winner(last_winner);
+                                let state_json = game.state_for_player(None);
                                 let scores = room.scores;
                                 
                                 let msg = ServerMessage::PlayAgainAccepted {
@@ -558,7 +557,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                         room.play_again_votes = [false, false];
 
                         if room.players.len() == 2 {
-                            match create_game(&room.game_type, room.variant.as_deref()) {
+                            match state.registry.create(&room.game_type, room.variant.as_deref()) {
                                 Some(game) => {
                                     let scores = room.scores;
                                     room.game = Some(game);
@@ -566,7 +565,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
 
                                     room.game
                                         .as_ref()
-                                        .map(|game| build_game_start_messages(game, &room.players, scores, &room.game_type, &room.variant, &room.match_format))
+                                        .map(|game| build_game_start_messages(game.as_ref(), &room.players, scores, &room.game_type, &room.variant, &room.match_format))
                                         .unwrap_or_default()
                                 }
                                 None => vec![(
@@ -687,61 +686,8 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
     }
 }
 
-fn create_game(game_type: &str, variant: Option<&str>) -> Option<GameInstance> {
-    match game_type {
-        "tic_tac_toe" => {
-            if let Some(v) = variant {
-                Some(GameInstance::TicTacToe(TicTacToeGame::new_variant(v)))
-            } else {
-                Some(GameInstance::TicTacToe(TicTacToeGame::new()))
-            }
-        },
-        "shut_the_box" => Some(GameInstance::ShutTheBox(ShutTheBoxGame::new())),
-        "code_guess" => Some(GameInstance::CodeGuess(CodeGuessGame::new())),
-        "memory_flip" => Some(GameInstance::MemoryFlip(MemoryFlipGame::new())),
-        "higher_lower" => Some(GameInstance::HigherLower(HigherLowerGame::new_variant(variant.unwrap_or("classic")))),
-        "stop_clock" => Some(GameInstance::StopClock(StopClockGame::new())),
-        "bluff_card" => Some(GameInstance::BluffCard(BluffCardGame::new())),
-        _ => None,
-    }
-}
-
-fn reset_game(game: &mut GameInstance, _previous_scores: [u32; 2], _current_player: u8) {
-    match game {
-        GameInstance::TicTacToe(g) => {
-            let last_winner = g.winner;
-            g.reset();
-            // If there was a winner, they get X (and go first)
-            if let Some(winner) = last_winner {
-                g.x_player = Some(winner);
-                g.current_player = winner;
-                g.coin_tossed = true; // skip toss
-            }
-        },
-        // Add resets for other games as needed. 
-        // For now, only TicTacToe supports restart properly.
-        _ => {}
-    }
-}
-
-fn get_game_state(game: &GameInstance) -> serde_json::Value {
-    get_game_state_for_player(game, None)
-}
-
-fn get_game_state_for_player(game: &GameInstance, player: Option<u8>) -> serde_json::Value {
-    match game {
-        GameInstance::TicTacToe(g) => g.state_json(),
-        GameInstance::ShutTheBox(g) => g.state_json(),
-        GameInstance::CodeGuess(g) => g.state_json(player),
-        GameInstance::MemoryFlip(g) => g.state_json(),
-        GameInstance::HigherLower(g) => g.state_json(),
-        GameInstance::StopClock(g) => g.state_json(),
-        GameInstance::BluffCard(g) => g.state_json(player),
-    }
-}
-
 fn build_game_start_messages(
-    game: &GameInstance,
+    game: &dyn Game,
     players: &[String],
     scores: [u32; 2],
     game_type: &str,
@@ -755,7 +701,7 @@ fn build_game_start_messages(
             (
                 pid.clone(),
                 ServerMessage::GameStart {
-                    game_state: get_game_state_for_player(game, Some(idx as u8)),
+                    game_state: game.state_for_player(Some(idx as u8)),
                     scores,
                     game_type: game_type.to_string(),
                     variant: variant.clone(),
@@ -765,155 +711,17 @@ fn build_game_start_messages(
         })
         .collect()
 }
-
-/// Process a game action and return a list of (player_id, message) tuples.
-/// This allows per-player state views (needed for CodeGuess).
-fn process_action(
-    game: &mut GameInstance,
-    player: u8,
-    action: GameAction,
-    players: &[String],
-) -> Result<Vec<(String, ServerMessage)>, String> {
-    match (game, action) {
-        (GameInstance::TicTacToe(g), GameAction::TicTacToe { cell }) => {
-            g.make_move(player, cell)?;
-            let state = g.state_json();
-            Ok(broadcast_same(players, state))
-        }
-
-        (GameInstance::TicTacToe(g), GameAction::TicTacToeGobble { from, to, size }) => {
-            g.make_gobblet_move(player, from, to, size)?;
-            let state = g.state_json();
-            Ok(broadcast_same(players, state))
-        }
-
-        (GameInstance::TicTacToe(g), GameAction::TicTacToeBid { bid }) => {
-            g.submit_bid(player, bid)?;
-            let state = g.state_json();
-            Ok(broadcast_same(players, state))
-        }
-
-        (GameInstance::TicTacToe(g), GameAction::TicTacToeTossCoin) => {
-            if player != 0 {
-                return Err("Only creator can toss coin".into());
-            }
-            g.toss_coin()?;
-            let state = g.state_json();
-            Ok(broadcast_same(players, state))
-        }
-
-        (GameInstance::ShutTheBox(g), GameAction::ShutTheBox { combination, target }) => {
-            if combination.is_empty() {
-                if target == "pass" {
-                    g.pass_turn(player)?;
-                } else {
-                    let _roll = g.roll_dice(player)?;
-                }
-            } else {
-                g.apply_combination(player, &combination, &target)?;
-            }
-            let state = g.state_json();
-            Ok(broadcast_same(players, state))
-        }
-
-        (GameInstance::CodeGuess(g), GameAction::CodeGuess { guess }) => {
-            if !g.codes_set[player as usize] {
-                g.set_code(player, &guess)?;
-            } else {
-                g.make_guess(player, &guess)?;
-            }
-            // Send each player their own view (hides opponent's secret code)
-            let mut msgs = Vec::new();
-            for (i, pid) in players.iter().enumerate() {
-                let state = g.state_json(Some(i as u8));
-                msgs.push((pid.clone(), ServerMessage::GameUpdate { game_state: state }));
-            }
-            Ok(msgs)
-        }
-
-        (GameInstance::MemoryFlip(g), GameAction::MemoryFlip { card_index }) => {
-            g.flip_card(player, card_index)?;
-            let state = g.state_json();
-            Ok(broadcast_same(players, state))
-        }
-
-        (GameInstance::HigherLower(g), GameAction::HigherLower { guess }) => {
-            g.make_guess(player, guess)?;
-            let state = g.state_json();
-            Ok(broadcast_same(players, state))
-        }
-
-        (GameInstance::StopClock(g), GameAction::StopClock { stopped_at_ms }) => {
-            if stopped_at_ms == 0 {
-                g.set_ready(player);
-            } else {
-                g.stop(player, stopped_at_ms)?;
-            }
-            let state = g.state_json();
-            Ok(broadcast_same(players, state))
-        }
-
-        (GameInstance::BluffCard(g), GameAction::BluffCard { action, card_indices }) => {
-            match action.as_str() {
-                "play" => g.play_cards(player, &card_indices)?,
-                "challenge" => g.challenge(player)?,
-                _ => return Err("Unknown Bluff action".into()),
-            }
-
-            let mut msgs = Vec::new();
-            for (i, pid) in players.iter().enumerate() {
-                let state = g.state_json(Some(i as u8));
-                msgs.push((pid.clone(), ServerMessage::GameUpdate { game_state: state }));
-            }
-            Ok(msgs)
-        }
-
-        _ => Err("Invalid action for this game type".into()),
-    }
-}
-
-/// Helper: send the same game state to all players
-fn broadcast_same(players: &[String], state: serde_json::Value) -> Vec<(String, ServerMessage)> {
-    players
-        .iter()
-        .map(|pid| {
-            (
-                pid.clone(),
-                ServerMessage::GameUpdate {
-                    game_state: state.clone(),
-                },
-            )
-        })
-        .collect()
-}
-
-fn check_game_over(game: &GameInstance) -> Option<ServerMessage> {
-    let (is_over, winner) = match game {
-        GameInstance::TicTacToe(g) => (g.game_over, g.winner.map(|w| format!("Player {}", w + 1))),
-        GameInstance::ShutTheBox(g) => (g.game_over, g.winner.map(|w| format!("Player {}", w + 1))),
-        GameInstance::CodeGuess(g) => (g.game_over, g.winner.map(|w| format!("Player {}", w + 1))),
-        GameInstance::MemoryFlip(g) => (g.game_over, g.winner.map(|w| format!("Player {}", w + 1))),
-        GameInstance::HigherLower(g) => (g.game_over, g.winner.map(|w| format!("Player {}", w + 1))),
-        GameInstance::StopClock(g) => (g.game_over, g.winner.map(|w| format!("Player {}", w + 1))),
-        GameInstance::BluffCard(g) => (g.game_over, g.winner.map(|w| format!("Player {}", w + 1))),
-    };
-
-    if is_over {
-        Some(ServerMessage::GameOver {
-            winner,
-            reason: "Game completed".into(),
-        })
-    } else {
-        None
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{broadcast_same, check_game_over, create_game, handle_message, process_action, reset_game, AppState, GameInstance, Room};
-    use crate::games::shut_the_box::ShutTheBoxGame;
-    use crate::games::tic_tac_toe::{TicTacToeGame, TicTacToeVariant};
-    use crate::protocol::{ClientMessage, GameAction, ServerMessage};
+    use super::{handle_message, AppState, Room};
+    use crate::game_registry::GameRegistry;
+    use crate::game_trait::Game;
+    use crate::games::{
+        shut_the_box::ShutTheBoxGame,
+        tic_tac_toe::TicTacToeGame,
+        higher_lower::HigherLowerGame,
+    };
+    use crate::protocol::{ClientMessage, ServerMessage};
     use std::sync::Arc;
 
     fn players() -> Vec<String> {
@@ -922,51 +730,40 @@ mod tests {
 
     #[test]
     fn create_game_builds_requested_variant() {
-        let game = create_game("tic_tac_toe", Some("joker"));
-
-        match game {
-            Some(GameInstance::TicTacToe(game)) => {
-                assert_eq!(game.variant, TicTacToeVariant::Joker);
-                assert!(game.joker_cell.is_some());
-            }
-            _ => panic!("expected joker tic-tac-toe"),
-        }
-
-        assert!(create_game("unknown", None).is_none());
+        let registry = GameRegistry::new();
+        let game = registry.create("tic_tac_toe", Some("joker")).unwrap();
+        let state = game.state_for_player(None);
+        assert_eq!(state["variant"], "joker");
+        assert!(registry.create("unknown", None).is_none());
     }
 
     #[test]
     fn reset_game_skips_toss_for_previous_tic_tac_toe_winner() {
-        let mut game = create_game("tic_tac_toe", Some("classic")).unwrap();
+        let mut inner = TicTacToeGame::new_variant("classic");
+        inner.winner = Some(1);
+        inner.game_over = true;
+        inner.board[0] = Some(1);
 
-        if let GameInstance::TicTacToe(inner) = &mut game {
-            inner.winner = Some(1);
-            inner.game_over = true;
-            inner.board[0] = Some(1);
-        }
+        let mut game: Box<dyn Game> = Box::new(inner);
+        game.reset_with_winner(Some(1));
 
-        reset_game(&mut game, [2, 1], 0);
-
-        match game {
-            GameInstance::TicTacToe(inner) => {
-                assert_eq!(inner.x_player, Some(1));
-                assert_eq!(inner.current_player, 1);
-                assert!(inner.coin_tossed);
-                assert!(inner.board.iter().all(|cell| cell.is_none()));
-            }
-            _ => panic!("expected tic-tac-toe game"),
-        }
+        let state = game.state_for_player(None);
+        assert_eq!(state["xPlayer"], 1);
+        assert_eq!(state["currentPlayer"], 1);
+        assert_eq!(state["coinTossed"], true);
+        assert!(state["board"].as_array().unwrap().iter().all(|cell| cell.is_null()));
     }
 
     #[test]
     fn process_action_code_guess_sends_individualized_views() {
-        let mut game = create_game("code_guess", None).unwrap();
-        let messages = process_action(
-            &mut game,
+        let registry = GameRegistry::new();
+        let mut game = registry.create("code_guess", None).unwrap();
+        let messages = game.process_action(
             0,
-            GameAction::CodeGuess {
-                guess: "1234".into(),
-            },
+            serde_json::json!({
+                "game": "CodeGuess",
+                "guess": "1234"
+            }),
             &players(),
         )
         .unwrap();
@@ -987,11 +784,14 @@ mod tests {
 
     #[test]
     fn process_action_stop_clock_ready_broadcasts_same_state() {
-        let mut game = create_game("stop_clock", None).unwrap();
-        let messages = process_action(
-            &mut game,
+        let registry = GameRegistry::new();
+        let mut game = registry.create("stop_clock", None).unwrap();
+        let messages = game.process_action(
             0,
-            GameAction::StopClock { stopped_at_ms: 0 },
+            serde_json::json!({
+                "game": "StopClock",
+                "stopped_at_ms": 0
+            }),
             &players(),
         )
         .unwrap();
@@ -1008,7 +808,7 @@ mod tests {
 
     #[test]
     fn process_action_shut_the_box_player_two_pushes_back_matching_opponent_card() {
-        let mut game = GameInstance::ShutTheBox(ShutTheBoxGame {
+        let inner = ShutTheBoxGame {
             player1_cards: [false, false, false, true, false, false],
             player2_cards: [false, false, false, false, false, false],
             current_player: 1,
@@ -1016,15 +816,16 @@ mod tests {
             needs_roll: false,
             winner: None,
             game_over: false,
-        });
+        };
+        let mut game: Box<dyn Game> = Box::new(inner);
 
-        let messages = process_action(
-            &mut game,
+        let messages = game.process_action(
             1,
-            GameAction::ShutTheBox {
-                combination: vec![4],
-                target: "self".into(),
-            },
+            serde_json::json!({
+                "game": "ShutTheBox",
+                "combination": vec![4],
+                "target": "self"
+            }),
             &players(),
         )
         .unwrap();
@@ -1044,7 +845,7 @@ mod tests {
 
     #[test]
     fn process_action_shut_the_box_pass_target_ends_turn_after_roll() {
-        let mut game = GameInstance::ShutTheBox(ShutTheBoxGame {
+        let inner = ShutTheBoxGame {
             player1_cards: [false, true, false, false, false, false],
             player2_cards: [false, false, false, false, false, false],
             current_player: 0,
@@ -1052,15 +853,16 @@ mod tests {
             needs_roll: false,
             winner: None,
             game_over: false,
-        });
+        };
+        let mut game: Box<dyn Game> = Box::new(inner);
 
-        let messages = process_action(
-            &mut game,
+        let messages = game.process_action(
             0,
-            GameAction::ShutTheBox {
-                combination: vec![],
-                target: "pass".into(),
-            },
+            serde_json::json!({
+                "game": "ShutTheBox",
+                "combination": Vec::<u8>::new(),
+                "target": "pass"
+            }),
             &players(),
         )
         .unwrap();
@@ -1080,7 +882,7 @@ mod tests {
     #[test]
     fn broadcast_same_duplicates_state_for_each_player() {
         let state = serde_json::json!({ "value": 7 });
-        let messages = broadcast_same(&players(), state.clone());
+        let messages = crate::game_trait::broadcast_same(&players(), state.clone());
 
         assert_eq!(messages.len(), 2);
         for (player_id, message) in messages {
@@ -1094,18 +896,17 @@ mod tests {
 
     #[test]
     fn check_game_over_formats_winner_name() {
-        let mut game = create_game("higher_lower", None).unwrap();
-        if let GameInstance::HigherLower(inner) = &mut game {
-            inner.winner = Some(1);
-            inner.game_over = true;
-        }
+        let mut inner = HigherLowerGame::new_variant("classic");
+        inner.winner = Some(1);
+        inner.game_over = true;
+        let game: Box<dyn Game> = Box::new(inner);
 
-        let message = check_game_over(&game).unwrap();
+        let message = game.check_game_over().unwrap();
 
         match message {
             ServerMessage::GameOver { winner, reason } => {
                 assert_eq!(winner, Some("Player 2".into()));
-                assert_eq!(reason, "Game completed");
+                assert_eq!(reason, "Number guessed correctly!");
             }
             _ => panic!("expected game over message"),
         }
@@ -1128,7 +929,7 @@ mod tests {
                 variant: Some("classic".into()),
                 match_format: "single".into(),
                 players: vec!["p1".into()],
-                game: Some(GameInstance::TicTacToe(game)),
+                game: Some(Box::new(game)),
                 started: true,
                 scores: [2, 1],
                 play_again_votes: [false, false],
@@ -1155,14 +956,10 @@ mod tests {
         assert_eq!(room.players, vec!["p1".to_string(), "p2".to_string()]);
         assert_eq!(room.scores, [2, 1]);
 
-        match room.game.as_ref().unwrap() {
-            GameInstance::TicTacToe(inner) => {
-                assert_eq!(inner.board[0], Some(0));
-                assert_eq!(inner.current_player, 1);
-                assert!(inner.coin_tossed);
-            }
-            _ => panic!("expected tic-tac-toe game"),
-        }
+        let state_val = room.game.as_ref().unwrap().state_for_player(None);
+        assert_eq!(state_val["board"][0], 0);
+        assert_eq!(state_val["currentPlayer"], 1);
+        assert_eq!(state_val["coinTossed"], true);
     }
 
     #[tokio::test]
@@ -1182,7 +979,7 @@ mod tests {
                 variant: Some("disappearing".into()),
                 match_format: "single".into(),
                 players: vec!["p2".into()],
-                game: Some(GameInstance::TicTacToe(game)),
+                game: Some(Box::new(game)),
                 started: true,
                 scores: [0, 3],
                 play_again_votes: [false, false],
@@ -1209,14 +1006,10 @@ mod tests {
         assert_eq!(room.players, vec!["p1-return".to_string(), "p2".to_string()]);
         assert_eq!(room.scores, [0, 3]);
 
-        match room.game.as_ref().unwrap() {
-            GameInstance::TicTacToe(inner) => {
-                assert_eq!(inner.board[4], Some(1));
-                assert_eq!(inner.current_player, 0);
-                assert!(inner.coin_tossed);
-            }
-            _ => panic!("expected tic-tac-toe game"),
-        }
+        let state_val = room.game.as_ref().unwrap().state_for_player(None);
+        assert_eq!(state_val["board"][4], 1);
+        assert_eq!(state_val["currentPlayer"], 0);
+        assert_eq!(state_val["coinTossed"], true);
     }
 
     #[tokio::test]
@@ -1260,6 +1053,7 @@ mod tests {
     #[tokio::test]
     async fn switch_variant_recreates_running_game_for_same_players() {
         let state = Arc::new(AppState::new());
+        let game = state.registry.create("tic_tac_toe", Some("classic"));
 
         state.rooms.write().await.insert(
             "ROOM42".into(),
@@ -1269,7 +1063,7 @@ mod tests {
                 variant: Some("classic".into()),
                 match_format: "single".into(),
                 players: vec!["p1".into(), "p2".into()],
-                game: create_game("tic_tac_toe", Some("classic")),
+                game,
                 started: true,
                 scores: [4, 2],
                 play_again_votes: [true, true],
@@ -1296,15 +1090,14 @@ mod tests {
         assert_eq!(room.play_again_votes, [false, false]);
         assert_eq!(room.scores, [4, 2]);
 
-        match room.game.as_ref().unwrap() {
-            GameInstance::TicTacToe(game) => assert_eq!(game.variant, TicTacToeVariant::Gravity),
-            _ => panic!("expected tic-tac-toe game"),
-        }
+        let state_val = room.game.as_ref().unwrap().state_for_player(None);
+        assert_eq!(state_val["variant"], "gravity");
     }
 
     #[tokio::test]
     async fn only_creator_can_switch_room_variant() {
         let state = Arc::new(AppState::new());
+        let game = state.registry.create("tic_tac_toe", Some("classic"));
 
         state.rooms.write().await.insert(
             "ROOM42".into(),
@@ -1314,7 +1107,7 @@ mod tests {
                 variant: Some("classic".into()),
                 match_format: "single".into(),
                 players: vec!["p1".into(), "p2".into()],
-                game: create_game("tic_tac_toe", Some("classic")),
+                game,
                 started: true,
                 scores: [1, 0],
                 play_again_votes: [false, false],
@@ -1337,16 +1130,14 @@ mod tests {
         let rooms = state.rooms.read().await;
         let room = rooms.get("ROOM42").unwrap();
         assert_eq!(room.variant.as_deref(), Some("classic"));
-
-        match room.game.as_ref().unwrap() {
-            GameInstance::TicTacToe(game) => assert_eq!(game.variant, TicTacToeVariant::Classic),
-            _ => panic!("expected tic-tac-toe game"),
-        }
+        let state_val = room.game.as_ref().unwrap().state_for_player(None);
+        assert_eq!(state_val["variant"], "classic");
     }
 
     #[tokio::test]
     async fn best_of_five_series_game_over_and_play_again() {
         let state = Arc::new(AppState::new());
+        let game = state.registry.create("tic_tac_toe", Some("classic"));
 
         state.rooms.write().await.insert(
             "ROOM42".into(),
@@ -1356,7 +1147,7 @@ mod tests {
                 variant: Some("classic".into()),
                 match_format: "series_5".into(),
                 players: vec!["p1".into(), "p2".into()],
-                game: create_game("tic_tac_toe", Some("classic")),
+                game,
                 started: true,
                 scores: [2, 0],
                 play_again_votes: [false, false],
@@ -1417,6 +1208,7 @@ mod tests {
     #[tokio::test]
     async fn set_match_format_rejects_invalid_values() {
         let state = Arc::new(AppState::new());
+        let game = state.registry.create("tic_tac_toe", Some("classic"));
 
         state.rooms.write().await.insert(
             "ROOM42".into(),
@@ -1426,7 +1218,7 @@ mod tests {
                 variant: Some("classic".into()),
                 match_format: "single".into(),
                 players: vec!["p1".into(), "p2".into()],
-                game: create_game("tic_tac_toe", Some("classic")),
+                game,
                 started: true,
                 scores: [0, 0],
                 play_again_votes: [false, false],

@@ -31,6 +31,16 @@ pub trait Game: Send + Sync {
     /// Reset the game for a new round (play-again / next match in series).
     fn reset(&mut self);
 
+    /// Reset the game for a new round, optionally carrying over the last winner.
+    fn reset_with_winner(&mut self, _last_winner: Option<u8>) {
+        self.reset();
+    }
+
+    /// Get the index of the winner of the last completed match, if any.
+    fn last_winner(&self) -> Option<u8> {
+        None
+    }
+
     /// The game type identifier (e.g. `"tic_tac_toe"`).
     fn game_type(&self) -> &str;
 

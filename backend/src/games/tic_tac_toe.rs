@@ -516,6 +516,19 @@ impl Game for TicTacToeGame {
         self.reset();
     }
 
+    fn reset_with_winner(&mut self, last_winner: Option<u8>) {
+        self.reset();
+        if let Some(winner) = last_winner {
+            self.x_player = Some(winner);
+            self.current_player = winner;
+            self.coin_tossed = true;
+        }
+    }
+
+    fn last_winner(&self) -> Option<u8> {
+        self.winner
+    }
+
     fn game_type(&self) -> &str {
         "tic_tac_toe"
     }

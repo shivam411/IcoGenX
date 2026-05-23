@@ -14,15 +14,22 @@ pub enum ClientMessage {
     SetMatchFormat { format: String },
 }
 
+#[derive(Debug, Serialize, Clone)]
+pub struct PlayerInfo {
+    pub player_id: String,
+    pub player_number: u8,
+    pub player_name: String,
+}
+
 /// Messages from the server to the client
 #[derive(Debug, Serialize, Clone)]
 #[serde(tag = "type")]
 pub enum ServerMessage {
     Welcome { player_id: String },
-    RoomCreated { room_code: String, game_type: String, variant: Option<String>, match_format: String },
-    PlayerJoined { player_id: String, player_number: u8, player_name: String, game_type: String, variant: Option<String>, match_format: String },
+    RoomCreated { room_code: String, game_type: String, variant: Option<String>, match_format: String, player_count: u8 },
+    PlayerJoined { player_id: String, player_number: u8, player_name: String, game_type: String, variant: Option<String>, match_format: String, player_count: u8 },
 
-    GameStart { game_state: serde_json::Value, scores: [u32; 2], game_type: String, variant: Option<String>, match_format: String },
+    GameStart { game_state: serde_json::Value, scores: Vec<u32>, game_type: String, variant: Option<String>, match_format: String, players: Vec<PlayerInfo> },
     GameUpdate { game_state: serde_json::Value },
     EmojiSent { player_id: String, emoji: String },
     GameOver { winner: Option<String>, reason: String },
@@ -33,7 +40,7 @@ pub enum ServerMessage {
     
     // Play again flow
     PlayAgainRequested { by_player: u8 },
-    PlayAgainAccepted { game_state: serde_json::Value, scores: [u32; 2] },
+    PlayAgainAccepted { game_state: serde_json::Value, scores: Vec<u32> },
 }
 
 #[cfg(test)]
