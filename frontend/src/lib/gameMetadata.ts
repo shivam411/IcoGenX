@@ -25,6 +25,13 @@ export interface GameCatalogItem {
   tips: string[];
   previewSteps: string[];
   variants?: GameVariantMetadata[];
+  playerCount: number;
+  playerLabel: string;
+  tags: string[];
+  difficulty: 'easy' | 'medium' | 'hard';
+  estimatedTime: string;
+  featured?: boolean;
+  isComingSoon?: boolean;
 }
 
 const TIC_TAC_TOE_VARIANTS: GameVariantMetadata[] = [
@@ -123,6 +130,12 @@ export const GAME_CATALOG: GameCatalogItem[] = [
     tips: ['Look for moves that create two threats at once.', 'Center is powerful because it touches four winning lines.'],
     previewSteps: ['Pick variant', 'Place marks', 'Win the line'],
     variants: TIC_TAC_TOE_VARIANTS,
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'easy',
+    estimatedTime: '2-5 min',
+    tags: ['strategy', 'couples', 'classic'],
+    featured: true,
   },
   {
     id: 'shut-the-box',
@@ -138,6 +151,12 @@ export const GAME_CATALOG: GameCatalogItem[] = [
     rules: ['Roll one die, then choose unopened cards that add up to the roll.', 'Your selected cards move forward automatically.', 'Exact matching opponent cards move back automatically.', 'First player to move all six cards forward wins.'],
     tips: ['Pick the exact matching number when you want to pull an opponent card back.', 'A single high card can be stronger than two low cards if it blocks the opponent.', 'Check the opponent row before choosing equal-sum combinations.', 'If the opponent has 3 open, choosing your 3 sends their 3 back.'],
     previewSteps: ['Roll die', 'Pick sum', 'Push track'],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'easy',
+    estimatedTime: '3-6 min',
+    tags: ['strategy', 'couples', 'dice'],
+    featured: false,
   },
   {
     id: 'code-guess',
@@ -174,6 +193,12 @@ export const GAME_CATALOG: GameCatalogItem[] = [
         previewSteps: ['Pick number', 'Shrink range', 'Hit target'],
       },
     ],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'hard',
+    estimatedTime: '5-10 min',
+    tags: ['logic', 'puzzles', 'couples'],
+    featured: true,
   },
   {
     id: 'memory-flip',
@@ -189,6 +214,12 @@ export const GAME_CATALOG: GameCatalogItem[] = [
     rules: ['Find the next number in sequence, starting at 1.', 'Correct cards stay revealed.', 'A wrong flip ends your turn.', 'Complete the sequence first to win.'],
     tips: ['Say the revealed locations quietly in order after each turn.', 'A wrong guess still teaches both players, so watch opponent misses.'],
     previewSteps: ['Flip card', 'Remember spot', 'Run sequence'],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'medium',
+    estimatedTime: '3-5 min',
+    tags: ['memory', 'quick', 'couples'],
+    featured: false,
   },
   {
     id: 'higher-lower',
@@ -209,6 +240,12 @@ export const GAME_CATALOG: GameCatalogItem[] = [
       { id: 'classic', name: 'Classic', icon: '🔢', desc: 'The familiar 1-100 guessing window.', path: '/games/higher-lower', previewSteps: ['1-100', 'Narrow down', 'Win'] },
       { id: 'expert', name: 'Expert', icon: '🧩', desc: 'A wider 1-200 range with more pressure.', path: '/games/higher-lower/expert', previewSteps: ['Wide range', 'Sharper reads', 'Exact hit'] },
     ],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'easy',
+    estimatedTime: '2-4 min',
+    tags: ['quick', 'numbers'],
+    featured: false,
   },
   {
     id: 'stop-clock',
@@ -224,6 +261,12 @@ export const GAME_CATALOG: GameCatalogItem[] = [
     rules: ['Both players ready up before the round starts.', 'Start your timer, then it hides after 3 seconds.', 'Stop as close to 20.00 seconds as possible.', 'Closest time wins.'],
     tips: ['Count in steady chunks instead of chasing the hidden timer.', 'Stopping early by a little is often safer than drifting late.'],
     previewSteps: ['Ready up', 'Timer hides', 'Stop close'],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'medium',
+    estimatedTime: '1-2 min',
+    tags: ['reflex', 'quick', 'timing'],
+    featured: true,
   },
   {
     id: 'bluff-card',
@@ -239,6 +282,56 @@ export const GAME_CATALOG: GameCatalogItem[] = [
     rules: ['The claim rank moves from A through K and repeats.', 'On your turn, play 1 to 4 cards face down as the current rank.', 'Your opponent may call bluff before playing.', 'If the play was false, the bluffer takes the pile; if it was honest, the challenger takes it.', 'First player to empty their hand wins.'],
     tips: ['Small honest plays make later bluffs more believable.', 'Call bluff when the claimed rank conflicts with cards you already hold.', 'A big pile is worth challenging only when you have a strong read.'],
     previewSteps: ['Claim rank', 'Play face down', 'Call bluff'],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'medium',
+    estimatedTime: '5-10 min',
+    tags: ['cards', 'bluffing', 'couples'],
+    featured: false,
+  },
+  {
+    id: 'trivia-battle',
+    gameType: 'trivia_battle',
+    name: 'Trivia Battle',
+    icon: '⚔️',
+    description: 'Compete in real-time fast-paced trivia. Multiple choice questions across science, history, and pop culture.',
+    players: '3-4 Players',
+    category: 'Party',
+    badgeClass: 'badge-pink',
+    gradient: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
+    rulesTitle: 'Trivia Battle Rules',
+    rules: ['Players answer multiple-choice questions simultaneously.', 'Faster correct answers award more points.', 'The player with the most points after 10 rounds wins.'],
+    tips: ['Speed is important, but a wrong answer gives zero points.', 'Use double-score powerups wisely if available.'],
+    previewSteps: ['Read question', 'Answer fast', 'Top scoreboard'],
+    playerCount: 4,
+    playerLabel: '3-4 Players',
+    difficulty: 'easy',
+    estimatedTime: '5-10 min',
+    tags: ['party', 'quiz', 'friends'],
+    featured: true,
+    isComingSoon: true,
+  },
+  {
+    id: 'couples-truth-dare',
+    gameType: 'couples_truth_dare',
+    name: 'Couples Truth & Dare',
+    icon: '💖',
+    description: 'An intimate and fun game for couples. Discover new things about your partner with tailored prompts and challenges.',
+    players: '2 Players',
+    category: 'Couples',
+    badgeClass: 'badge-pink',
+    gradient: 'linear-gradient(135deg, #f43f5e 0%, #be123c 100%)',
+    rulesTitle: 'Couples Truth & Dare Rules',
+    rules: ['Take turns choosing Truth or Dare.', 'Complete the card prompt honestly or perform the dare.', 'Rate each other\'s answers to earn couple points.'],
+    tips: ['Answer honestly to build deeper connections.', 'Keep the mood lighthearted and fun.'],
+    previewSteps: ['Truth or Dare', 'Read prompt', 'Share & bond'],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'easy',
+    estimatedTime: '5-15 min',
+    tags: ['couples', 'party', 'social'],
+    featured: true,
+    isComingSoon: true,
   },
 ];
 

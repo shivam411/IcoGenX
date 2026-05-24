@@ -72,6 +72,10 @@ export const authConfig: NextAuthConfig = {
             image: typeof token.picture === 'string' ? token.picture : undefined,
             isGuest,
           });
+          // Expose friendCode on the token so it reaches the session
+          if (rec.friendCode) {
+            (token as { friendCode?: string }).friendCode = rec.friendCode;
+          }
           // Bootstrap: the very first signed-in (non-guest) user becomes admin
           // so the admin panel is reachable without a manual DB edit.
           if (!isGuest && rec.role !== 'admin') {
@@ -94,6 +98,10 @@ export const authConfig: NextAuthConfig = {
       if (session.user) {
         (session.user as { id?: string }).id = token.sub ?? '';
         (session.user as { isGuest?: boolean }).isGuest = Boolean((token as { isGuest?: boolean }).isGuest);
+        const fc = (token as { friendCode?: string }).friendCode;
+        if (fc) {
+          (session.user as { friendCode?: string }).friendCode = fc;
+        }
       }
       return session;
     },

@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import React, { type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { useGame } from '@/context/GameContext';
@@ -26,15 +26,14 @@ export default function GameFrame({
   currentPlayer = null,
   children,
 }: GameFrameProps) {
-  const { playerNumber, playerName, opponentName, scores, openRoomActionPrompt, gameType, variant, turnStartedAt } = useGame();
-  const resolvedPlayerNumber = playerNumber === 1 ? 1 : 0;
+  const { playerNumber, playerName, opponentName, allPlayerNames, scores, openRoomActionPrompt, gameType, variant, turnStartedAt } = useGame();
   const gameInfo = getGameInfo(gameType, variant);
-  const isMyTurn = currentPlayer !== null && currentPlayer === resolvedPlayerNumber;
+  const isMyTurn = currentPlayer !== null && currentPlayer === playerNumber;
 
-  const myScore = resolvedPlayerNumber === 0 ? scores[0] : scores[1];
-  const opponentScore = resolvedPlayerNumber === 0 ? scores[1] : scores[0];
-  const leftName = playerName || 'You';
-  const rightName = opponentName || 'Opponent';
+  const getPlayerDisplayName = (idx: number) => {
+    if (idx === playerNumber) return `${playerName || 'You'} (You)`;
+    return allPlayerNames[idx] || (idx === 0 ? 'Player 1' : idx === 1 ? (opponentName || 'Player 2') : `Player ${idx + 1}`);
+  };
 
   const handleExit = () => {
     openRoomActionPrompt();
@@ -51,30 +50,42 @@ export default function GameFrame({
       <div className={styles.layout}>
         <div className={styles.mainColumn}>
           <div className={styles.scoreBoard}>
-            <div className={styles.scorePlayer}>
-              <span className={styles.scoreName}>{leftName}</span>
-              <span className={styles.scoreValue}>{myScore}</span>
-            </div>
-            <div className={styles.scoreDivider}>—</div>
-            <div className={styles.scorePlayer}>
-              <span className={styles.scoreValue}>{opponentScore}</span>
-              <span className={styles.scoreName}>{rightName}</span>
-            </div>
+            {scores.length <= 2 ? (
+              <>
+                <div className={styles.scorePlayer}>
+                  <span className={styles.scoreName}>{getPlayerDisplayName(0)}</span>
+                  <span className={styles.scoreValue}>{scores[0] ?? 0}</span>
+                </div>
+                <div className={styles.scoreDivider}>—</div>
+                <div className={styles.scorePlayer}>
+                  <span className={styles.scoreValue}>{scores[1] ?? 0}</span>
+                  <span className={styles.scoreName}>{getPlayerDisplayName(1)}</span>
+                </div>
+              </>
+            ) : (
+              scores.map((score, idx) => (
+                <React.Fragment key={idx}>
+                  {idx > 0 && <div className={styles.scoreDivider}>—</div>}
+                  <div className={styles.scorePlayer}>
+                    <span className={styles.scoreName}>{getPlayerDisplayName(idx)}</span>
+                    <span className={styles.scoreValue}>{score}</span>
+                  </div>
+                </React.Fragment>
+              ))
+            )}
           </div>
 
           <div className={styles.infoBar}>
-            <span className={`${styles.playerTag} ${currentPlayer === resolvedPlayerNumber ? styles.playerTagActive : ''}`}>
-              🎮 {leftName}
-            </span>
-            <span
-              className={`${styles.playerTag} ${
-                currentPlayer !== null && currentPlayer === 1 - resolvedPlayerNumber
-                  ? styles.playerTagActive
-                  : ''
-              }`}
-            >
-              👤 {rightName}
-            </span>
+            {scores.map((_, idx) => (
+              <span
+                key={idx}
+                className={`${styles.playerTag} ${
+                  currentPlayer !== null && currentPlayer === idx ? styles.playerTagActive : ''
+                }`}
+              >
+                {idx === playerNumber ? '🎮' : '👤'} {getPlayerDisplayName(idx)}
+              </span>
+            ))}
           </div>
 
           <div className={styles.turnIndicator}>{turnText}</div>
@@ -91,4 +102,4 @@ export default function GameFrame({
       </div>
     </div>
   );
-}
+}

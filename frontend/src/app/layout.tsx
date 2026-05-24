@@ -5,6 +5,8 @@ import SessionBanner from "@/components/SessionBanner";
 import SiteHeader from "@/components/SiteHeader";
 import AuthSessionProvider from "@/components/AuthSessionProvider";
 import ConsentBanner from "@/components/ConsentBanner";
+import GameInviteBanner from "@/components/GameInviteBanner";
+import SocialDock from "@/components/SocialDock";
 
 export const metadata: Metadata = {
   title: "IcoGenX.com | Next Generation Indie Multiplayer gaming",
@@ -33,6 +35,8 @@ export default function RootLayout({
             <SiteHeader />
             <SessionBanner />
             {children}
+            <GameInviteBanner />
+            <SocialDock />
             <ConsentBanner />
           </WebSocketProvider>
         </AuthSessionProvider>

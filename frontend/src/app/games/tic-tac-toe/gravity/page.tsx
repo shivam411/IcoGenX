@@ -12,6 +12,7 @@ export default function GravityTicTacToePage() {
       gameName="Gravity Tic-Tac-Toe"
       gameIcon="⬇️"
       accentColor="#14b8a6"
+      hideOverlaysOnGameOver={true}
     >
       <TicTacToeBoard
         variantTitle="📜 Rules"

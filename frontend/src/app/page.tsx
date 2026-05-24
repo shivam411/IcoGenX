@@ -18,8 +18,12 @@ export default function HomePage() {
   const { joinRoom, connected, error, roomCode, gameType, variant, pendingRoomAction } = useGame();
 
   const [filter, setFilter] = useState('All');
+  const [playerFilter, setPlayerFilter] = useState<'all' | '2p' | '3-4p'>('all');
   const [page, setPage] = useState(1);
   const [selectedGame, setSelectedGame] = useState<GameCatalogItem | null>(null);
+  const [comingSoonGame, setComingSoonGame] = useState<GameCatalogItem | null>(null);
+  const [subscribeEmail, setSubscribeEmail] = useState('');
+  const [subscribedGameId, setSubscribedGameId] = useState<string | null>(null);
   const [variantPlayCounts, setVariantPlayCounts] = useState<Record<string, number>>({});
 
   // Quick join — now a toggleable action, not always-on
@@ -86,6 +90,13 @@ export default function HomePage() {
     joinRoom(joinCode.toUpperCase(), joinName.trim());
   };
 
+  const handleSubscribe = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!subscribeEmail || !comingSoonGame) return;
+    setSubscribedGameId(comingSoonGame.id);
+    setSubscribeEmail('');
+  };
+
   const scrollToCatalog = () => {
     catalogRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -96,10 +107,20 @@ export default function HomePage() {
     return { categories: cats, totalGames: games.length, totalVariants: variantCount };
   }, []);
 
-  const filteredGames = useMemo(
-    () => games.filter((g) => filter === 'All' || g.category === filter),
-    [filter],
-  );
+  const filteredGames = useMemo(() => {
+    return games.filter((g) => {
+      // Category filter
+      const matchesCategory = filter === 'All' || g.category === filter;
+      // Player count filter
+      let matchesPlayerCount = true;
+      if (playerFilter === '2p') {
+        matchesPlayerCount = g.playerCount === 2;
+      } else if (playerFilter === '3-4p') {
+        matchesPlayerCount = g.playerCount >= 3;
+      }
+      return matchesCategory && matchesPlayerCount;
+    });
+  }, [filter, playerFilter]);
 
   const ITEMS_PER_PAGE = 6;
   const totalPages = Math.max(1, Math.ceil(filteredGames.length / ITEMS_PER_PAGE));
@@ -126,7 +147,7 @@ export default function HomePage() {
             <h1 className={styles.heroTitle}>
               Quick, clever games
               <br />
-              <span className={styles.heroAccent}>built for two.</span>
+              <span className={styles.heroAccent}>built for two &amp; more.</span>
             </h1>
             <p className={styles.heroSub}>
               Pick a game, share a 6-character room code, and play head-to-head in your browser.
@@ -159,7 +180,7 @@ export default function HomePage() {
               </div>
               <div className={styles.heroStat}>
                 <dt>Per room</dt>
-                <dd>2P</dd>
+                <dd>2-4 Players</dd>
               </div>
               <div className={styles.heroStat}>
                 <dt>Sign-up</dt>
@@ -173,7 +194,7 @@ export default function HomePage() {
             <div className={styles.previewTile}>
               <div className={styles.previewTileHeader}>
                 <span className={styles.previewTag}>How a match flows</span>
-                <span className={styles.previewBadge}>2P</span>
+                <span className={styles.previewBadge}>2-4P</span>
               </div>
               <ol className={styles.flowList}>
                 <li><span>1</span> Pick a game &amp; variant</li>
@@ -234,36 +255,110 @@ export default function HomePage() {
           </div>
         )}
 
+        {/* ---------- Featured Section & Couples Corner ---------- */}
+        {filter === 'All' && playerFilter === 'all' && page === 1 && (
+          <section className={styles.featuredSection}>
+            <div className={styles.featuredHeader}>
+              <h2 className={styles.featuredTitle}>
+                <span>✨</span> Featured &amp; Couples Corner
+              </h2>
+              <p className={styles.featuredSub}>Handpicked favorites for date nights, party nights, and quick challenges.</p>
+            </div>
+            <div className={styles.featuredGrid}>
+              {games.filter((g) => g.featured).map((game) => (
+                <GameCard
+                  key={`featured-${game.id}`}
+                  game={game}
+                  onOpenVariants={setSelectedGame}
+                  onNotifyComingSoon={setComingSoonGame}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* ---------- Catalog ---------- */}
         <section ref={catalogRef} className={styles.catalog} aria-labelledby="catalog-heading">
           <header className={styles.catalogHeader}>
-            <div>
+            <div className={styles.catalogHeaderCopy}>
               <h2 id="catalog-heading" className={styles.catalogTitle}>Game catalog</h2>
-              <p className={styles.catalogSub}>Filter by category, then jump in.</p>
+              <p className={styles.catalogSub}>Explore our full collection of multiplayer games.</p>
             </div>
-            <div className={styles.filterRow} role="tablist" aria-label="Filter games by category">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  role="tab"
-                  aria-selected={filter === cat}
-                  onClick={() => {
-                    setFilter(cat);
-                    setPage(1);
-                  }}
-                  className={`${styles.filterBtn} ${filter === cat ? styles.filterBtnActive : ''}`}
-                >
-                  {cat}
-                </button>
-              ))}
+            <div className={styles.filterControls}>
+              <div className={styles.filterGroup}>
+                <span className={styles.filterLabel}>Category</span>
+                <div className={styles.filterRow} role="tablist" aria-label="Filter games by category">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      role="tab"
+                      aria-selected={filter === cat}
+                      onClick={() => {
+                        setFilter(cat);
+                        setPage(1);
+                      }}
+                      className={`${styles.filterBtn} ${filter === cat ? styles.filterBtnActive : ''}`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.filterGroup}>
+                <span className={styles.filterLabel}>Players</span>
+                <div className={styles.filterRow} role="tablist" aria-label="Filter games by player count">
+                  {[
+                    { id: 'all', label: 'All Players' },
+                    { id: '2p', label: '👥 2 Players' },
+                    { id: '3-4p', label: '👥👥 3-4 Players' },
+                  ].map((pOpt) => (
+                    <button
+                      key={pOpt.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={playerFilter === pOpt.id}
+                      onClick={() => {
+                        setPlayerFilter(pOpt.id as any);
+                        setPage(1);
+                      }}
+                      className={`${styles.filterBtn} ${playerFilter === pOpt.id ? styles.filterBtnActive : ''}`}
+                    >
+                      {pOpt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </header>
 
           <div className={styles.gamesGrid}>
-            {paginatedGames.map((game) => (
-              <GameCard key={game.id} game={game} onOpenVariants={setSelectedGame} />
-            ))}
+            {paginatedGames.length === 0 ? (
+              <div className={styles.emptyStateCard}>
+                <span className={styles.emptyIcon}>🎮</span>
+                <h3>No games found</h3>
+                <p>We are actively developing more multiplayer games for this category. Stay tuned!</p>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => {
+                    setFilter('All');
+                    setPlayerFilter('all');
+                  }}
+                >
+                  Reset Filters
+                </button>
+              </div>
+            ) : (
+              paginatedGames.map((game) => (
+                <GameCard
+                  key={game.id}
+                  game={game}
+                  onOpenVariants={setSelectedGame}
+                  onNotifyComingSoon={setComingSoonGame}
+                />
+              ))
+            )}
           </div>
 
           {totalPages > 1 && (
@@ -292,7 +387,7 @@ export default function HomePage() {
         <AdSlot slotId="home-leaderboard" shape="leaderboard" label="Homepage leaderboard" />
 
         <footer className={styles.footerNote}>
-          <span>Built for friends · works on phones · zero install</span>
+          <span>Built for friends &amp; couples · works on phones · zero install</span>
         </footer>
       </div>
 
@@ -343,6 +438,71 @@ export default function HomePage() {
 
             <button className={`btn btn-ghost ${styles.closeBtn}`} onClick={() => setSelectedGame(null)}>
               Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Coming Soon Modal */}
+      {comingSoonGame && (
+        <div className={styles.modalOverlay} onClick={() => setComingSoonGame(null)}>
+          <div
+            className={`glass-card ${styles.modalCard}`}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Coming soon info for ${comingSoonGame.name}`}
+          >
+            <div className={styles.comingSoonHeader}>
+              <span className={styles.comingSoonModalIcon} style={{ background: comingSoonGame.gradient }}>
+                {comingSoonGame.icon}
+              </span>
+              <div>
+                <h2 className={styles.modalTitle}>{comingSoonGame.name}</h2>
+                <span className="badge badge-pink">v2.1 Beta</span>
+              </div>
+            </div>
+
+            <p className={styles.modalSub} style={{ marginTop: '1rem', fontSize: '1.02rem', lineHeight: '1.5' }}>
+              {comingSoonGame.description}
+            </p>
+
+            <div className={styles.comingSoonDetails}>
+              <h4 className={styles.comingSoonDetailsTitle}>Game Rules &amp; Highlights:</h4>
+              <ul className={styles.comingSoonRulesList}>
+                {comingSoonGame.rules.map((rule, idx) => (
+                  <li key={idx}>{rule}</li>
+                ))}
+              </ul>
+            </div>
+
+            {subscribedGameId === comingSoonGame.id ? (
+              <div className={styles.subscribeSuccess}>
+                <span>🎉</span> You are on the beta access list for {comingSoonGame.name}!
+              </div>
+            ) : (
+              <form onSubmit={handleSubscribe} className={styles.comingSoonForm}>
+                <p className={styles.subscribeText}>
+                  We are finalizing this game. Register your email for instant beta access!
+                </p>
+                <div className={styles.subscribeFields}>
+                  <input
+                    type="email"
+                    required
+                    placeholder="Enter your email"
+                    className={styles.subscribeInput}
+                    value={subscribeEmail}
+                    onChange={(e) => setSubscribeEmail(e.target.value)}
+                  />
+                  <button type="submit" className="btn btn-primary">
+                    Get Beta Invite 🚀
+                  </button>
+                </div>
+              </form>
+            )}
+
+            <button className={`btn btn-ghost ${styles.closeBtn}`} onClick={() => setComingSoonGame(null)}>
+              Close
             </button>
           </div>
         </div>

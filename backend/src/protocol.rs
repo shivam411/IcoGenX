@@ -12,6 +12,10 @@ pub enum ClientMessage {
     RequestPlayAgain,
     SwitchVariant { variant: String },
     SetMatchFormat { format: String },
+    Identify { user_id: String, name: String, image: Option<String> },
+    SubscribePresence { friend_ids: Vec<String> },
+    SendGameInvite { to_user_id: String, game_type: String, variant: Option<String> },
+    DeclineGameInvite { invite_id: String, from_user_id: String },
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -41,6 +45,11 @@ pub enum ServerMessage {
     // Play again flow
     PlayAgainRequested { by_player: u8 },
     PlayAgainAccepted { game_state: serde_json::Value, scores: Vec<u32> },
+
+    // Friends & Presence
+    PresenceUpdate { user_id: String, online: bool, current_room: Option<String> },
+    GameInviteReceived { invite_id: String, from_user_id: String, from_name: String, game_type: String, variant: Option<String>, room_code: String },
+    GameInviteDeclined { invite_id: String, from_name: String },
 }
 
 #[cfg(test)]

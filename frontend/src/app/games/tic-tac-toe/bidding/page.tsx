@@ -12,6 +12,7 @@ export default function BiddingTicTacToePage() {
       gameName="Bidding Tic-Tac-Toe"
       gameIcon="🪙"
       accentColor="#eab308"
+      hideOverlaysOnGameOver={true}
     >
       <TicTacToeBoard
         variantTitle="📜 Rules"

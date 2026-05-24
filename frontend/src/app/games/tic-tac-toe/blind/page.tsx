@@ -12,6 +12,7 @@ export default function BlindTicTacToePage() {
       gameName="Blind Tic-Tac-Toe"
       gameIcon="🙈"
       accentColor="#f97316"
+      hideOverlaysOnGameOver={true}
     >
       <TicTacToeBoard
         variantTitle="📜 Rules"

@@ -43,10 +43,14 @@ type Sender = SplitSink<WebSocket, Message>;
 pub struct AppState {
     pub rooms: RwLock<HashMap<String, Room>>,
     pub player_rooms: RwLock<HashMap<String, String>>,        // player_id -> room_code
-    pub player_numbers: RwLock<HashMap<String, u8>>,          // player_id -> 0 or 1
+    pub player_numbers: RwLock<HashMap<String, u8>>,          // player_id -> 0..N-1
     pub player_names: RwLock<HashMap<String, String>>,          // player_id -> name
     pub senders: RwLock<HashMap<String, Arc<RwLock<Sender>>>>, // player_id -> ws sender
     pub registry: GameRegistry,
+    // Friends & Presence:
+    pub user_connections: RwLock<HashMap<String, Vec<String>>>, // user_id -> Vec<player_id> (sockets)
+    pub presence_subscriptions: RwLock<HashMap<String, std::collections::HashSet<String>>>, // user_id -> Set<friend_user_id>
+    pub player_users: RwLock<HashMap<String, String>>, // player_id -> user_id
 }
 
 impl AppState {
@@ -58,6 +62,9 @@ impl AppState {
             player_names: RwLock::new(HashMap::new()),
             senders: RwLock::new(HashMap::new()),
             registry: GameRegistry::new(),
+            user_connections: RwLock::new(HashMap::new()),
+            presence_subscriptions: RwLock::new(HashMap::new()),
+            player_users: RwLock::new(HashMap::new()),
         }
     }
 
@@ -86,6 +93,56 @@ impl AppState {
     pub async fn remove_player(&self, player_id: &str) {
         self.senders.write().await.remove(player_id);
 
+        // Friends & Presence Cleanup
+        let user_id_to_notify = {
+            let mut player_users = self.player_users.write().await;
+            if let Some(user_id) = player_users.remove(player_id) {
+                let mut user_connections = self.user_connections.write().await;
+                if let Some(conns) = user_connections.get_mut(&user_id) {
+                    conns.retain(|id| id != player_id);
+                    if conns.is_empty() {
+                        user_connections.remove(&user_id);
+                        Some(user_id)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        };
+
+        if let Some(user_id) = user_id_to_notify {
+            let mut subscribers = Vec::new();
+            {
+                let subscriptions = self.presence_subscriptions.read().await;
+                for (sub_uid, friends) in subscriptions.iter() {
+                    if friends.contains(&user_id) {
+                        subscribers.push(sub_uid.clone());
+                    }
+                }
+            }
+
+            let mut subscriber_pids = Vec::new();
+            {
+                let conns = self.user_connections.read().await;
+                for sub_uid in subscribers {
+                    if let Some(pids) = conns.get(&sub_uid) {
+                        subscriber_pids.extend(pids.clone());
+                    }
+                }
+            }
+
+            let msg = ServerMessage::PresenceUpdate {
+                user_id,
+                online: false,
+                current_room: None,
+            };
+            self.send_to_players(&subscriber_pids, &msg).await;
+        }
+
         let room_code = self.player_rooms.write().await.remove(player_id);
         self.player_numbers.write().await.remove(player_id);
         self.player_names.write().await.remove(player_id);
@@ -95,6 +152,12 @@ impl AppState {
                 let mut rooms = self.rooms.write().await;
                 if let Some(room) = rooms.get_mut(&code) {
                     room.players.retain(|p| p != player_id);
+                    if !room.started {
+                        let mut player_numbers = self.player_numbers.write().await;
+                        for (idx, pid) in room.players.iter().enumerate() {
+                            player_numbers.insert(pid.clone(), idx as u8);
+                        }
+                    }
                     let remaining = room.players.clone();
                     // Clean up empty rooms
                     if remaining.is_empty() {
@@ -162,6 +225,10 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                 },
                 None => DEFAULT_MATCH_FORMAT.to_string(),
             };
+            let player_count = state.registry.create(&game_type, variant.as_deref())
+                .map(|g| g.player_count())
+                .unwrap_or(2);
+
             let room = Room {
                 code: code.clone(),
                 game_type: game_type.clone(),
@@ -170,8 +237,8 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                 players: vec![player_id.to_string()],
                 game: None,
                 started: false,
-                scores: [0, 0],
-                play_again_votes: [false, false],
+                scores: vec![0; player_count as usize],
+                play_again_votes: vec![false; player_count as usize],
             };
 
             state.rooms.write().await.insert(code.clone(), room);
@@ -199,6 +266,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                         game_type,
                         variant,
                         match_format: format_val,
+                        player_count,
                     },
                 )
                 .await;
@@ -206,27 +274,6 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
 
         ClientMessage::JoinRoom { room_code, player_name } => {
             tracing::info!("Player {} ({}) attempting to join room {}", player_id, player_name, room_code);
-
-            let reconnect_context = {
-                let rooms = state.rooms.read().await;
-                if let Some(room) = rooms.get(&room_code) {
-                    if room.started && room.game.is_some() && room.players.len() == 1 {
-                        Some(room.players[0].clone())
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            };
-
-            let reconnect_context = if let Some(remaining_player_id) = reconnect_context {
-                let player_numbers = state.player_numbers.read().await;
-                let remaining_player_number = player_numbers.get(&remaining_player_id).copied().unwrap_or(0);
-                Some((remaining_player_id, remaining_player_number))
-            } else {
-                None
-            };
 
             // Extract room info under write lock, then release lock before sending
             let join_result = {
@@ -236,33 +283,31 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                         tracing::warn!("Room {} not found", room_code);
                         Err("Room not found".to_string())
                     }
-                    Some(room) if room.players.len() >= 2 => {
+                    Some(room) if room.players.len() >= room.scores.len() => {
                         tracing::warn!("Room {} is full", room_code);
                         Err("Room is full".to_string())
                     }
                     Some(room) => {
-                        let is_rejoining_started_game = reconnect_context
-                            .as_ref()
-                            .map(|(remaining_player_id, _)| {
-                                room.started
-                                    && room.game.is_some()
-                                    && room.players.len() == 1
-                                    && room.players[0] == *remaining_player_id
-                            })
-                            .unwrap_or(false);
+                        let is_rejoining_started_game = room.started && room.game.is_some() && room.players.len() < room.scores.len();
 
                         let player_num = if is_rejoining_started_game {
-                            let remaining_player_number = reconnect_context
-                                .as_ref()
-                                .map(|(_, number)| *number)
-                                .unwrap_or(0);
-                            let player_num = if remaining_player_number == 0 { 1 } else { 0 };
-                            if player_num == 0 {
-                                room.players.insert(0, player_id.to_string());
-                            } else {
-                                room.players.push(player_id.to_string());
-                            }
-                            player_num
+                            let player_numbers = state.player_numbers.read().await;
+                            let occupied: std::collections::HashSet<u8> = room.players
+                                .iter()
+                                .filter_map(|pid| player_numbers.get(pid).copied())
+                                .collect();
+                            let expected = room.scores.len() as u8;
+                            let free_num = (0..expected).find(|n| !occupied.contains(n)).unwrap_or(0);
+                            
+                            let mut players_with_nums: Vec<(String, u8)> = room.players
+                                .iter()
+                                .map(|pid| (pid.clone(), player_numbers.get(pid).copied().unwrap_or(0)))
+                                .collect();
+                            players_with_nums.push((player_id.to_string(), free_num));
+                            players_with_nums.sort_by_key(|&(_, num)| num);
+                            room.players = players_with_nums.into_iter().map(|(pid, _)| pid).collect();
+                            
+                            free_num
                         } else {
                             room.players.push(player_id.to_string());
                             (room.players.len() - 1) as u8
@@ -272,14 +317,26 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                         let game_type_str = room.game_type.clone();
                         let variant_str = room.variant.clone();
                         let match_format_str = room.match_format.clone();
-                        let scores = room.scores;
+                        let scores = room.scores.clone();
+
+                        let mut pnames_vec = vec![String::new(); players.len()];
+                        {
+                            let pnames = state.player_names.read().await;
+                            for (idx, pid) in players.iter().enumerate() {
+                                if pid == player_id {
+                                    pnames_vec[idx] = player_name.clone();
+                                } else {
+                                    pnames_vec[idx] = pnames.get(pid).cloned().unwrap_or_else(|| "Unknown".to_string());
+                                }
+                            }
+                        }
 
                         let start_messages = if is_rejoining_started_game {
                             room.game
                                 .as_ref()
-                                .map(|game| build_game_start_messages(game.as_ref(), &players, scores, &game_type_str, &variant_str, &match_format_str))
+                                .map(|game| build_game_start_messages(game.as_ref(), &players, &pnames_vec, scores.clone(), &game_type_str, &variant_str, &match_format_str))
                                 .unwrap_or_default()
-                        } else if room.players.len() == 2 {
+                        } else if room.players.len() == room.scores.len() {
                             let game = state.registry.create(&game_type_str, variant_str.as_deref());
                             match game {
                                 Some(g) => {
@@ -287,7 +344,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                                     room.started = true;
                                     room.game
                                         .as_ref()
-                                        .map(|game| build_game_start_messages(game.as_ref(), &players, scores, &game_type_str, &variant_str, &match_format_str))
+                                        .map(|game| build_game_start_messages(game.as_ref(), &players, &pnames_vec, scores.clone(), &game_type_str, &variant_str, &match_format_str))
                                         .unwrap_or_default()
                                 }
                                 None => Vec::new(),
@@ -300,7 +357,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                             tracing::info!("Player {} ({}) rejoined running room {} as player {}", player_id, player_name, room_code, player_num);
                         }
 
-                        Ok((player_num, players, room_code.clone(), start_messages, game_type_str, variant_str, match_format_str))
+                        Ok((player_num, players, room_code.clone(), start_messages, game_type_str, variant_str, match_format_str, scores))
                     }
                 }
             };
@@ -312,7 +369,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                         .send_to(player_id, &ServerMessage::Error { message: msg })
                         .await;
                 }
-                Ok((player_num, players, code, start_messages, game_type_str, variant_str, match_format_str)) => {
+                Ok((player_num, players, code, start_messages, game_type_str, variant_str, match_format_str, scores)) => {
                     // Register mappings
                     state.player_rooms.write().await
                         .insert(player_id.to_string(), code.clone());
@@ -337,6 +394,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                                         game_type: game_type_str.clone(),
                                         variant: variant_str.clone(),
                                         match_format: match_format_str.clone(),
+                                        player_count: scores.len() as u8,
                                     };
                                     state.send_to(player_id, &existing_msg).await;
                                 }
@@ -352,6 +410,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                         game_type: game_type_str.clone(),
                         variant: variant_str.clone(),
                         match_format: match_format_str,
+                        player_count: scores.len() as u8,
                     };
                     state.send_to_players(&players, &join_msg).await;
 
@@ -394,17 +453,19 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                                     if let Some(mut over_msg) = over {
                                         // Update scores if there's a winner
                                         if let ServerMessage::GameOver { winner: Some(ref winner_str), .. } = over_msg {
-                                            if winner_str == "Player 1" {
-                                                room.scores[0] += 1;
-                                            } else if winner_str == "Player 2" {
-                                                room.scores[1] += 1;
+                                            if winner_str.starts_with("Player ") {
+                                                if let Ok(num) = winner_str["Player ".len()..].parse::<usize>() {
+                                                    if num > 0 && num <= room.scores.len() {
+                                                        room.scores[num - 1] += 1;
+                                                    }
+                                                }
                                             }
                                         }
                                         
                                         // Handle match format custom overrides
                                         if room.match_format == "series_5" {
                                             if let ServerMessage::GameOver { ref mut reason, .. } = over_msg {
-                                                if room.scores[0] >= 3 || room.scores[1] >= 3 {
+                                                if room.scores.iter().any(|&s| s >= 3) {
                                                     *reason = "SeriesCompleted".to_string();
                                                 } else {
                                                     *reason = "MatchCompleted".to_string();
@@ -486,17 +547,21 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                     if let Some(room) = rooms.get_mut(&code) {
                         room.play_again_votes[player_num as usize] = true;
                         
-                        if room.play_again_votes[0] && room.play_again_votes[1] {
-                            // Both voted yes, restart game
-                            room.play_again_votes = [false, false];
+                        if room.play_again_votes.iter().all(|&v| v) {
+                            // All voted yes, restart game
+                            for vote in room.play_again_votes.iter_mut() {
+                                *vote = false;
+                            }
                             if let Some(ref mut game) = room.game {
-                                if room.match_format == "series_5" && (room.scores[0] >= 3 || room.scores[1] >= 3) {
-                                    room.scores = [0, 0];
+                                if room.match_format == "series_5" && room.scores.iter().any(|&s| s >= 3) {
+                                    for score in room.scores.iter_mut() {
+                                        *score = 0;
+                                    }
                                 }
                                 let last_winner = game.last_winner();
                                 game.reset_with_winner(last_winner);
                                 let state_json = game.state_for_player(None);
-                                let scores = room.scores;
+                                let scores = room.scores.clone();
                                 
                                 let msg = ServerMessage::PlayAgainAccepted {
                                     game_state: state_json,
@@ -554,18 +619,28 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                     let mut rooms = state.rooms.write().await;
                     if let Some(room) = rooms.get_mut(&code) {
                         room.variant = Some(variant.clone());
-                        room.play_again_votes = [false, false];
+                        for vote in room.play_again_votes.iter_mut() {
+                            *vote = false;
+                        }
 
-                        if room.players.len() == 2 {
+                        if room.players.len() == room.scores.len() {
                             match state.registry.create(&room.game_type, room.variant.as_deref()) {
                                 Some(game) => {
-                                    let scores = room.scores;
+                                    let scores = room.scores.clone();
                                     room.game = Some(game);
                                     room.started = true;
 
+                                    let mut pnames_vec = vec![String::new(); room.players.len()];
+                                    {
+                                        let pnames = state.player_names.read().await;
+                                        for (idx, pid) in room.players.iter().enumerate() {
+                                            pnames_vec[idx] = pnames.get(pid).cloned().unwrap_or_else(|| "Unknown".to_string());
+                                        }
+                                    }
+
                                     room.game
                                         .as_ref()
-                                        .map(|game| build_game_start_messages(game.as_ref(), &room.players, scores, &room.game_type, &room.variant, &room.match_format))
+                                        .map(|game| build_game_start_messages(game.as_ref(), &room.players, &pnames_vec, scores, &room.game_type, &room.variant, &room.match_format))
                                         .unwrap_or_default()
                                 }
                                 None => vec![(
@@ -586,6 +661,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                                     game_type: room.game_type.clone(),
                                     variant: room.variant.clone(),
                                     match_format: room.match_format.clone(),
+                                    player_count: room.scores.len() as u8,
                                 },
                             )]
                         }
@@ -683,17 +759,200 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                     .await;
             }
         }
+        ClientMessage::Identify { user_id, name: _, image: _ } => {
+            state.player_users.write().await.insert(player_id.to_string(), user_id.clone());
+            
+            // Scope the write lock so it's dropped before we re-read user_connections below
+            {
+                let mut conns = state.user_connections.write().await;
+                let vec = conns.entry(user_id.clone()).or_insert_with(Vec::new);
+                if !vec.contains(&player_id.to_string()) {
+                    vec.push(player_id.to_string());
+                }
+            }
+
+            let current_room = state.player_rooms.read().await.get(player_id).cloned();
+
+            let mut subscribers = Vec::new();
+            {
+                let subscriptions = state.presence_subscriptions.read().await;
+                for (sub_uid, friends) in subscriptions.iter() {
+                    if friends.contains(&user_id) {
+                        subscribers.push(sub_uid.clone());
+                    }
+                }
+            }
+
+            let mut subscriber_pids = Vec::new();
+            {
+                let conns_read = state.user_connections.read().await;
+                for sub_uid in subscribers {
+                    if let Some(pids) = conns_read.get(&sub_uid) {
+                        subscriber_pids.extend(pids.clone());
+                    }
+                }
+            }
+
+            let msg = ServerMessage::PresenceUpdate {
+                user_id: user_id.clone(),
+                online: true,
+                current_room,
+            };
+            state.send_to_players(&subscriber_pids, &msg).await;
+        }
+        ClientMessage::SubscribePresence { friend_ids } => {
+            let user_id = {
+                let player_users = state.player_users.read().await;
+                player_users.get(player_id).cloned()
+            };
+
+            if let Some(uid) = user_id {
+                {
+                    let mut subscriptions = state.presence_subscriptions.write().await;
+                    let entry = subscriptions.entry(uid.clone()).or_insert_with(std::collections::HashSet::new);
+                    for fid in &friend_ids {
+                        entry.insert(fid.clone());
+                    }
+                }
+
+                let conns = state.user_connections.read().await;
+                let player_rooms = state.player_rooms.read().await;
+
+                for fid in friend_ids {
+                    let online = conns.contains_key(&fid);
+                    let current_room = if online {
+                        conns.get(&fid)
+                            .and_then(|pids| pids.first())
+                            .and_then(|pid| player_rooms.get(pid).cloned())
+                    } else {
+                        None
+                    };
+
+                    state.send_to(
+                        player_id,
+                        &ServerMessage::PresenceUpdate {
+                            user_id: fid,
+                            online,
+                            current_room,
+                        },
+                    )
+                    .await;
+                }
+            }
+        }
+        ClientMessage::SendGameInvite { to_user_id, game_type, variant } => {
+            let from_user_id = state.player_users.read().await.get(player_id).cloned();
+            let from_name = state.player_names.read().await.get(player_id).cloned().unwrap_or_else(|| "Friend".into());
+
+            let room_code = {
+                let pr = state.player_rooms.read().await;
+                pr.get(player_id).cloned()
+            };
+
+            let final_room_code = match room_code {
+                Some(code) => code,
+                None => {
+                    let code = generate_room_code();
+                    let player_count = state.registry.create(&game_type, variant.as_deref())
+                        .map(|g| g.player_count())
+                        .unwrap_or(2);
+
+                    let room = Room {
+                        code: code.clone(),
+                        game_type: game_type.clone(),
+                        variant: variant.clone(),
+                        match_format: "single".to_string(),
+                        players: vec![player_id.to_string()],
+                        game: None,
+                        started: false,
+                        scores: vec![0; player_count as usize],
+                        play_again_votes: vec![false; player_count as usize],
+                    };
+
+                    state.rooms.write().await.insert(code.clone(), room);
+                    state.player_rooms.write().await.insert(player_id.to_string(), code.clone());
+                    state.player_numbers.write().await.insert(player_id.to_string(), 0);
+                    
+                    state.send_to(
+                        player_id,
+                        &ServerMessage::RoomCreated {
+                            room_code: code.clone(),
+                            game_type: game_type.clone(),
+                            variant: variant.clone(),
+                            match_format: "single".to_string(),
+                            player_count,
+                        },
+                    )
+                    .await;
+
+                    code
+                }
+            };
+
+            let invite_id = {
+                use rand::Rng;
+                let mut rng = rand::thread_rng();
+                let val: u64 = rng.gen();
+                format!("{:x}", val)
+            };
+            
+            let invite_msg = ServerMessage::GameInviteReceived {
+                invite_id,
+                from_user_id: from_user_id.unwrap_or_default(),
+                from_name,
+                game_type,
+                variant,
+                room_code: final_room_code,
+            };
+
+            let target_pids = {
+                let conns = state.user_connections.read().await;
+                conns.get(&to_user_id).cloned()
+            };
+
+            if let Some(pids) = target_pids {
+                state.send_to_players(&pids, &invite_msg).await;
+            }
+        }
+        ClientMessage::DeclineGameInvite { invite_id, from_user_id } => {
+            let from_name = state.player_names.read().await.get(player_id).cloned().unwrap_or_else(|| "Friend".into());
+
+            let decl_msg = ServerMessage::GameInviteDeclined {
+                invite_id,
+                from_name,
+            };
+
+            let inviter_pids = {
+                let conns = state.user_connections.read().await;
+                conns.get(&from_user_id).cloned()
+            };
+
+            if let Some(pids) = inviter_pids {
+                state.send_to_players(&pids, &decl_msg).await;
+            }
+        }
     }
 }
 
 fn build_game_start_messages(
     game: &dyn Game,
     players: &[String],
-    scores: [u32; 2],
+    player_names: &[String],
+    scores: Vec<u32>,
     game_type: &str,
     variant: &Option<String>,
     match_format: &str,
 ) -> Vec<(String, ServerMessage)> {
+    let players_info: Vec<crate::protocol::PlayerInfo> = players
+        .iter()
+        .enumerate()
+        .map(|(idx, pid)| crate::protocol::PlayerInfo {
+            player_id: pid.clone(),
+            player_number: idx as u8,
+            player_name: player_names.get(idx).cloned().unwrap_or_else(|| "Unknown".to_string()),
+        })
+        .collect();
+
     players
         .iter()
         .enumerate()
@@ -702,10 +961,11 @@ fn build_game_start_messages(
                 pid.clone(),
                 ServerMessage::GameStart {
                     game_state: game.state_for_player(Some(idx as u8)),
-                    scores,
+                    scores: scores.clone(),
                     game_type: game_type.to_string(),
                     variant: variant.clone(),
                     match_format: match_format.to_string(),
+                    players: players_info.clone(),
                 },
             )
         })
@@ -931,8 +1191,8 @@ mod tests {
                 players: vec!["p1".into()],
                 game: Some(Box::new(game)),
                 started: true,
-                scores: [2, 1],
-                play_again_votes: [false, false],
+                scores: vec![2, 1],
+                play_again_votes: vec![false, false],
             },
         );
         state.player_rooms.write().await.insert("p1".into(), "ROOM42".into());
@@ -954,7 +1214,7 @@ mod tests {
         let rooms = state.rooms.read().await;
         let room = rooms.get("ROOM42").unwrap();
         assert_eq!(room.players, vec!["p1".to_string(), "p2".to_string()]);
-        assert_eq!(room.scores, [2, 1]);
+        assert_eq!(room.scores, vec![2, 1]);
 
         let state_val = room.game.as_ref().unwrap().state_for_player(None);
         assert_eq!(state_val["board"][0], 0);
@@ -981,8 +1241,8 @@ mod tests {
                 players: vec!["p2".into()],
                 game: Some(Box::new(game)),
                 started: true,
-                scores: [0, 3],
-                play_again_votes: [false, false],
+                scores: vec![0, 3],
+                play_again_votes: vec![false, false],
             },
         );
         state.player_rooms.write().await.insert("p2".into(), "ROOM42".into());
@@ -1004,7 +1264,7 @@ mod tests {
         let rooms = state.rooms.read().await;
         let room = rooms.get("ROOM42").unwrap();
         assert_eq!(room.players, vec!["p1-return".to_string(), "p2".to_string()]);
-        assert_eq!(room.scores, [0, 3]);
+        assert_eq!(room.scores, vec![0, 3]);
 
         let state_val = room.game.as_ref().unwrap().state_for_player(None);
         assert_eq!(state_val["board"][4], 1);
@@ -1026,8 +1286,8 @@ mod tests {
                 players: vec!["p1".into()],
                 game: None,
                 started: false,
-                scores: [3, 1],
-                play_again_votes: [false, false],
+                scores: vec![3, 1],
+                play_again_votes: vec![false, false],
             },
         );
         state.player_rooms.write().await.insert("p1".into(), "ROOM42".into());
@@ -1047,7 +1307,7 @@ mod tests {
         assert_eq!(room.variant.as_deref(), Some("joker"));
         assert!(!room.started);
         assert!(room.game.is_none());
-        assert_eq!(room.scores, [3, 1]);
+        assert_eq!(room.scores, vec![3, 1]);
     }
 
     #[tokio::test]
@@ -1065,8 +1325,8 @@ mod tests {
                 players: vec!["p1".into(), "p2".into()],
                 game,
                 started: true,
-                scores: [4, 2],
-                play_again_votes: [true, true],
+                scores: vec![4, 2],
+                play_again_votes: vec![true, true],
             },
         );
         state.player_rooms.write().await.insert("p1".into(), "ROOM42".into());
@@ -1087,8 +1347,8 @@ mod tests {
         let room = rooms.get("ROOM42").unwrap();
         assert_eq!(room.variant.as_deref(), Some("gravity"));
         assert!(room.started);
-        assert_eq!(room.play_again_votes, [false, false]);
-        assert_eq!(room.scores, [4, 2]);
+        assert_eq!(room.play_again_votes, vec![false, false]);
+        assert_eq!(room.scores, vec![4, 2]);
 
         let state_val = room.game.as_ref().unwrap().state_for_player(None);
         assert_eq!(state_val["variant"], "gravity");
@@ -1109,8 +1369,8 @@ mod tests {
                 players: vec!["p1".into(), "p2".into()],
                 game,
                 started: true,
-                scores: [1, 0],
-                play_again_votes: [false, false],
+                scores: vec![1, 0],
+                play_again_votes: vec![false, false],
             },
         );
         state.player_rooms.write().await.insert("p1".into(), "ROOM42".into());
@@ -1149,8 +1409,8 @@ mod tests {
                 players: vec!["p1".into(), "p2".into()],
                 game,
                 started: true,
-                scores: [2, 0],
-                play_again_votes: [false, false],
+                scores: vec![2, 0],
+                play_again_votes: vec![false, false],
             },
         );
         state.player_rooms.write().await.insert("p1".into(), "ROOM42".into());
@@ -1164,14 +1424,14 @@ mod tests {
 
         let rooms = state.rooms.read().await;
         let room = rooms.get("ROOM42").unwrap();
-        assert_eq!(room.scores, [2, 0]); // scores should be preserved
+        assert_eq!(room.scores, vec![2, 0]); // scores should be preserved
 
         // Now let's set score to 3-0 (p1 wins)
         drop(rooms);
         {
             let mut rooms = state.rooms.write().await;
             let room = rooms.get_mut("ROOM42").unwrap();
-            room.scores = [3, 0];
+            room.scores = vec![3, 0];
         }
 
         // Request play again at 3-0 should reset scores to 0-0
@@ -1180,7 +1440,7 @@ mod tests {
 
         let rooms = state.rooms.read().await;
         let room = rooms.get("ROOM42").unwrap();
-        assert_eq!(room.scores, [0, 0]); // scores reset to 0-0
+        assert_eq!(room.scores, vec![0, 0]); // scores reset to 0-0
     }
 
     #[tokio::test]
@@ -1220,8 +1480,8 @@ mod tests {
                 players: vec!["p1".into(), "p2".into()],
                 game,
                 started: true,
-                scores: [0, 0],
-                play_again_votes: [false, false],
+                scores: vec![0, 0],
+                play_again_votes: vec![false, false],
             },
         );
         state.player_rooms.write().await.insert("p1".into(), "ROOM42".into());
@@ -1239,5 +1499,83 @@ mod tests {
         let rooms = state.rooms.read().await;
         let room = rooms.get("ROOM42").unwrap();
         assert_eq!(room.match_format, "single");
+    }
+
+    #[tokio::test]
+    async fn test_social_identify_and_presence_flow() {
+        let state = Arc::new(AppState::new());
+
+        handle_message(
+            &state,
+            "conn1",
+            ClientMessage::Identify {
+                user_id: "user_a".into(),
+                name: "Alex".into(),
+                image: None,
+            },
+        )
+        .await;
+
+        assert_eq!(state.player_users.read().await.get("conn1").unwrap(), "user_a");
+        assert_eq!(state.user_connections.read().await.get("user_a").unwrap()[0], "conn1");
+
+        handle_message(
+            &state,
+            "conn2",
+            ClientMessage::Identify {
+                user_id: "user_b".into(),
+                name: "Blair".into(),
+                image: None,
+            },
+        )
+        .await;
+
+        handle_message(
+            &state,
+            "conn1",
+            ClientMessage::SubscribePresence {
+                friend_ids: vec!["user_b".into()],
+            },
+        )
+        .await;
+
+        assert!(state.presence_subscriptions.read().await.get("user_a").unwrap().contains("user_b"));
+    }
+
+    #[tokio::test]
+    async fn test_social_game_invite_flow() {
+        let state = Arc::new(AppState::new());
+
+        // Identify user_a
+        handle_message(
+            &state,
+            "conn1",
+            ClientMessage::Identify {
+                user_id: "user_a".into(),
+                name: "Alex".into(),
+                image: None,
+            },
+        )
+        .await;
+
+        // Send game invite for tic_tac_toe to user_b
+        handle_message(
+            &state,
+            "conn1",
+            ClientMessage::SendGameInvite {
+                to_user_id: "user_b".into(),
+                game_type: "tic_tac_toe".into(),
+                variant: Some("blind".into()),
+            },
+        )
+        .await;
+
+        // Assert that a room has been created for the host
+        let room_code = state.player_rooms.read().await.get("conn1").cloned().unwrap();
+        let rooms = state.rooms.read().await;
+        let room = rooms.get(&room_code).unwrap();
+        assert_eq!(room.game_type, "tic_tac_toe");
+        assert_eq!(room.variant, Some("blind".into()));
+        assert_eq!(room.players[0], "conn1");
     }
 }

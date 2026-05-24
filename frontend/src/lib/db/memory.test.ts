@@ -102,4 +102,50 @@ describe('MemoryDb', () => {
     await expect(db.getTeamByJoinCode(team.joinCode)).resolves.toBeNull();
     await expect(db.getTeamByJoinCode(rotated?.joinCode ?? '')).resolves.toMatchObject({ id: team.id });
   });
+
+  it('assigns friend codes only to non-guest users', async () => {
+    const db = new MemoryDb();
+    const guest = await db.upsertUser({ id: 'u1', name: 'Guest User', isGuest: true });
+    expect(guest.friendCode).toBeUndefined();
+
+    const member = await db.upsertUser({ id: 'u2', name: 'Regular User', isGuest: false });
+    expect(member.friendCode).toMatch(/^[A-Z0-9]{6}$/);
+
+    const memberUpdate = await db.upsertUser({ id: 'u2', name: 'Regular User Updated', isGuest: false });
+    expect(memberUpdate.friendCode).toBe(member.friendCode);
+  });
+
+  it('manages friend request flows correctly', async () => {
+    const db = new MemoryDb();
+    const u1 = await db.upsertUser({ id: 'u1', name: 'User One', isGuest: false });
+    const u2 = await db.upsertUser({ id: 'u2', name: 'User Two', isGuest: false });
+
+    await expect(db.sendFriendRequest('u1', u1.friendCode!)).rejects.toThrow('Cannot add yourself as a friend');
+    await expect(db.sendFriendRequest('u1', 'INVALID')).rejects.toThrow('Friend code not found');
+
+    const req = await db.sendFriendRequest('u1', u2.friendCode!);
+    expect(req.status).toBe('pending');
+    expect(req.userId).toBe('u1');
+    expect(req.friendId).toBe('u2');
+
+    const u1Friends = await db.listFriends('u1');
+    expect(u1Friends).toHaveLength(1);
+    expect(u1Friends[0].friend.id).toBe('u2');
+    expect(u1Friends[0].status).toBe('pending');
+    expect(u1Friends[0].isInitiator).toBe(true);
+
+    const u2Friends = await db.listFriends('u2');
+    expect(u2Friends).toHaveLength(1);
+    expect(u2Friends[0].friend.id).toBe('u1');
+    expect(u2Friends[0].status).toBe('pending');
+    expect(u2Friends[0].isInitiator).toBe(false);
+
+    await db.acceptFriendRequest(req.id);
+    const u1FriendsAccepted = await db.listFriends('u1');
+    expect(u1FriendsAccepted[0].status).toBe('accepted');
+
+    await db.declineFriendRequest(req.id);
+    const u1FriendsEmpty = await db.listFriends('u1');
+    expect(u1FriendsEmpty).toHaveLength(0);
+  });
 });

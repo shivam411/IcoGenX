@@ -4,6 +4,7 @@ import type {
   AnalyticsSnapshot,
   DbAdapter,
   GameSocialRecord,
+  FriendshipRecord,
   TeamMembership,
   TeamMemberRole,
   TeamRecord,
@@ -56,6 +57,10 @@ export class MongoDb implements DbAdapter {
       try {
         await Promise.all([
           db.collection('users').createIndex({ id: 1 }, { unique: true }),
+          db.collection('users').createIndex({ friendCode: 1 }, { unique: true, sparse: true }),
+          db.collection('friendships').createIndex({ id: 1 }, { unique: true }),
+          db.collection('friendships').createIndex({ userId: 1, friendId: 1 }, { unique: true }),
+          db.collection('friendships').createIndex({ friendId: 1 }),
           db.collection('game_social').createIndex({ gameId: 1 }, { unique: true }),
           db.collection('user_game').createIndex({ userId: 1, gameId: 1 }, { unique: true }),
           db.collection('teams').createIndex({ id: 1 }, { unique: true }),
@@ -75,6 +80,7 @@ export class MongoDb implements DbAdapter {
   }
 
   private async users(): Promise<Collection<UserDoc>> { return (await this.db()).collection<UserDoc>('users'); }
+  private async friendshipsCol(): Promise<Collection<FriendshipRecord>> { return (await this.db()).collection<FriendshipRecord>('friendships'); }
   private async social(): Promise<Collection<SocialDoc>> { return (await this.db()).collection<SocialDoc>('game_social'); }
   private async interactions(): Promise<Collection<InteractionDoc>> { return (await this.db()).collection<InteractionDoc>('user_game'); }
   private async teamsCol(): Promise<Collection<TeamDoc>> { return (await this.db()).collection<TeamDoc>('teams'); }
@@ -140,14 +146,43 @@ export class MongoDb implements DbAdapter {
     throw new Error('unable to allocate team join code');
   }
 
+  private async uniqueFriendCode(): Promise<string> {
+    const users = await this.users();
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    for (let i = 0; i < 20; i += 1) {
+      let code = '';
+      for (let j = 0; j < 6; j++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      const existing = await users.findOne({ friendCode: code });
+      if (!existing) return code;
+    }
+    throw new Error('unable to allocate friend code');
+  }
+
   // ---------- users
   async upsertUser(input: Omit<UserRecord, 'createdAt'> & { createdAt?: number }) {
     const users = await this.users();
     const now = Date.now();
+    const existing = await users.findOne({ id: input.id });
+    let friendCode = existing?.friendCode ?? input.friendCode;
+    if (!input.isGuest && !friendCode) {
+      friendCode = await this.uniqueFriendCode();
+    }
+    const updateDoc: any = {
+      id: input.id,
+      name: input.name,
+      email: input.email,
+      image: input.image,
+      isGuest: input.isGuest,
+    };
+    if (friendCode) {
+      updateDoc.friendCode = friendCode;
+    }
     await users.updateOne(
       { id: input.id },
       {
-        $set: { id: input.id, name: input.name, email: input.email, image: input.image, isGuest: input.isGuest },
+        $set: updateDoc,
         $setOnInsert: { createdAt: input.createdAt ?? now, role: 'player' as UserRole },
       },
       { upsert: true },
@@ -162,6 +197,90 @@ export class MongoDb implements DbAdapter {
   async setUserRole(userId: string, role: UserRole) {
     await (await this.users()).updateOne({ id: userId }, { $set: { role } });
     return this.getUser(userId);
+  }
+
+  // ---------- friends & presence
+  async getUserIdByFriendCode(code: string): Promise<string | null> {
+    const doc = await (await this.users()).findOne({ friendCode: code.trim().toUpperCase() });
+    return doc ? doc.id : null;
+  }
+
+  async sendFriendRequest(userId: string, targetFriendCode: string): Promise<FriendshipRecord> {
+    const targetId = await this.getUserIdByFriendCode(targetFriendCode);
+    if (!targetId) {
+      throw new Error('Friend code not found');
+    }
+    if (targetId === userId) {
+      throw new Error('Cannot add yourself as a friend');
+    }
+
+    const friendships = await this.friendshipsCol();
+    const existing = await friendships.findOne({
+      $or: [
+        { userId, friendId: targetId },
+        { userId: targetId, friendId: userId },
+      ],
+    });
+    if (existing) {
+      const { _id, ...rest } = existing as any;
+      void _id;
+      return rest;
+    }
+
+    const id = this.uuid();
+    const rec: FriendshipRecord = {
+      id,
+      userId,
+      friendId: targetId,
+      status: 'pending',
+      createdAt: Date.now(),
+    };
+    await friendships.insertOne(rec);
+    return rec;
+  }
+
+  async acceptFriendRequest(friendshipId: string): Promise<void> {
+    await (await this.friendshipsCol()).updateOne(
+      { id: friendshipId },
+      { $set: { status: 'accepted' } }
+    );
+  }
+
+  async declineFriendRequest(friendshipId: string): Promise<void> {
+    await (await this.friendshipsCol()).deleteOne({ id: friendshipId });
+  }
+
+  async listFriends(userId: string) {
+    const friendships = await this.friendshipsCol();
+    const docs = await friendships.find({
+      $or: [{ userId }, { friendId: userId }],
+    }).toArray();
+
+    const friendIds = docs.map((f) => (f.userId === userId ? f.friendId : f.userId));
+    const users = friendIds.length
+      ? await (await this.users()).find({ id: { $in: friendIds } }).toArray()
+      : [];
+    const usersById = new Map(users.map((u) => [u.id, u] as const));
+
+    const list: Array<{
+      friendshipId: string;
+      friend: UserRecord;
+      status: 'pending' | 'accepted';
+      isInitiator: boolean;
+    }> = [];
+    for (const f of docs) {
+      const friendId = f.userId === userId ? f.friendId : f.userId;
+      const friend = usersById.get(friendId);
+      if (friend) {
+        list.push({
+          friendshipId: f.id,
+          friend,
+          status: f.status,
+          isInitiator: f.userId === userId,
+        });
+      }
+    }
+    return list;
   }
 
   // ---------- social

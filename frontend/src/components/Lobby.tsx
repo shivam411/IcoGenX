@@ -15,6 +15,7 @@ interface LobbyProps {
   gameIcon: string;
   accentColor: string;
   children: React.ReactNode;
+  hideOverlaysOnGameOver?: boolean;
 }
 
 const QUICK_REACTIONS = ['😀', '😮', '😅', '😤', '🎉', '👏'];
@@ -39,7 +40,7 @@ const ROOM_VARIANTS: Record<string, Array<{ id: string; label: string }>> = {
   ],
 };
 
-export default function Lobby({ gameType, variant, gameName, gameIcon, accentColor, children }: LobbyProps) {
+export default function Lobby({ gameType, variant, gameName, gameIcon, accentColor, children, hideOverlaysOnGameOver = false }: LobbyProps) {
   const {
     connected,
     roomCode,
@@ -99,7 +100,7 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
   const canSwitchVariant = Boolean(roomCode && variantOptions);
   const isCreator = playerNumber === 0;
   const [pendingVariant, setPendingVariant] = useState(activeVariant || variantOptions?.[0]?.id || '');
-  const showRoomActionModal = gameOver || roomActionPromptOpen;
+  const showRoomActionModal = (!hideOverlaysOnGameOver && gameOver) || roomActionPromptOpen;
 
   useEffect(() => {
     setPendingVariant(activeVariant || variantOptions?.[0]?.id || '');

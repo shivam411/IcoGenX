@@ -1,11 +1,10 @@
+/* frontend/src/app/games/higher-lower/HigherLowerGame.tsx */
 'use client';
 
 import { useEffect, useState } from 'react';
-import GameFrame from '@/components/GameFrame';
-import Lobby from '@/components/Lobby';
-import { useGame } from '@/context/GameContext';
+import GameTemplate, { GameBoardProps } from '@/components/GameTemplate';
+import { getGameInfo } from '@/lib/gameMetadata';
 import styles from './game.module.css';
-import Link from 'next/link';
 
 interface GuessEntry {
   player: number;
@@ -16,52 +15,19 @@ interface GuessEntry {
 const VARIANT_CONFIG = {
   sprint: {
     name: 'Higher or Lower: Sprint',
-    subtitle: 'Numbers 1-50',
     rulesTitle: 'Sprint Rules',
-    rules: (
-      <ul>
-        <li>Take turns guessing a hidden number inside the shrinking range.</li>
-        <li>After each guess, the range updates higher or lower.</li>
-        <li>Sprint uses a tighter 1 to 50 range, so reads matter fast.</li>
-        <li>Hit the exact number first to win.</li>
-      </ul>
-    ),
   },
   classic: {
     name: 'Higher or Lower',
     rulesTitle: 'Classic Rules',
-    rules: (
-      <ul>
-        <li>Guess the hidden number within the active range.</li>
-        <li>Each hint narrows the range to higher or lower.</li>
-        <li>Use the slider to stay inside the current valid window.</li>
-        <li>Find the number before your opponent does.</li>
-      </ul>
-    ),
   },
   expert: {
     name: 'Higher or Lower: Expert',
     rulesTitle: 'Expert Rules',
-    rules: (
-      <ul>
-        <li>The hidden number lives in a larger, tougher range.</li>
-        <li>Every wrong guess still narrows the space, but bad jumps cost tempo.</li>
-        <li>Read the full guess history before committing.</li>
-        <li>First exact hit wins the round.</li>
-      </ul>
-    ),
   },
   code_breaker_number: {
     name: 'Code Breaker: Number Range',
     rulesTitle: 'Number Range Rules',
-    rules: (
-      <ul>
-        <li>Track the visible range and keep each guess inside it.</li>
-        <li>Every hint compresses the search window for both players.</li>
-        <li>Efficient narrowing matters more than random shots.</li>
-        <li>Guess the exact number first to win.</li>
-      </ul>
-    ),
   },
 };
 
@@ -72,8 +38,19 @@ export function normalizeHigherLowerVariant(variant: string | undefined): Higher
   return 'classic';
 }
 
-function HigherLowerBoard({ variant }: { variant: HigherLowerVariant }) {
-  const { gameState, playerNumber, opponentName, sendAction, gameOver, winner } = useGame();
+interface HigherLowerBoardProps extends GameBoardProps {
+  variant: HigherLowerVariant;
+}
+
+function HigherLowerBoard({
+  gameState,
+  playerNumber,
+  opponentName,
+  isMyTurn,
+  sendAction,
+  gameOver,
+  variant,
+}: HigherLowerBoardProps) {
   const [guess, setGuess] = useState(50);
 
   const rangeLow: number = gameState?.rangeLow ?? 1;
@@ -84,11 +61,7 @@ function HigherLowerBoard({ variant }: { variant: HigherLowerVariant }) {
     setGuess((current) => Math.min(Math.max(current, rangeLow), rangeHigh));
   }, [rangeLow, rangeHigh]);
 
-  if (!gameState) return null;
-
-  const guesses: GuessEntry[] = gameState.guesses;
-  const currentPlayer: number = gameState.currentPlayer;
-  const isMyTurn = currentPlayer === playerNumber;
+  const guesses: GuessEntry[] = gameState.guesses || [];
   const opponentLabel = opponentName || 'Opponent';
 
   const handleGuess = () => {
@@ -97,84 +70,59 @@ function HigherLowerBoard({ variant }: { variant: HigherLowerVariant }) {
 
   const fillLeft = ((rangeLow - 1) / maxNumber) * 100;
   const fillWidth = ((rangeHigh - rangeLow + 1) / maxNumber) * 100;
-  const config = VARIANT_CONFIG[variant];
 
   return (
-    <div className={styles.gameWrapper}>
-      <GameFrame
-        currentPlayer={currentPlayer}
-        turnText={isMyTurn ? '🎯 Your turn to guess!' : `⏳ ${opponentLabel} is guessing...`}
-        rulesTitle={config.rulesTitle}
-        rules={config.rules}
-      >
-        <div className={styles.gameArea}>
-          <div className={styles.rangeBar}>
-            <div
-              className={styles.rangeFill}
-              style={{ left: `${fillLeft}%`, width: `${fillWidth}%` }}
-            >
-              <span className={styles.rangeLabel}>{rangeLow} – {rangeHigh}</span>
-            </div>
-          </div>
-
-          <div className={styles.rangeNumbers}>
-            <span>1</span>
-            <span>{maxNumber}</span>
-          </div>
-
-          {isMyTurn && !gameOver && (
-            <>
-              <div className={styles.sliderValue}>{guess}</div>
-              <input
-                type="range"
-                min={rangeLow}
-                max={rangeHigh}
-                value={guess}
-                onChange={(e) => setGuess(parseInt(e.target.value, 10))}
-                className={styles.sliderInput}
-              />
-              <div style={{ textAlign: 'center', marginTop: 12 }}>
-                <button className="btn btn-primary btn-lg" onClick={handleGuess}>
-                  Submit Guess
-                </button>
-              </div>
-            </>
-          )}
-
-          <div className={styles.guessHistory} style={{ marginTop: 24 }}>
-            {[...guesses].reverse().map((entry: GuessEntry, idx: number) => (
-              <div key={idx} className={styles.guessRow}>
-                <span className={styles.guessPlayer}>
-                  {entry.player === playerNumber ? '🎮 You' : `👤 ${opponentLabel}`}
-                </span>
-                <span className={styles.guessValue}>{entry.guess}</span>
-                <span className={`${styles.guessHint} ${
-                  entry.hint === 'higher' ? styles.hintHigher :
-                  entry.hint === 'lower' ? styles.hintLower :
-                  styles.hintCorrect
-                }`}>
-                  {entry.hint === 'higher' ? '⬆️ Higher' : entry.hint === 'lower' ? '⬇️ Lower' : '✅ Correct!'}
-                </span>
-              </div>
-            ))}
-          </div>
+    <div className={styles.gameArea}>
+      <div className={styles.rangeBar}>
+        <div
+          className={styles.rangeFill}
+          style={{ left: `${fillLeft}%`, width: `${fillWidth}%` }}
+        >
+          <span className={styles.rangeLabel}>{rangeLow} – {rangeHigh}</span>
         </div>
-      </GameFrame>
+      </div>
 
-      {gameOver && (
-        <div className={styles.winOverlay}>
-          <div className={`glass-card ${styles.winCard}`}>
-            <span className={styles.winEmoji}>
-              {winner?.includes(`${(playerNumber || 0) + 1}`) ? '🎯' : '😢'}
-            </span>
-            <h2 className={styles.winTitle}>
-              {winner?.includes(`${(playerNumber || 0) + 1}`) ? 'Nailed It!' : 'So Close!'}
-            </h2>
-            <p className={styles.winSub}>The number was found!</p>
-            <Link href="/" className="btn btn-primary">Play Again</Link>
+      <div className={styles.rangeNumbers}>
+        <span>1</span>
+        <span>{maxNumber}</span>
+      </div>
+
+      {isMyTurn && !gameOver && (
+        <>
+          <div className={styles.sliderValue}>{guess}</div>
+          <input
+            type="range"
+            min={rangeLow}
+            max={rangeHigh}
+            value={guess}
+            onChange={(e) => setGuess(parseInt(e.target.value, 10))}
+            className={styles.sliderInput}
+          />
+          <div style={{ textAlign: 'center', marginTop: 12 }}>
+            <button className="btn btn-primary btn-lg" onClick={handleGuess}>
+              Submit Guess
+            </button>
           </div>
-        </div>
+        </>
       )}
+
+      <div className={styles.guessHistory} style={{ marginTop: 24 }}>
+        {[...guesses].reverse().map((entry: GuessEntry, idx: number) => (
+          <div key={idx} className={styles.guessRow}>
+            <span className={styles.guessPlayer}>
+              {entry.player === playerNumber ? '🎮 You' : `👤 ${opponentLabel}`}
+            </span>
+            <span className={styles.guessValue}>{entry.guess}</span>
+            <span className={`${styles.guessHint} ${
+              entry.hint === 'higher' ? styles.hintHigher :
+              entry.hint === 'lower' ? styles.hintLower :
+              styles.hintCorrect
+            }`}>
+              {entry.hint === 'higher' ? '⬆️ Higher' : entry.hint === 'lower' ? '⬇️ Lower' : '✅ Correct!'}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -196,14 +144,17 @@ export default function HigherLowerGamePage({
   const config = VARIANT_CONFIG[normalizedVariant];
 
   return (
-    <Lobby
+    <GameTemplate
       gameType="higher_lower"
       variant={normalizedVariant}
       gameName={gameName || config.name}
       gameIcon={gameIcon}
       accentColor={accentColor}
+      winEmoji="🎯"
+      winTitle="Nailed It!"
+      loseTitle="So Close!"
     >
-      <HigherLowerBoard variant={normalizedVariant} />
-    </Lobby>
+      {(props) => <HigherLowerBoard {...props} variant={normalizedVariant} />}
+    </GameTemplate>
   );
 }
