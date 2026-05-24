@@ -3,7 +3,6 @@
 
 import { useEffect, useState } from 'react';
 import GameTemplate, { GameBoardProps } from '@/components/GameTemplate';
-import { getGameInfo } from '@/lib/gameMetadata';
 import styles from './game.module.css';
 
 interface GuessEntry {
@@ -38,6 +37,10 @@ export function normalizeHigherLowerVariant(variant: string | undefined): Higher
   return 'classic';
 }
 
+function clampNumber(value: number, low: number, high: number) {
+  return Math.min(Math.max(value, low), high);
+}
+
 interface HigherLowerBoardProps extends GameBoardProps {
   variant: HigherLowerVariant;
 }
@@ -52,24 +55,79 @@ function HigherLowerBoard({
   variant,
 }: HigherLowerBoardProps) {
   const [guess, setGuess] = useState(50);
+  const [secretInput, setSecretInput] = useState('');
 
   const rangeLow: number = gameState?.rangeLow ?? 1;
   const rangeHigh: number = gameState?.rangeHigh ?? 100;
   const maxNumber: number = gameState?.maxNumber ?? 100;
+  const mySecretSet: boolean = Boolean(gameState?.mySecretSet ?? gameState?.secretsSet?.[playerNumber]);
+  const bothSecretsSet: boolean = Boolean(gameState?.bothSecretsSet ?? gameState?.secretsSet?.every(Boolean));
 
   useEffect(() => {
-    setGuess((current) => Math.min(Math.max(current, rangeLow), rangeHigh));
+    setGuess((current) => clampNumber(current, rangeLow, rangeHigh));
   }, [rangeLow, rangeHigh]);
 
   const guesses: GuessEntry[] = gameState.guesses || [];
   const opponentLabel = opponentName || 'Opponent';
 
+  const handleSecretSubmit = () => {
+    const secret = parseInt(secretInput, 10);
+    if (Number.isNaN(secret) || secret < 1 || secret > maxNumber) return;
+    sendAction({ game: 'HigherLower', secret });
+    setSecretInput('');
+  };
+
   const handleGuess = () => {
-    sendAction({ game: 'HigherLower', guess });
+    sendAction({ game: 'HigherLower', guess: clampNumber(guess, rangeLow, rangeHigh) });
+  };
+
+  const handleGuessInput = (value: string) => {
+    const nextGuess = parseInt(value, 10);
+    if (Number.isNaN(nextGuess)) return;
+    setGuess(clampNumber(nextGuess, rangeLow, rangeHigh));
   };
 
   const fillLeft = ((rangeLow - 1) / maxNumber) * 100;
   const fillWidth = ((rangeHigh - rangeLow + 1) / maxNumber) * 100;
+
+  if (!mySecretSet) {
+    const secret = parseInt(secretInput, 10);
+    const secretValid = !Number.isNaN(secret) && secret >= 1 && secret <= maxNumber;
+
+    return (
+      <div className={`glass-card ${styles.setupPhase}`}>
+        <h2 className={styles.setupTitle}>Lock Your Number</h2>
+        <p className={styles.setupSub}>Choose a secret number from 1 to {maxNumber} for {opponentLabel} to find.</p>
+        <input
+          className={`input ${styles.secretInput}`}
+          type="number"
+          min={1}
+          max={maxNumber}
+          value={secretInput}
+          onChange={(event) => setSecretInput(event.target.value.replace(/\D/g, ''))}
+          onKeyDown={(event) => event.key === 'Enter' && handleSecretSubmit()}
+          placeholder={`1-${maxNumber}`}
+        />
+        <button
+          type="button"
+          className="btn btn-primary btn-lg"
+          onClick={handleSecretSubmit}
+          disabled={!secretValid}
+        >
+          Lock Number
+        </button>
+      </div>
+    );
+  }
+
+  if (!bothSecretsSet) {
+    return (
+      <div className={`glass-card ${styles.waitingSetup}`}>
+        <h3>Your number is locked.</h3>
+        <p>Waiting for {opponentLabel} to lock theirs...</p>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.gameArea}>
@@ -98,8 +156,18 @@ function HigherLowerBoard({
             onChange={(e) => setGuess(parseInt(e.target.value, 10))}
             className={styles.sliderInput}
           />
-          <div style={{ textAlign: 'center', marginTop: 12 }}>
-            <button className="btn btn-primary btn-lg" onClick={handleGuess}>
+          <div className={styles.inputSection}>
+            <input
+              className={`input ${styles.numberInput}`}
+              type="number"
+              min={rangeLow}
+              max={rangeHigh}
+              value={guess}
+              onChange={(event) => handleGuessInput(event.target.value)}
+              onKeyDown={(event) => event.key === 'Enter' && handleGuess()}
+              aria-label="Guess number"
+            />
+            <button type="button" className="btn btn-primary btn-lg" onClick={handleGuess}>
               Submit Guess
             </button>
           </div>

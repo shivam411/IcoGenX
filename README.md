@@ -12,6 +12,10 @@ Most casual game portals are fast to browse: category filters, visual cards, cle
 
 The current game catalog includes board, card, logic, memory, dice, and reflex games, with reusable UI for rules, tips, scorebars, room lifecycle, and variants.
 
+## v2.0.0 Platform Plan
+
+The current v2.0.0 roadmap is tracked in [docs/v2.0.0-platform-plan.md](docs/v2.0.0-platform-plan.md). It covers the verified repo status, friends/presence hardening, quality gates, and the planned Twist Checkers game.
+
 ## Features
 
 - Real-time two-player rooms over WebSockets
