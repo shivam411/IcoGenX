@@ -1,7 +1,7 @@
 /* frontend/src/components/GameOverOverlay.tsx */
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGame } from '@/context/GameContext';
 import styles from './game-shared.module.css';
@@ -35,7 +35,16 @@ export default function GameOverOverlay({
     opponentPlayAgainRequested,
     requestPlayAgain,
     leaveRoom,
+    gameOver,
   } = useGame();
+
+  const [isMinimized, setIsMinimized] = useState(false);
+
+  useEffect(() => {
+    if (!gameOver) {
+      setIsMinimized(false);
+    }
+  }, [gameOver]);
 
   const getWinnerIndex = (w: string | null): number | null => {
     if (!w) return null;
@@ -86,21 +95,44 @@ export default function GameOverOverlay({
 
   const statusText = getPlayAgainStatusText();
 
+  if (isMinimized) {
+    return (
+      <button
+        type="button"
+        className={styles.reopenBtn}
+        onClick={() => setIsMinimized(false)}
+      >
+        🎮 Play Again / Results
+      </button>
+    );
+  }
+
   return (
     <div className={styles.winOverlay} role="dialog" aria-modal="true" aria-labelledby="win-title">
       <div className={styles.winCard}>
-        <span className={styles.winEmoji}>{displayEmoji}</span>
-        <h2 id="win-title" className={styles.winTitle}>
-          {getWinnerDisplayName()}
-        </h2>
-
-        <p className={styles.winSub}>
-          {isDraw 
-            ? 'A closely contested battle! Nobody was willing to yield.' 
-            : isWinner 
-            ? 'Superb gameplay! You outmaneuvered your opponents.' 
-            : `${winnerName} claims victory in this round.`}
-        </p>
+        <button
+          type="button"
+          className={styles.overlayCloseBtn}
+          onClick={() => setIsMinimized(true)}
+          aria-label="Close overlay"
+        >
+          ×
+        </button>
+        <div className={styles.metaSection}>
+          <span className={styles.winEmoji}>{displayEmoji}</span>
+          <div className={styles.titleWrapper}>
+            <h2 id="win-title" className={styles.winTitle}>
+              {getWinnerDisplayName()}
+            </h2>
+            <p className={styles.winSub}>
+              {isDraw 
+                ? 'A closely contested battle! Nobody was willing to yield.' 
+                : isWinner 
+                ? 'Superb gameplay! You outmaneuvered your opponents.' 
+                : `${winnerName} claims victory in this round.`}
+            </p>
+          </div>
+        </div>
 
         {/* Custom game-specific details (like times, guesses) */}
         {children}

@@ -30,6 +30,13 @@ export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardPr
   const [selectedGobbletFrom, setSelectedGobbletFrom] = useState<number | null>(null);
   const [bidValue, setBidValue] = useState('0');
   const [winLineVisible, setWinLineVisible] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+
+  useEffect(() => {
+    if (!gameOver) {
+      setIsMinimized(false);
+    }
+  }, [gameOver]);
   const [winLineGeometry, setWinLineGeometry] = useState<{
     left: number;
     top: number;
@@ -446,39 +453,64 @@ export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardPr
       </div>
 
       {gameOver && (
-        <div className={styles.winOverlay}>
-          <div className={`glass-card ${styles.winCard}`}>
-            <span className={styles.winEmoji}>
-              {winnerName === playerName ? '🎉' : winnerName ? '😢' : '🤝'}
-            </span>
-            <h2 className={styles.winTitle}>
-              {winnerName ? (winnerName === playerName ? 'You Win!' : 'You Lose!') : 'Draw!'}
-            </h2>
-            <p className={styles.winSub}>
-              {winnerName ? `${winnerName} won this round!` : "It's a tie!"}
-            </p>
-            
-            <div className={styles.playAgainStatus}>
-              {playAgainRequested ? (
-                <p>Waiting for {opponentLabel} to accept...</p>
-              ) : opponentPlayAgainRequested ? (
-                <p>{opponentLabel} wants to play again!</p>
-              ) : null}
-            </div>
-
-            <div className={styles.winActions}>
-              {!playAgainRequested && (
+        isMinimized ? (
+          <button
+            type="button"
+            className={styles.reopenBtn}
+            onClick={() => setIsMinimized(false)}
+          >
+            🎮 Play Again / Results
+          </button>
+        ) : (
+          <div className={styles.winOverlay}>
+            <div className={`glass-card ${styles.winCard}`}>
+              <button
+                type="button"
+                className={styles.overlayCloseBtn}
+                onClick={() => setIsMinimized(true)}
+                aria-label="Close overlay"
+              >
+                ×
+              </button>
+              <div className={styles.metaSection}>
+                <span className={styles.winEmoji}>
+                  {winnerName === playerName ? '🎉' : winnerName ? '😢' : '🤝'}
+                </span>
+                <div className={styles.titleWrapper}>
+                  <h2 className={styles.winTitle}>
+                    {winnerName ? (winnerName === playerName ? 'You Win!' : 'You Lose!') : 'Draw!'}
+                  </h2>
+                  <p className={styles.winSub}>
+                    {winnerName ? `${winnerName} won this round!` : "It's a tie!"}
+                  </p>
+                </div>
+              </div>
+              
+              <div className={styles.buttonGroup}>
+                {!playAgainRequested && (
+                  <button 
+                    className={`${styles.btnPrimary} btn btn-primary`} 
+                    onClick={requestPlayAgain}
+                  >
+                    🔄 Play Again
+                  </button>
+                )}
+                
+                {playAgainRequested ? (
+                  <p className={styles.pendingVoteText}>Waiting for {opponentLabel} to accept...</p>
+                ) : opponentPlayAgainRequested ? (
+                  <p className={styles.pendingVoteText}>{opponentLabel} wants to play again!</p>
+                ) : null}
                 <button 
-                  className="btn btn-primary" 
-                  onClick={requestPlayAgain}
+                  onClick={handleExit} 
+                  className={`${styles.btnSecondary} btn btn-ghost`}
                 >
-                  🔄 Play Again
+                  Change Game
                 </button>
-              )}
-              <button onClick={handleExit} className="btn btn-ghost">Change Game</button>
+              </div>
             </div>
           </div>
-        </div>
+        )
       )}
     </div>
   );
