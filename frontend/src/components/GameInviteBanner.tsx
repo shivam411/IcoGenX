@@ -1,6 +1,8 @@
 'use client';
 
 import { useGame } from '@/context/GameContext';
+import { getGameCatalogItem, getGameInfo } from '@/lib/gameMetadata';
+import GameIcon from './GameIcon';
 import styles from './GameInviteBanner.module.css';
 
 export default function GameInviteBanner() {
@@ -8,18 +10,12 @@ export default function GameInviteBanner() {
 
   if (!activeInvite) return null;
 
-  const gameNames: Record<string, string> = {
-    tic_tac_toe: 'Tic-Tac-Toe',
-    bluff_card: 'Bluff Card',
-    memory_flip: 'Sequence Memory Flip',
-    higher_lower: 'Higher / Lower',
-    stop_clock: 'Stop-Clock',
-    shut_the_box: 'Dice Tug-of-War',
-    code_guess: 'Code Breaker',
-  };
-
-  const gameName = gameNames[activeInvite.gameType] || activeInvite.gameType;
-  const variantText = activeInvite.variant ? ` (${activeInvite.variant})` : '';
+  const game = getGameCatalogItem(activeInvite.gameType);
+  const gameInfo = getGameInfo(activeInvite.gameType, activeInvite.variant);
+  const variant = game?.variants?.find((item) => item.id === activeInvite.variant);
+  const gameName = game?.name || activeInvite.gameType;
+  const variantText = variant ? ` (${variant.name})` : activeInvite.variant ? ` (${activeInvite.variant})` : '';
+  const inviteIcon = gameInfo?.icon || variant?.icon || game?.icon || activeInvite.gameType;
 
   return (
     <div className={styles.container} role="alert" aria-live="assertive">
@@ -31,6 +27,7 @@ export default function GameInviteBanner() {
               {activeInvite.fromName.charAt(0).toUpperCase()}
             </span>
           </div>
+          <GameIcon icon={inviteIcon} className={styles.gameIcon} />
           <div className={styles.details}>
             <h4 className={styles.title}>Game Invitation</h4>
             <p className={styles.message}>

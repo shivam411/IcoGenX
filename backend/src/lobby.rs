@@ -172,6 +172,91 @@ impl AppState {
         });
     }
 
+    async fn send_invite_notice_to_user(&self, user_id: &str, msg: &ServerMessage) {
+        let pids = self.user_connections.read().await.get(user_id).cloned();
+        if let Some(pids) = pids {
+            self.send_to_players(&pids, msg).await;
+        }
+    }
+
+    async fn notify_invite_expired(&self, invite: &GameInviteRecord) {
+        let msg = ServerMessage::GameInviteExpired {
+            invite_id: invite.invite_id.clone(),
+        };
+        self.send_invite_notice_to_user(&invite.from_user_id, &msg).await;
+        self.send_invite_notice_to_user(&invite.to_user_id, &msg).await;
+    }
+
+    async fn notify_invite_accepted(&self, invite: &GameInviteRecord) {
+        let from_name = self
+            .user_names
+            .read()
+            .await
+            .get(&invite.to_user_id)
+            .cloned()
+            .unwrap_or_else(|| "Friend".into());
+        self
+            .send_invite_notice_to_user(
+                &invite.from_user_id,
+                &ServerMessage::GameInviteAccepted {
+                    invite_id: invite.invite_id.clone(),
+                    from_name,
+                },
+            )
+            .await;
+    }
+
+    async fn expire_invite_if_due(self: &Arc<Self>, invite_id: &str) -> bool {
+        let expired = {
+            let mut invites = self.active_invites.write().await;
+            if invites
+                .get(invite_id)
+                .map(|invite| invite.expires_at_ms <= now_ms())
+                .unwrap_or(false)
+            {
+                invites.remove(invite_id)
+            } else {
+                None
+            }
+        };
+
+        if let Some(invite) = expired {
+            self.notify_invite_expired(&invite).await;
+            true
+        } else {
+            false
+        }
+    }
+
+    async fn schedule_invite_expiry(self: &Arc<Self>, invite_id: String, expires_at_ms: u64) {
+        let delay_ms = expires_at_ms.saturating_sub(now_ms());
+        let state = Arc::clone(self);
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+            state.expire_invite_if_due(&invite_id).await;
+        });
+    }
+
+    async fn accept_invite_for_join(&self, player_id: &str, room_code: &str) -> Option<GameInviteRecord> {
+        let to_user_id = self.player_users.read().await.get(player_id).cloned()?;
+        let invite = {
+            let mut invites = self.active_invites.write().await;
+            let invite_id = invites
+                .iter()
+                .find(|(_, invite)| invite.to_user_id == to_user_id && invite.room_code == room_code)
+                .map(|(id, _)| id.clone());
+            invite_id.and_then(|id| invites.remove(&id))
+        }?;
+
+        if invite.expires_at_ms <= now_ms() {
+            self.notify_invite_expired(&invite).await;
+            return None;
+        }
+
+        self.notify_invite_accepted(&invite).await;
+        Some(invite)
+    }
+
     pub async fn remove_player(self: &Arc<Self>, player_id: &str) {
         self.senders.write().await.remove(player_id);
 
@@ -499,6 +584,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                             state.send_to(pid, msg).await;
                         }
                     }
+                    state.accept_invite_for_join(player_id, &code).await;
                     state.broadcast_current_presence_for_player(player_id).await;
                 }
             }
@@ -1071,22 +1157,20 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                 format!("{:x}", val)
             };
 
-            state
-                .active_invites
-                .write()
-                .await
-                .insert(
-                    invite_id.clone(),
-                    GameInviteRecord {
-                        invite_id: invite_id.clone(),
-                        from_user_id: from_user_id.clone(),
-                        to_user_id: to_user_id.clone(),
-                        room_code: final_room_code.clone(),
-                        game_type: game_type.clone(),
-                        variant: variant.clone(),
-                        expires_at_ms: now_ms() + INVITE_TTL_MS,
-                    },
-                );
+            let expires_at_ms = now_ms() + INVITE_TTL_MS;
+            state.active_invites.write().await.insert(
+                invite_id.clone(),
+                GameInviteRecord {
+                    invite_id: invite_id.clone(),
+                    from_user_id: from_user_id.clone(),
+                    to_user_id: to_user_id.clone(),
+                    room_code: final_room_code.clone(),
+                    game_type: game_type.clone(),
+                    variant: variant.clone(),
+                    expires_at_ms,
+                },
+            );
+            state.schedule_invite_expiry(invite_id.clone(), expires_at_ms).await;
             
             let invite_msg = ServerMessage::GameInviteReceived {
                 invite_id: invite_id.clone(),
@@ -1220,7 +1304,7 @@ fn build_game_start_messages(
 }
 #[cfg(test)]
 mod tests {
-    use super::{handle_message, AppState, Room};
+    use super::{handle_message, now_ms, AppState, GameInviteRecord, Room};
     use crate::game_registry::GameRegistry;
     use crate::game_trait::Game;
     use crate::games::{
@@ -1890,5 +1974,57 @@ mod tests {
         assert_eq!(room.variant, Some("blind".into()));
         assert_eq!(room.players[0], "conn1");
         assert_eq!(state.active_invites.read().await.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn invite_expiry_removes_due_record() {
+        let state = Arc::new(AppState::new());
+        state.active_invites.write().await.insert(
+            "invite_1".into(),
+            GameInviteRecord {
+                invite_id: "invite_1".into(),
+                from_user_id: "user_a".into(),
+                to_user_id: "user_b".into(),
+                room_code: "ROOM42".into(),
+                game_type: "tic_tac_toe".into(),
+                variant: None,
+                expires_at_ms: now_ms() - 1,
+            },
+        );
+
+        assert!(state.expire_invite_if_due("invite_1").await);
+        assert!(state.active_invites.read().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn joining_invited_room_accepts_and_removes_invite_record() {
+        let state = Arc::new(AppState::new());
+        state
+            .player_users
+            .write()
+            .await
+            .insert("conn2".into(), "user_b".into());
+        state
+            .user_names
+            .write()
+            .await
+            .insert("user_b".into(), "Blair".into());
+        state.active_invites.write().await.insert(
+            "invite_1".into(),
+            GameInviteRecord {
+                invite_id: "invite_1".into(),
+                from_user_id: "user_a".into(),
+                to_user_id: "user_b".into(),
+                room_code: "ROOM42".into(),
+                game_type: "tic_tac_toe".into(),
+                variant: Some("classic".into()),
+                expires_at_ms: now_ms() + 60_000,
+            },
+        );
+
+        let accepted = state.accept_invite_for_join("conn2", "ROOM42").await;
+
+        assert!(accepted.is_some());
+        assert!(state.active_invites.read().await.is_empty());
     }
 }

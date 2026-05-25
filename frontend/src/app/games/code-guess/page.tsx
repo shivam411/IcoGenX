@@ -114,7 +114,7 @@ export default function CodeGuessPage() {
     <GameTemplate
       gameType="code_guess"
       gameName="Code Breaker"
-      gameIcon="🔐"
+      gameIcon="code-guess"
       accentColor="#06b6d4"
       winEmoji="🧠"
       winTitle="Code Cracked!"

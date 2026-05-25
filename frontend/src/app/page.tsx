@@ -8,6 +8,7 @@ import { GAME_CATALOG, type GameCatalogItem } from '@/lib/gameMetadata';
 import { getVariantMetricId } from '@/lib/socialMetrics';
 import { recordGamePlay } from '@/lib/useGameSocial';
 import GameCard from '@/components/GameCard';
+import GameIcon from '@/components/GameIcon';
 import AdSlot from '@/components/AdSlot';
 import styles from './page.module.css';
 
@@ -422,7 +423,9 @@ export default function HomePage() {
                       void recordGamePlay(metricId);
                     }}
                   >
-                    <div className={styles.variantIcon}>{v.icon}</div>
+                    <div className={styles.variantIcon}>
+                      <GameIcon icon={v.icon} />
+                    </div>
                     <div className={styles.variantBody}>
                       <div className={styles.variantMetaRow}>
                         <h3 className={styles.variantName}>{v.name}</h3>
@@ -455,7 +458,7 @@ export default function HomePage() {
           >
             <div className={styles.comingSoonHeader}>
               <span className={styles.comingSoonModalIcon} style={{ background: comingSoonGame.gradient }}>
-                {comingSoonGame.icon}
+                <GameIcon icon={comingSoonGame.icon} />
               </span>
               <div>
                 <h2 className={styles.modalTitle}>{comingSoonGame.name}</h2>

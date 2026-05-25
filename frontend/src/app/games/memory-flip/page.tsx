@@ -78,7 +78,7 @@ export default function MemoryFlipPage() {
     <GameTemplate
       gameType="memory_flip"
       gameName="Sequence Memory Flip"
-      gameIcon="🃏"
+      gameIcon="memory-flip"
       accentColor="#ec4899"
       winEmoji="🧠"
       winTitle="Perfect Memory!"

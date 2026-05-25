@@ -450,6 +450,9 @@
 }
 
 .gameOptionLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   font-weight: 600;
   color: #a78bfa;
@@ -465,6 +468,9 @@
 
 .gameOptionBtn,
 .variantOptionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 10px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -475,6 +481,12 @@
   text-align: left;
   cursor: pointer;
   transition: all 0.15s ease;
+}
+
+.variantOptionIcon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
 }
 
 .gameOptionBtn {

@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import GameSocialBar from './GameSocialBar';
+import GameIcon from './GameIcon';
 import { useGameSocial } from '@/lib/useGameSocial';
 import type { GameCatalogItem } from '@/lib/gameMetadata';
 import styles from '../app/page.module.css';
@@ -59,7 +60,7 @@ export default function GameCard({ game, onOpenVariants, onNotifyComingSoon }: P
         {game.isComingSoon ? 'Coming Soon 🔒' : game.variants?.length ? `${game.variants.length} variants` : '1 mode'}
       </div>
       <div className={styles.cardBanner} style={{ background: game.gradient }}>
-        <span className={styles.cardIcon}>{game.icon}</span>
+        <GameIcon icon={game.icon} className={styles.cardIcon} />
         <div className={styles.previewScene} aria-hidden>
           <div className={styles.previewArena}>
             {Array.from({ length: 6 }).map((_, index) => (

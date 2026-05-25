@@ -181,7 +181,7 @@ export default function StopClockPage() {
     <GameTemplate
       gameType="stop_clock"
       gameName="The 20-Second Challenge"
-      gameIcon="⏱️"
+      gameIcon="stop-clock"
       accentColor="#3b82f6"
       winEmoji="⏱️"
       winTitle="Perfect Timing!"

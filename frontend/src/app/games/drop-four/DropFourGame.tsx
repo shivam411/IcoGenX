@@ -17,12 +17,12 @@ interface HiddenCell {
 }
 
 const VARIANT_CONFIG: Record<DropFourVariant, { name: string; icon: string; accent: string }> = {
-  classic: { name: 'Drop Four', icon: 'D4', accent: '#0ea5e9' },
-  'wrecking-ball': { name: 'Drop Four: Wrecking Ball', icon: 'WB', accent: '#dc2626' },
-  popout: { name: 'Drop Four: PopOut', icon: 'PO', accent: '#ea580c' },
-  'gravity-flip': { name: 'Drop Four: Gravity Flip', icon: 'GF', accent: '#2563eb' },
-  'battleship-drop': { name: 'Drop Four: Battleship Drop', icon: 'BD', accent: '#0f766e' },
-  'heavy-token': { name: 'Drop Four: Heavy Token', icon: 'HT', accent: '#4b5563' },
+  classic: { name: 'Drop Four', icon: 'drop-four-classic', accent: '#0ea5e9' },
+  'wrecking-ball': { name: 'Drop Four: Wrecking Ball', icon: 'drop-four-wrecking-ball', accent: '#dc2626' },
+  popout: { name: 'Drop Four: PopOut', icon: 'drop-four-popout', accent: '#ea580c' },
+  'gravity-flip': { name: 'Drop Four: Gravity Flip', icon: 'drop-four-gravity-flip', accent: '#2563eb' },
+  'battleship-drop': { name: 'Drop Four: Battleship Drop', icon: 'drop-four-battleship-drop', accent: '#0f766e' },
+  'heavy-token': { name: 'Drop Four: Heavy Token', icon: 'drop-four-heavy-token', accent: '#4b5563' },
 };
 
 function normalizeDropFourVariant(value: string | undefined): DropFourVariant {

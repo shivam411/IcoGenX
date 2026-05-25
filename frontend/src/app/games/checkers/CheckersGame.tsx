@@ -13,12 +13,12 @@ interface CheckerPiece {
 }
 
 const VARIANT_CONFIG: Record<CheckersVariant, { name: string; icon: string; accent: string }> = {
-  classic: { name: 'Classic Checkers', icon: 'CK', accent: '#0369a1' },
-  anti: { name: 'Anti-Checkers', icon: 'AC', accent: '#be123c' },
-  zombie: { name: 'Zombie Checkers', icon: 'ZC', accent: '#15803d' },
-  minefield: { name: 'Minefield Checkers', icon: 'MC', accent: '#b45309' },
-  vip: { name: 'VIP Checkers', icon: 'VC', accent: '#7c3aed' },
-  portal: { name: 'Portal Checkers', icon: 'PC', accent: '#0891b2' },
+  classic: { name: 'Classic Checkers', icon: 'checkers-classic', accent: '#0369a1' },
+  anti: { name: 'Anti-Checkers', icon: 'checkers-anti', accent: '#be123c' },
+  zombie: { name: 'Zombie Checkers', icon: 'checkers-zombie', accent: '#15803d' },
+  minefield: { name: 'Minefield Checkers', icon: 'checkers-minefield', accent: '#b45309' },
+  vip: { name: 'VIP Checkers', icon: 'checkers-vip', accent: '#7c3aed' },
+  portal: { name: 'Portal Checkers', icon: 'checkers-portal', accent: '#0891b2' },
 };
 
 function normalizeCheckersVariant(value: string | undefined): CheckersVariant {

@@ -10,7 +10,7 @@ export default function BlindTicTacToePage() {
       gameType="tic_tac_toe"
       variant="blind"
       gameName="Blind Tic-Tac-Toe"
-      gameIcon="🙈"
+      gameIcon="tic-tac-toe-blind"
       accentColor="#f97316"
       hideOverlaysOnGameOver={true}
     >

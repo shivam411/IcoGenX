@@ -10,7 +10,7 @@ export default function GravityTicTacToePage() {
       gameType="tic_tac_toe"
       variant="gravity"
       gameName="Gravity Tic-Tac-Toe"
-      gameIcon="⬇️"
+      gameIcon="tic-tac-toe-gravity"
       accentColor="#14b8a6"
       hideOverlaysOnGameOver={true}
     >

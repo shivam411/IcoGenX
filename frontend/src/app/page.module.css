@@ -632,7 +632,8 @@
 .cardIcon {
   position: relative;
   z-index: 2;
-  font-size: 3.2rem;
+  width: 5.4rem;
+  height: 5.4rem;
   filter: drop-shadow(0 18px 24px rgba(2, 6, 23, 0.35));
   transition: transform 0.32s ease, opacity 0.2s ease;
 }
@@ -934,7 +935,6 @@
 }
 
 .variantIcon {
-  font-size: 1.7rem;
   width: 44px;
   height: 44px;
   display: flex;
@@ -943,6 +943,11 @@
   border-radius: 12px;
   background: rgba(124, 92, 255, 0.15);
   border: 1px solid rgba(124, 92, 255, 0.3);
+}
+
+.variantIcon svg {
+  width: 36px;
+  height: 36px;
 }
 
 .variantBody {
@@ -1194,7 +1199,6 @@
 }
 
 .comingSoonModalIcon {
-  font-size: 2.2rem;
   width: 56px;
   height: 56px;
   display: flex;
@@ -1203,6 +1207,11 @@
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.comingSoonModalIcon svg {
+  width: 48px;
+  height: 48px;
 }
 
 .comingSoonDetails {

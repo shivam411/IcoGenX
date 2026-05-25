@@ -230,7 +230,7 @@ export default function ShutTheBoxPage() {
     <GameTemplate
       gameType="shut_the_box"
       gameName="Dice Tug-of-War"
-      gameIcon="🎲"
+      gameIcon="shut-the-box"
       accentColor="#f97316"
     >
       {(props) => <ShutTheBoxBoard {...props} />}

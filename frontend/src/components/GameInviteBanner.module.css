@@ -79,6 +79,13 @@
   color: #ffffff;
 }
 
+.gameIcon {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 10px 16px rgba(2, 6, 23, 0.4));
+}
+
 .details {
   display: flex;
   flex-direction: column;

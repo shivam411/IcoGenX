@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useGame } from '@/context/GameContext';
 import { GAME_CATALOG, type GameCatalogItem, type GameVariantMetadata } from '@/lib/gameMetadata';
+import GameIcon from './GameIcon';
 import styles from './SocialDock.module.css';
 
 function inviteTarget(game: GameCatalogItem, selectedVariant?: GameVariantMetadata | null) {
@@ -317,7 +318,10 @@ export default function SocialDock() {
                               <div key={game.id} className={styles.gameOptionGroup}>
                                 {game.variants ? (
                                   <>
-                                    <div className={styles.gameOptionLabel}>{game.name}</div>
+                                    <div className={styles.gameOptionLabel}>
+                                      <GameIcon icon={game.icon} className={styles.variantOptionIcon} />
+                                      <span>{game.name}</span>
+                                    </div>
                                     <div className={styles.variantRow}>
                                       {game.variants.map((v) => (
                                         <button
@@ -328,6 +332,7 @@ export default function SocialDock() {
                                             handleSelectGameToInvite(f.friend.id, game, v)
                                           }
                                         >
+                                          <GameIcon icon={v.icon} className={styles.variantOptionIcon} />
                                           {v.name}
                                         </button>
                                       ))}
@@ -339,6 +344,7 @@ export default function SocialDock() {
                                     className={styles.gameOptionBtn}
                                     onClick={() => handleSelectGameToInvite(f.friend.id, game, null)}
                                   >
+                                    <GameIcon icon={game.icon} className={styles.variantOptionIcon} />
                                     {game.name}
                                   </button>
                                 )}

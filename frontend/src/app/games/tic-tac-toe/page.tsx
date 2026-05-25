@@ -116,7 +116,7 @@ export default function TicTacToePage() {
     <GameTemplate
       gameType="tic_tac_toe"
       gameName="Disappearing Tic-Tac-Toe"
-      gameIcon="❌⭕"
+      gameIcon="tic-tac-toe"
       accentColor="#8b5cf6"
     >
       {(props) => <TicTacToeBoard {...props} />}

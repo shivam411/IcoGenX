@@ -140,6 +140,13 @@ pub enum ServerMessage {
         invite_id: String,
         from_name: String,
     },
+    GameInviteAccepted {
+        invite_id: String,
+        from_name: String,
+    },
+    GameInviteExpired {
+        invite_id: String,
+    },
 }
 
 #[cfg(test)]

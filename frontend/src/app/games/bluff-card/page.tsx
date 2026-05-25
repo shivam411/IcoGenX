@@ -157,7 +157,7 @@ export default function BluffCardPage() {
     <GameTemplate
       gameType="bluff_card"
       gameName="Bluff Card Game"
-      gameIcon="🂠"
+      gameIcon="bluff-card"
       accentColor="#be123c"
       winTitle="You Bluffed Best!"
       loseTitle="Out of Cards!"

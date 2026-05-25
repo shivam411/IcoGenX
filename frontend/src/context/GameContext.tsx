@@ -524,6 +524,15 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
             setDeclinedInvite(null);
           }, 5000);
           break;
+        case 'GameInviteAccepted':
+          setError(`${msg.from_name || 'Your friend'} accepted your invitation.`);
+          setTimeout(() => setError(null), 5000);
+          break;
+        case 'GameInviteExpired':
+          setActiveInvite((prev) => (prev?.inviteId === msg.invite_id ? null : prev));
+          setError('Game invitation expired.');
+          setTimeout(() => setError(null), 5000);
+          break;
       }
     } catch (e) {
       wsError('[WS] Failed to parse message:', e);

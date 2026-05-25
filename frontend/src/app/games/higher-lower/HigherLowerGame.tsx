@@ -205,7 +205,7 @@ interface HigherLowerGamePageProps {
 export default function HigherLowerGamePage({
   variant = 'classic',
   gameName,
-  gameIcon = '🔢',
+  gameIcon = 'higher-lower',
   accentColor = '#10b981',
 }: HigherLowerGamePageProps) {
   const normalizedVariant = normalizeHigherLowerVariant(variant);

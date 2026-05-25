@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { GAME_CATALOG } from '@/lib/gameMetadata';
 import AdSlot from '@/components/AdSlot';
+import GameIcon from '@/components/GameIcon';
 
 interface MeResponse {
   user: { id: string; name: string; image?: string; isGuest: boolean; createdAt?: number } | null;
@@ -113,7 +114,7 @@ function GameRow({ id, name, icon, sub }: { id: string; name: string; icon: stri
         borderRadius: 10, textDecoration: 'none', color: '#fff',
       }}
     >
-      <span style={{ fontSize: 22 }}>{icon}</span>
+      <GameIcon icon={icon} size={42} />
       <span style={{ flex: 1 }}>
         <span style={{ display: 'block', fontWeight: 600, fontSize: 14 }}>{name}</span>
         <span style={{ display: 'block', fontSize: 12, opacity: 0.6 }}>{sub}</span>
