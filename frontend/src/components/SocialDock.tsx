@@ -3,7 +3,21 @@
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useGame } from '@/context/GameContext';
+import { GAME_CATALOG, type GameCatalogItem, type GameVariantMetadata } from '@/lib/gameMetadata';
 import styles from './SocialDock.module.css';
+
+function inviteTarget(game: GameCatalogItem, selectedVariant?: GameVariantMetadata | null) {
+  if (game.gameType === 'code_guess' && selectedVariant?.id === 'number-range') {
+    return { gameType: 'higher_lower', variant: 'code_breaker_number' };
+  }
+  if (game.gameType === 'code_guess' && selectedVariant?.id === 'digits') {
+    return { gameType: 'code_guess', variant: null };
+  }
+  return {
+    gameType: game.gameType,
+    variant: selectedVariant ? selectedVariant.id : null,
+  };
+}
 
 export default function SocialDock() {
   const { data: session } = useSession();
@@ -11,6 +25,7 @@ export default function SocialDock() {
     roomCode,
     gameType,
     variant,
+    connected,
     friends,
     sendGameInvite,
     addFriend,
@@ -34,6 +49,9 @@ export default function SocialDock() {
   const pendingRequests = friends.filter(
     (f) => f.status === 'pending' && !f.isInitiator
   );
+  const outgoingRequests = friends.filter(
+    (f) => f.status === 'pending' && f.isInitiator
+  );
 
   const acceptedFriends = friends.filter((f) => f.status === 'accepted');
   const sortedFriends = [...acceptedFriends].sort((a, b) => {
@@ -41,6 +59,8 @@ export default function SocialDock() {
     if (!a.online && b.online) return 1;
     return a.friend.name.localeCompare(b.friend.name);
   });
+  const onlineFriends = sortedFriends.filter((f) => f.online);
+  const offlineFriends = sortedFriends.filter((f) => !f.online);
 
   const handleCopyCode = async () => {
     if (!myFriendCode) return;
@@ -74,49 +94,32 @@ export default function SocialDock() {
     }
   };
 
-  const handleInviteClick = (friendId: string) => {
+  const handleInviteClick = async (friendId: string) => {
     if (roomCode && gameType) {
-      // If host is already in a room, send invite directly for this room
-      sendGameInvite(friendId, gameType, variant);
-      alert('Invitation sent for the current lobby!');
+      try {
+        await sendGameInvite(friendId, gameType, variant);
+        setAddStatus({ type: 'success', message: 'Invitation sent for the current lobby.' });
+      } catch (err: any) {
+        setAddStatus({ type: 'error', message: err.message || 'Failed to send invite.' });
+      }
     } else {
       // Toggle game selector for this friend
       setInvitingFriendId(invitingFriendId === friendId ? null : friendId);
     }
   };
 
-  const handleSelectGameToInvite = (friendId: string, inviteGameType: string, inviteVariant: string | null = null) => {
-    sendGameInvite(friendId, inviteGameType, inviteVariant);
-    setInvitingFriendId(null);
-    alert('Invitation sent! Setting up room...');
+  const handleSelectGameToInvite = async (friendId: string, game: GameCatalogItem, selectedVariant?: GameVariantMetadata | null) => {
+    const target = inviteTarget(game, selectedVariant);
+    try {
+      await sendGameInvite(friendId, target.gameType, target.variant);
+      setInvitingFriendId(null);
+      setAddStatus({ type: 'success', message: 'Invitation sent.' });
+    } catch (err: any) {
+      setAddStatus({ type: 'error', message: err.message || 'Failed to send invite.' });
+    }
   };
 
-  const inviteGames = [
-    {
-      id: 'tic_tac_toe',
-      name: 'Tic-Tac-Toe',
-      variants: [
-        { id: null, name: 'Classic' },
-        { id: 'blind', name: 'Blind' },
-        { id: 'disappearing', name: 'Disappearing' },
-        { id: 'bidding', name: 'Bidding' },
-        { id: 'gravity', name: 'Gravity' },
-      ],
-    },
-    { id: 'bluff_card', name: 'Bluff Card' },
-    { id: 'memory_flip', name: 'Sequence Memory Flip' },
-    {
-      id: 'higher_lower',
-      name: 'Higher / Lower',
-      variants: [
-        { id: null, name: 'Classic' },
-        { id: 'code_breaker_number', name: 'Code Breaker (Num)' },
-      ],
-    },
-    { id: 'stop_clock', name: 'Stop-Clock' },
-    { id: 'shut_the_box', name: 'Dice Tug-of-War' },
-    { id: 'code_guess', name: 'Code Breaker' },
-  ];
+  const inviteGames = GAME_CATALOG.filter((game) => !game.isComingSoon);
 
   return (
     <>
@@ -238,6 +241,26 @@ export default function SocialDock() {
             </div>
           )}
 
+          {outgoingRequests.length > 0 && (
+            <div className={styles.section}>
+              <h4 className={styles.sectionTitle}>Waiting For Response ({outgoingRequests.length})</h4>
+              <div className={styles.requestList}>
+                {outgoingRequests.map((req) => (
+                  <div key={req.friendshipId} className={styles.requestItem}>
+                    <span className={styles.requestName}>{req.friend.name}</span>
+                    <button
+                      type="button"
+                      className={styles.cancelBtn}
+                      onClick={() => respondToFriendRequest(req.friendshipId, 'cancel')}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Section 4: Friends List */}
           <div className={styles.section}>
             <h4 className={styles.sectionTitle}>Friends</h4>
@@ -247,13 +270,19 @@ export default function SocialDock() {
               </div>
             ) : (
               <div className={styles.friendList}>
-                {sortedFriends.map((f) => {
+                {[...onlineFriends, ...offlineFriends].map((f, index) => {
                   const isOnline = f.online;
                   const inLobby = f.currentRoom;
                   const isInviting = invitingFriendId === f.friend.id;
+                  const showGroupTitle =
+                    index === 0 ||
+                    (index === onlineFriends.length && offlineFriends.length > 0);
 
                   return (
                     <div key={f.friendshipId} className={styles.friendItemWrapper}>
+                      {showGroupTitle && (
+                        <div className={styles.friendGroupTitle}>{isOnline ? 'Online' : 'Offline'}</div>
+                      )}
                       <div className={styles.friendItem}>
                         <div className={styles.friendDetails}>
                           <span
@@ -272,6 +301,7 @@ export default function SocialDock() {
                             type="button"
                             className={styles.inviteBtn}
                             onClick={() => handleInviteClick(f.friend.id)}
+                            disabled={!connected}
                           >
                             {roomCode ? '⚔️ Join' : '⚔️ Invite'}
                           </button>
@@ -291,11 +321,11 @@ export default function SocialDock() {
                                     <div className={styles.variantRow}>
                                       {game.variants.map((v) => (
                                         <button
-                                          key={v.id ?? 'classic'}
+                                          key={v.id}
                                           type="button"
                                           className={styles.variantOptionBtn}
                                           onClick={() =>
-                                            handleSelectGameToInvite(f.friend.id, game.id, v.id)
+                                            handleSelectGameToInvite(f.friend.id, game, v)
                                           }
                                         >
                                           {v.name}
@@ -307,7 +337,7 @@ export default function SocialDock() {
                                   <button
                                     type="button"
                                     className={styles.gameOptionBtn}
-                                    onClick={() => handleSelectGameToInvite(f.friend.id, game.id)}
+                                    onClick={() => handleSelectGameToInvite(f.friend.id, game, null)}
                                   >
                                     {game.name}
                                   </button>

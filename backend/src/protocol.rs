@@ -4,18 +4,45 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type")]
 pub enum ClientMessage {
-    CreateRoom { game_type: String, variant: Option<String>, player_name: String, match_format: Option<String> },
-    JoinRoom { room_code: String, player_name: String },
+    CreateRoom {
+        game_type: String,
+        variant: Option<String>,
+        player_name: String,
+        match_format: Option<String>,
+    },
+    JoinRoom {
+        room_code: String,
+        player_name: String,
+    },
     LeaveRoom,
-    GameAction { action: serde_json::Value },
-    SendEmoji { emoji: String },
+    GameAction {
+        action: serde_json::Value,
+    },
+    SendEmoji {
+        emoji: String,
+    },
     RequestPlayAgain,
-    SwitchVariant { variant: String },
-    SetMatchFormat { format: String },
-    Identify { user_id: String, name: String, image: Option<String> },
-    SubscribePresence { friend_ids: Vec<String> },
-    SendGameInvite { to_user_id: String, game_type: String, variant: Option<String> },
-    DeclineGameInvite { invite_id: String, from_user_id: String },
+    SwitchVariant {
+        variant: String,
+    },
+    SetMatchFormat {
+        format: String,
+    },
+    Identify {
+        token: String,
+    },
+    SubscribePresence {
+        friend_ids: Vec<String>,
+    },
+    SendGameInvite {
+        to_user_id: String,
+        game_type: String,
+        variant: Option<String>,
+        grant: String,
+    },
+    DeclineGameInvite {
+        invite_id: String,
+    },
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -29,27 +56,90 @@ pub struct PlayerInfo {
 #[derive(Debug, Serialize, Clone)]
 #[serde(tag = "type")]
 pub enum ServerMessage {
-    Welcome { player_id: String },
-    RoomCreated { room_code: String, game_type: String, variant: Option<String>, match_format: String, player_count: u8 },
-    PlayerJoined { player_id: String, player_number: u8, player_name: String, game_type: String, variant: Option<String>, match_format: String, player_count: u8 },
+    Welcome {
+        player_id: String,
+    },
+    RoomCreated {
+        room_code: String,
+        game_type: String,
+        variant: Option<String>,
+        match_format: String,
+        player_count: u8,
+    },
+    PlayerJoined {
+        player_id: String,
+        player_number: u8,
+        player_name: String,
+        game_type: String,
+        variant: Option<String>,
+        match_format: String,
+        player_count: u8,
+    },
 
-    GameStart { game_state: serde_json::Value, scores: Vec<u32>, game_type: String, variant: Option<String>, match_format: String, players: Vec<PlayerInfo> },
-    GameUpdate { game_state: serde_json::Value },
-    EmojiSent { player_id: String, emoji: String },
-    GameOver { winner: Option<String>, reason: String },
-    Error { message: String },
+    GameStart {
+        game_state: serde_json::Value,
+        scores: Vec<u32>,
+        game_type: String,
+        variant: Option<String>,
+        match_format: String,
+        players: Vec<PlayerInfo>,
+    },
+    GameUpdate {
+        game_state: serde_json::Value,
+    },
+    EmojiSent {
+        player_id: String,
+        emoji: String,
+    },
+    GameOver {
+        winner: Option<String>,
+        reason: String,
+    },
+    Error {
+        message: String,
+    },
     OpponentDisconnected,
-    YourTurn { message: String },
-    MatchFormatChanged { format: String },
-    
+    YourTurn {
+        message: String,
+    },
+    MatchFormatChanged {
+        format: String,
+    },
+
     // Play again flow
-    PlayAgainRequested { by_player: u8 },
-    PlayAgainAccepted { game_state: serde_json::Value, scores: Vec<u32> },
+    PlayAgainRequested {
+        by_player: u8,
+    },
+    PlayAgainAccepted {
+        game_state: serde_json::Value,
+        scores: Vec<u32>,
+    },
 
     // Friends & Presence
-    PresenceUpdate { user_id: String, online: bool, current_room: Option<String> },
-    GameInviteReceived { invite_id: String, from_user_id: String, from_name: String, game_type: String, variant: Option<String>, room_code: String },
-    GameInviteDeclined { invite_id: String, from_name: String },
+    PresenceUpdate {
+        user_id: String,
+        online: bool,
+        current_room: Option<String>,
+    },
+    GameInviteSent {
+        invite_id: String,
+        room_code: String,
+    },
+    GameInviteFailed {
+        message: String,
+    },
+    GameInviteReceived {
+        invite_id: String,
+        from_user_id: String,
+        from_name: String,
+        game_type: String,
+        variant: Option<String>,
+        room_code: String,
+    },
+    GameInviteDeclined {
+        invite_id: String,
+        from_name: String,
+    },
 }
 
 #[cfg(test)]
@@ -58,7 +148,8 @@ mod tests {
 
     #[test]
     fn client_message_deserializes_send_emoji() {
-        let message: ClientMessage = serde_json::from_str(r#"{"type":"SendEmoji","emoji":"🎉"}"#).unwrap();
+        let message: ClientMessage =
+            serde_json::from_str(r#"{"type":"SendEmoji","emoji":"🎉"}"#).unwrap();
 
         match message {
             ClientMessage::SendEmoji { emoji } => assert_eq!(emoji, "🎉"),

@@ -14,7 +14,7 @@ The current game catalog includes board, card, logic, memory, dice, and reflex g
 
 ## v2.0.0 Platform Plan
 
-The current v2.0.0 roadmap is tracked in [docs/v2.0.0-platform-plan.md](docs/v2.0.0-platform-plan.md). It covers the verified repo status, friends/presence hardening, quality gates, and the planned Twist Checkers game.
+The current v2.0.0 roadmap is tracked in [docs/v2.0.0-platform-plan.md](docs/v2.0.0-platform-plan.md). It covers the verified repo status, friends/presence hardening, quality gates, Twist Checkers, and Drop Four Chaos.
 
 ## Features
 
@@ -70,6 +70,12 @@ Start the timer; after 3 s it hides. Try to stop at exactly 20.00 s. Closest to 
 
 ### 🂠 Bluff Card Game
 Standard 52-card deck dealt evenly. The claim rank cycles A → 2 → 3 → … → K → A. On your turn, play 1–4 cards face down as the current rank; the opponent can call bluff *before* their own turn. Wrong claim → bluffer takes the pile. Honest claim → challenger takes the pile. First to empty their hand wins.
+
+### Checkers Variants — 6 variants
+Classic checkers plus Anti-Checkers, Zombie conversion captures, Minefield traps, VIP protection, and Portal movement.
+
+### Drop Four Chaos — 6 variants
+Connect four in a 7×6 gravity grid, with Wrecking Ball detonations, PopOut removals, Gravity Flip, Battleship Drop hidden cells, and Heavy Token crushes.
 
 > Want to add a variant or a brand-new game? See [Adding A New Game](#adding-a-new-game) — the variant catalog in `frontend/src/lib/gameMetadata.ts` is the single source of truth for rules, tips, and previews.
 
@@ -184,6 +190,7 @@ The app works with **zero configuration** — visitors can play as guest, play c
 | `DB_MODE` | [frontend/.env.local.example](frontend/.env.local.example) | `memory` (default, in-process) or `mongo` (persisted) |
 | `MONGODB_URI`, `MONGODB_DB` | frontend | Required when `DB_MODE=mongo` |
 | `AUTH_SECRET` | frontend | Required in production — `openssl rand -base64 32` |
+| `SOCIAL_TOKEN_SECRET` | frontend + backend | Shared secret for signed friend presence and invite tokens. Falls back to `AUTH_SECRET` / `NEXTAUTH_SECRET` in dev. |
 | `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` | frontend | Enables Google sign-in. Without these, only guest login is offered. |
 | `NEXT_PUBLIC_ADSENSE_CLIENT` | frontend | Loads real AdSense in the reserved slots. Without it, the placeholder still reserves space so layout doesn't shift. |
 
@@ -220,13 +227,14 @@ npm run test:coverage
 
 1. Add a Rust engine in `backend/src/games/`.
 2. Register the module in `backend/src/games/mod.rs`.
-3. Add a `GameInstance` variant and `create_game` branch in `backend/src/lobby.rs`.
-4. Add a `GameAction` payload in `backend/src/protocol.rs`.
-5. Implement `process_action` and `check_game_over` behavior.
+3. Register the game type in `backend/src/game_registry.rs`.
+4. Implement `Game::process_action`, `Game::state_for_player`, and `Game::check_game_over`.
+5. Add client action payloads through the existing JSON `GameAction` websocket message.
 6. Add a page under `frontend/src/app/games/<game-name>/`.
-7. Wrap the page with `Lobby` and use `GameFrame` for score/rules layout.
-8. Add metadata to `frontend/src/lib/gameMetadata.ts` so the home catalog, waiting room, and rules panel all stay in sync.
-9. Add focused backend and frontend tests for the game behavior.
+7. Use `GameTemplate` for lobby, room, rules, and game-over wiring when the game fits the shared frame.
+8. Add metadata to `frontend/src/lib/gameMetadata.ts` so the home catalog, waiting room, SocialDock invites, and rules panel all stay in sync.
+9. Add route mapping in `frontend/src/context/GameContext.tsx` if the game has variant-specific paths.
+10. Add focused backend and frontend tests for the game behavior.
 
 For hidden-information games, send per-player state from the backend. Code Breaker and Bluff Card Game are good examples.
 

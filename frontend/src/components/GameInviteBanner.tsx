@@ -50,7 +50,7 @@ export default function GameInviteBanner() {
           <button
             type="button"
             className={styles.declineBtn}
-            onClick={() => declineGameInvite(activeInvite.inviteId, activeInvite.fromUserId)}
+            onClick={() => declineGameInvite(activeInvite.inviteId)}
           >
             Decline
           </button>

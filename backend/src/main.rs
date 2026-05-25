@@ -3,6 +3,7 @@ mod game_registry;
 mod games;
 mod lobby;
 mod protocol;
+mod social_token;
 
 use axum::{
     Router,

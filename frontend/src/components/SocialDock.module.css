@@ -292,7 +292,8 @@
 }
 
 .acceptBtn,
-.declineBtn {
+.declineBtn,
+.cancelBtn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -326,10 +327,33 @@
   color: #ffffff;
 }
 
+.cancelBtn {
+  width: auto;
+  padding: 0 10px;
+  background: rgba(148, 163, 184, 0.18);
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cancelBtn:hover {
+  background: rgba(148, 163, 184, 0.3);
+  color: #ffffff;
+}
+
 .friendItemWrapper {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.friendGroupTitle {
+  margin: 4px 2px 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .friendDetails {
@@ -380,6 +404,12 @@
   border-color: transparent;
   color: #ffffff;
   transform: translateY(-0.5px);
+}
+
+.inviteBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .emptyFriends {

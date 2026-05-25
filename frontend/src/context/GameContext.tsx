@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 
 const LOCAL_WS_PORT = 6100;
@@ -76,6 +77,34 @@ interface EmojiReaction {
   fromSelf: boolean;
 }
 
+export interface FriendListItem {
+  friendshipId: string;
+  friend: {
+    id: string;
+    name: string;
+    email?: string;
+    image?: string;
+    isGuest: boolean;
+    createdAt: number;
+    friendCode?: string;
+  };
+  status: 'pending' | 'accepted';
+  isInitiator: boolean;
+  online?: boolean;
+  currentRoom?: string | null;
+}
+
+export interface ActiveInvite {
+  inviteId: string;
+  fromUserId: string;
+  fromName: string;
+  gameType: string;
+  variant: string | null;
+  roomCode: string;
+}
+
+type FriendResponseAction = 'accept' | 'decline' | 'cancel' | 'remove';
+
 export type PendingRoomActionKind = 'creating' | 'joining' | 'rejoining';
 
 export interface PendingRoomAction {
@@ -105,6 +134,16 @@ export function getGamePath(gameType: string | null, variant: string | null) {
     return variant && variant !== 'classic'
       ? `/games/higher-lower/${variant}`
       : '/games/higher-lower';
+  }
+  if (gameType === 'checkers') {
+    return variant && variant !== 'classic'
+      ? `/games/checkers/${variant}`
+      : '/games/checkers';
+  }
+  if (gameType === 'drop_four') {
+    return variant && variant !== 'classic'
+      ? `/games/drop-four/${variant}`
+      : '/games/drop-four';
   }
   return `/games/${gameType.replace(/_/g, '-')}`;
 }
@@ -181,21 +220,22 @@ interface WebSocketContextType {
   openRoomActionPrompt: () => void;
   closeRoomActionPrompt: () => void;
   // Friends & Presence System
-  friends: any[];
-  activeInvite: { inviteId: string; fromUserId: string; fromName: string; gameType: string; variant: string | null; roomCode: string } | null;
+  friends: FriendListItem[];
+  activeInvite: ActiveInvite | null;
   declinedInvite: { inviteId: string; fromName: string } | null;
   clearDeclinedInvite: () => void;
-  sendGameInvite: (toUserId: string, gameType: string, variant?: string | null) => void;
-  declineGameInvite: (inviteId: string, fromUserId: string) => void;
+  sendGameInvite: (toUserId: string, gameType: string, variant?: string | null) => Promise<void>;
+  declineGameInvite: (inviteId: string) => void;
   acceptGameInvite: (invite: { roomCode: string; gameType: string; variant: string | null }) => void;
   addFriend: (friendCode: string) => Promise<any>;
-  respondToFriendRequest: (friendshipId: string, action: 'accept' | 'decline') => Promise<any>;
+  respondToFriendRequest: (friendshipId: string, action: FriendResponseAction) => Promise<any>;
   refetchFriends: () => Promise<void>;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | null>(null);
 
 export function WebSocketProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const { data: session } = useSession();
   const wsRef = useRef<WebSocket | null>(null);
   const intentionalCloseRef = useRef(false);
@@ -232,8 +272,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [gameOverReason, setGameOverReason] = useState<string | null>(null);
 
   // Social & Friends State
-  const [friends, setFriends] = useState<any[]>([]);
-  const [activeInvite, setActiveInvite] = useState<{ inviteId: string; fromUserId: string; fromName: string; gameType: string; variant: string | null; roomCode: string } | null>(null);
+  const [friends, setFriends] = useState<FriendListItem[]>([]);
+  const [activeInvite, setActiveInvite] = useState<ActiveInvite | null>(null);
   const [declinedInvite, setDeclinedInvite] = useState<{ inviteId: string; fromName: string } | null>(null);
 
   const setPendingRoomAction = useCallback((next: PendingRoomAction | null) => {
@@ -467,6 +507,13 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
             variant: msg.variant || null,
             roomCode: msg.room_code,
           });
+          break;
+        case 'GameInviteFailed':
+          setError(msg.message || 'Could not send invite.');
+          setTimeout(() => setError(null), 5000);
+          break;
+        case 'GameInviteSent':
+          setError(null);
           break;
         case 'GameInviteDeclined':
           setDeclinedInvite({
@@ -796,13 +843,25 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   // Identify user on websocket connect
   useEffect(() => {
     if (connected && session?.user) {
-      const user = session.user as { id: string; name?: string; image?: string };
-      send({
-        type: 'Identify',
-        user_id: user.id,
-        name: user.name || 'Anonymous',
-        image: user.image || null,
-      });
+      let cancelled = false;
+      fetch('/api/social/token', { cache: 'no-store' })
+        .then((res) => {
+          if (!res.ok) throw new Error(`social_token_${res.status}`);
+          return res.json();
+        })
+        .then((data) => {
+          if (cancelled || !data.token) return;
+          send({
+            type: 'Identify',
+            token: data.token,
+          });
+        })
+        .catch((err) => {
+          wsWarn('Failed to fetch social token', err);
+        });
+      return () => {
+        cancelled = true;
+      };
     }
   }, [connected, session, send]);
 
@@ -817,29 +876,43 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     }
   }, [connected, session, friends.length, send]);
 
-  const sendGameInvite = useCallback((toUserId: string, gameType: string, inviteVariant: string | null = null) => {
+  const sendGameInvite = useCallback(async (toUserId: string, gameType: string, inviteVariant: string | null = null) => {
+    if (!connected) {
+      throw new Error('WebSocket is not connected');
+    }
+    const res = await fetch('/api/social/invites/grant', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ toUserId, gameType, variant: inviteVariant }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.grant) {
+      throw new Error(data.error || 'Failed to create invite');
+    }
     send({
       type: 'SendGameInvite',
       to_user_id: toUserId,
       game_type: gameType,
       variant: inviteVariant,
+      grant: data.grant,
     });
-  }, [send]);
+  }, [connected, send]);
 
-  const declineGameInvite = useCallback((inviteId: string, fromUserId: string) => {
+  const declineGameInvite = useCallback((inviteId: string) => {
     send({
       type: 'DeclineGameInvite',
       invite_id: inviteId,
-      from_user_id: fromUserId,
     });
     setActiveInvite(null);
   }, [send]);
 
   const acceptGameInvite = useCallback((invite: { roomCode: string; gameType: string; variant: string | null }) => {
     const defaultName = session?.user?.name || localStorage.getItem(STORAGE_PLAYER_NAME) || 'Player';
+    const path = getGamePath(invite.gameType, invite.variant);
     joinRoom(invite.roomCode, defaultName, invite.gameType, invite.variant);
+    if (path) router.push(path);
     setActiveInvite(null);
-  }, [session, joinRoom]);
+  }, [session, joinRoom, router]);
 
   const addFriend = useCallback(async (friendCode: string) => {
     try {
@@ -860,7 +933,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     }
   }, [refetchFriends]);
 
-  const respondToFriendRequest = useCallback(async (friendshipId: string, action: 'accept' | 'decline') => {
+  const respondToFriendRequest = useCallback(async (friendshipId: string, action: FriendResponseAction) => {
     try {
       const res = await fetch('/api/social/friends/respond', {
         method: 'POST',

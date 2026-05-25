@@ -2,13 +2,9 @@ use std::collections::HashMap;
 
 use crate::game_trait::Game;
 use crate::games::{
-    bluff_card::BluffCardGame,
-    code_guess::CodeGuessGame,
-    higher_lower::HigherLowerGame,
-    memory_flip::MemoryFlipGame,
-    shut_the_box::ShutTheBoxGame,
-    stop_clock::StopClockGame,
-    tic_tac_toe::TicTacToeGame,
+    bluff_card::BluffCardGame, checkers::CheckersGame, code_guess::CodeGuessGame,
+    drop_four::DropFourGame, higher_lower::HigherLowerGame, memory_flip::MemoryFlipGame,
+    shut_the_box::ShutTheBoxGame, stop_clock::StopClockGame, tic_tac_toe::TicTacToeGame,
 };
 
 /// Factory function signature: takes an optional variant string,
@@ -52,6 +48,14 @@ impl GameRegistry {
 
         registry.register("bluff_card", |_| Box::new(BluffCardGame::new()));
 
+        registry.register("checkers", |variant| {
+            Box::new(CheckersGame::new_variant(variant.unwrap_or("classic")))
+        });
+
+        registry.register("drop_four", |variant| {
+            Box::new(DropFourGame::new_variant(variant.unwrap_or("classic")))
+        });
+
         registry
     }
 
@@ -62,7 +66,9 @@ impl GameRegistry {
 
     /// Create a new game instance by type and optional variant.
     pub fn create(&self, game_type: &str, variant: Option<&str>) -> Option<Box<dyn Game>> {
-        self.factories.get(game_type).map(|factory| factory(variant))
+        self.factories
+            .get(game_type)
+            .map(|factory| factory(variant))
     }
 }
 
@@ -82,6 +88,8 @@ mod tests {
             "higher_lower",
             "stop_clock",
             "bluff_card",
+            "checkers",
+            "drop_four",
         ];
 
         for game_type in game_types {

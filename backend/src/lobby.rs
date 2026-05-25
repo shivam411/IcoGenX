@@ -3,11 +3,13 @@ use futures::stream::SplitSink;
 use futures::SinkExt;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
 
 use crate::game_registry::GameRegistry;
 use crate::game_trait::Game;
 use crate::protocol::{ClientMessage, ServerMessage};
+use crate::social_token::{verify_identity_token, verify_invite_grant};
 
 /// A game room with two players
 pub struct Room {
@@ -40,6 +42,17 @@ impl std::fmt::Debug for Room {
 
 type Sender = SplitSink<WebSocket, Message>;
 
+#[derive(Debug, Clone)]
+pub struct GameInviteRecord {
+    pub invite_id: String,
+    pub from_user_id: String,
+    pub to_user_id: String,
+    pub room_code: String,
+    pub game_type: String,
+    pub variant: Option<String>,
+    pub expires_at_ms: u64,
+}
+
 pub struct AppState {
     pub rooms: RwLock<HashMap<String, Room>>,
     pub player_rooms: RwLock<HashMap<String, String>>,        // player_id -> room_code
@@ -51,6 +64,9 @@ pub struct AppState {
     pub user_connections: RwLock<HashMap<String, Vec<String>>>, // user_id -> Vec<player_id> (sockets)
     pub presence_subscriptions: RwLock<HashMap<String, std::collections::HashSet<String>>>, // user_id -> Set<friend_user_id>
     pub player_users: RwLock<HashMap<String, String>>, // player_id -> user_id
+    pub user_names: RwLock<HashMap<String, String>>, // user_id -> display name
+    pub active_invites: RwLock<HashMap<String, GameInviteRecord>>, // invite_id -> record
+    pub presence_disconnect_versions: RwLock<HashMap<String, u64>>, // user_id -> debounce version
 }
 
 impl AppState {
@@ -65,6 +81,9 @@ impl AppState {
             user_connections: RwLock::new(HashMap::new()),
             presence_subscriptions: RwLock::new(HashMap::new()),
             player_users: RwLock::new(HashMap::new()),
+            user_names: RwLock::new(HashMap::new()),
+            active_invites: RwLock::new(HashMap::new()),
+            presence_disconnect_versions: RwLock::new(HashMap::new()),
         }
     }
 
@@ -90,11 +109,74 @@ impl AppState {
         }
     }
 
-    pub async fn remove_player(&self, player_id: &str) {
+    pub async fn broadcast_presence_for_user(&self, user_id: &str, online: bool, current_room: Option<String>) {
+        let mut subscribers = Vec::new();
+        {
+            let subscriptions = self.presence_subscriptions.read().await;
+            for (sub_uid, friends) in subscriptions.iter() {
+                if friends.contains(user_id) {
+                    subscribers.push(sub_uid.clone());
+                }
+            }
+        }
+
+        let mut subscriber_pids = Vec::new();
+        {
+            let conns = self.user_connections.read().await;
+            for sub_uid in subscribers {
+                if let Some(pids) = conns.get(&sub_uid) {
+                    subscriber_pids.extend(pids.clone());
+                }
+            }
+        }
+
+        let msg = ServerMessage::PresenceUpdate {
+            user_id: user_id.to_string(),
+            online,
+            current_room,
+        };
+        self.send_to_players(&subscriber_pids, &msg).await;
+    }
+
+    pub async fn broadcast_current_presence_for_player(&self, player_id: &str) {
+        let user_id = self.player_users.read().await.get(player_id).cloned();
+        if let Some(user_id) = user_id {
+            let current_room = self.player_rooms.read().await.get(player_id).cloned();
+            self.broadcast_presence_for_user(&user_id, true, current_room).await;
+        }
+    }
+
+    async fn schedule_offline_presence(self: &Arc<Self>, user_id: String) {
+        let version = {
+            let mut versions = self.presence_disconnect_versions.write().await;
+            let entry = versions.entry(user_id.clone()).or_insert(0);
+            *entry += 1;
+            *entry
+        };
+        let state = Arc::clone(self);
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+            if state.user_connections.read().await.contains_key(&user_id) {
+                return;
+            }
+            {
+                let mut versions = state.presence_disconnect_versions.write().await;
+                if versions.get(&user_id).copied() != Some(version) {
+                    return;
+                }
+                versions.remove(&user_id);
+            }
+            state.presence_subscriptions.write().await.remove(&user_id);
+            state.broadcast_presence_for_user(&user_id, false, None).await;
+        });
+    }
+
+    pub async fn remove_player(self: &Arc<Self>, player_id: &str) {
         self.senders.write().await.remove(player_id);
 
         // Friends & Presence Cleanup
-        let user_id_to_notify = {
+        let presence_cleanup = {
             let mut player_users = self.player_users.write().await;
             if let Some(user_id) = player_users.remove(player_id) {
                 let mut user_connections = self.user_connections.write().await;
@@ -102,9 +184,9 @@ impl AppState {
                     conns.retain(|id| id != player_id);
                     if conns.is_empty() {
                         user_connections.remove(&user_id);
-                        Some(user_id)
+                        Some((user_id, true))
                     } else {
-                        None
+                        Some((user_id, false))
                     }
                 } else {
                     None
@@ -113,35 +195,6 @@ impl AppState {
                 None
             }
         };
-
-        if let Some(user_id) = user_id_to_notify {
-            let mut subscribers = Vec::new();
-            {
-                let subscriptions = self.presence_subscriptions.read().await;
-                for (sub_uid, friends) in subscriptions.iter() {
-                    if friends.contains(&user_id) {
-                        subscribers.push(sub_uid.clone());
-                    }
-                }
-            }
-
-            let mut subscriber_pids = Vec::new();
-            {
-                let conns = self.user_connections.read().await;
-                for sub_uid in subscribers {
-                    if let Some(pids) = conns.get(&sub_uid) {
-                        subscriber_pids.extend(pids.clone());
-                    }
-                }
-            }
-
-            let msg = ServerMessage::PresenceUpdate {
-                user_id,
-                online: false,
-                current_room: None,
-            };
-            self.send_to_players(&subscriber_pids, &msg).await;
-        }
 
         let room_code = self.player_rooms.write().await.remove(player_id);
         self.player_numbers.write().await.remove(player_id);
@@ -173,10 +226,34 @@ impl AppState {
                 self.send_to(&pid, &ServerMessage::OpponentDisconnected).await;
             }
         }
+
+        if let Some((user_id, is_last_connection)) = presence_cleanup {
+            if is_last_connection {
+                self.schedule_offline_presence(user_id).await;
+            } else {
+                let current_room = {
+                    let conns = self.user_connections.read().await;
+                    let player_rooms = self.player_rooms.read().await;
+                    conns
+                        .get(&user_id)
+                        .and_then(|pids| pids.first())
+                        .and_then(|pid| player_rooms.get(pid).cloned())
+                };
+                self.broadcast_presence_for_user(&user_id, true, current_room).await;
+            }
+        }
     }
 }
 
 const DEFAULT_MATCH_FORMAT: &str = "single";
+const INVITE_TTL_MS: u64 = 2 * 60 * 1000;
+
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis() as u64)
+        .unwrap_or(0)
+}
 
 fn normalize_match_format(format: &str) -> Option<&'static str> {
     match format {
@@ -270,6 +347,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                     },
                 )
                 .await;
+            state.broadcast_current_presence_for_player(player_id).await;
         }
 
         ClientMessage::JoinRoom { room_code, player_name } => {
@@ -421,6 +499,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                             state.send_to(pid, msg).await;
                         }
                     }
+                    state.broadcast_current_presence_for_player(player_id).await;
                 }
             }
         }
@@ -759,8 +838,28 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                     .await;
             }
         }
-        ClientMessage::Identify { user_id, name: _, image: _ } => {
+        ClientMessage::Identify { token } => {
+            let claims = match verify_identity_token(&token) {
+                Ok(claims) => claims,
+                Err(message) => {
+                    state
+                        .send_to(player_id, &ServerMessage::Error { message })
+                        .await;
+                    return;
+                }
+            };
+            let user_id = claims.sub;
+            let user_name = claims.name;
+
             state.player_users.write().await.insert(player_id.to_string(), user_id.clone());
+            state.user_names.write().await.insert(user_id.clone(), user_name.clone());
+            state.presence_disconnect_versions.write().await.remove(&user_id);
+            state
+                .player_names
+                .write()
+                .await
+                .entry(player_id.to_string())
+                .or_insert(user_name);
             
             // Scope the write lock so it's dropped before we re-read user_connections below
             {
@@ -840,9 +939,88 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                 }
             }
         }
-        ClientMessage::SendGameInvite { to_user_id, game_type, variant } => {
-            let from_user_id = state.player_users.read().await.get(player_id).cloned();
-            let from_name = state.player_names.read().await.get(player_id).cloned().unwrap_or_else(|| "Friend".into());
+        ClientMessage::SendGameInvite { to_user_id, game_type, variant, grant } => {
+            let from_user_id = match state.player_users.read().await.get(player_id).cloned() {
+                Some(user_id) => user_id,
+                None => {
+                    state
+                        .send_to(
+                            player_id,
+                            &ServerMessage::GameInviteFailed {
+                                message: "Identify before sending invites".into(),
+                            },
+                        )
+                        .await;
+                    return;
+                }
+            };
+
+            let grant_claims = match verify_invite_grant(&grant) {
+                Ok(claims) => claims,
+                Err(message) => {
+                    state
+                        .send_to(player_id, &ServerMessage::GameInviteFailed { message })
+                        .await;
+                    return;
+                }
+            };
+
+            if grant_claims.from_user_id != from_user_id
+                || grant_claims.to_user_id != to_user_id
+                || grant_claims.game_type != game_type
+                || grant_claims.variant != variant
+            {
+                state
+                    .send_to(
+                        player_id,
+                        &ServerMessage::GameInviteFailed {
+                            message: "Invite grant mismatch".into(),
+                        },
+                    )
+                    .await;
+                return;
+            }
+
+            let target_pids = {
+                let conns = state.user_connections.read().await;
+                conns.get(&to_user_id).cloned()
+            };
+            let Some(target_pids) = target_pids else {
+                state
+                    .send_to(
+                        player_id,
+                        &ServerMessage::GameInviteFailed {
+                            message: "Friend is offline".into(),
+                        },
+                    )
+                    .await;
+                return;
+            };
+
+            let player_count = match state.registry.create(&game_type, variant.as_deref()) {
+                Some(game) => game.player_count(),
+                None => {
+                    state
+                        .send_to(
+                            player_id,
+                            &ServerMessage::GameInviteFailed {
+                                message: "Unknown game type".into(),
+                            },
+                        )
+                        .await;
+                    return;
+                }
+            };
+
+            let player_display_name = state.player_names.read().await.get(player_id).cloned();
+            let from_name = state
+                .user_names
+                .read()
+                .await
+                .get(&from_user_id)
+                .cloned()
+                .or(player_display_name)
+                .unwrap_or_else(|| "Friend".into());
 
             let room_code = {
                 let pr = state.player_rooms.read().await;
@@ -853,9 +1031,6 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                 Some(code) => code,
                 None => {
                     let code = generate_room_code();
-                    let player_count = state.registry.create(&game_type, variant.as_deref())
-                        .map(|g| g.player_count())
-                        .unwrap_or(2);
 
                     let room = Room {
                         code: code.clone(),
@@ -895,27 +1070,99 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                 let val: u64 = rng.gen();
                 format!("{:x}", val)
             };
+
+            state
+                .active_invites
+                .write()
+                .await
+                .insert(
+                    invite_id.clone(),
+                    GameInviteRecord {
+                        invite_id: invite_id.clone(),
+                        from_user_id: from_user_id.clone(),
+                        to_user_id: to_user_id.clone(),
+                        room_code: final_room_code.clone(),
+                        game_type: game_type.clone(),
+                        variant: variant.clone(),
+                        expires_at_ms: now_ms() + INVITE_TTL_MS,
+                    },
+                );
             
             let invite_msg = ServerMessage::GameInviteReceived {
-                invite_id,
-                from_user_id: from_user_id.unwrap_or_default(),
+                invite_id: invite_id.clone(),
+                from_user_id,
                 from_name,
                 game_type,
                 variant,
                 room_code: final_room_code,
             };
 
-            let target_pids = {
-                let conns = state.user_connections.read().await;
-                conns.get(&to_user_id).cloned()
-            };
-
-            if let Some(pids) = target_pids {
-                state.send_to_players(&pids, &invite_msg).await;
+            state.send_to_players(&target_pids, &invite_msg).await;
+            if let ServerMessage::GameInviteReceived { room_code, .. } = &invite_msg {
+                state
+                    .send_to(
+                        player_id,
+                        &ServerMessage::GameInviteSent {
+                            invite_id,
+                            room_code: room_code.clone(),
+                        },
+                    )
+                    .await;
             }
         }
-        ClientMessage::DeclineGameInvite { invite_id, from_user_id } => {
-            let from_name = state.player_names.read().await.get(player_id).cloned().unwrap_or_else(|| "Friend".into());
+        ClientMessage::DeclineGameInvite { invite_id } => {
+            let to_user_id = match state.player_users.read().await.get(player_id).cloned() {
+                Some(user_id) => user_id,
+                None => {
+                    state
+                        .send_to(
+                            player_id,
+                            &ServerMessage::Error {
+                                message: "Identify before declining invites".into(),
+                            },
+                        )
+                        .await;
+                    return;
+                }
+            };
+
+            let invite = {
+                let mut invites = state.active_invites.write().await;
+                invites.remove(&invite_id)
+            };
+            let Some(invite) = invite else {
+                state
+                    .send_to(
+                        player_id,
+                        &ServerMessage::Error {
+                            message: "Invite not found".into(),
+                        },
+                    )
+                    .await;
+                return;
+            };
+
+            if invite.to_user_id != to_user_id || invite.expires_at_ms < now_ms() {
+                state
+                    .send_to(
+                        player_id,
+                        &ServerMessage::Error {
+                            message: "Invite expired".into(),
+                        },
+                    )
+                    .await;
+                return;
+            }
+
+            let player_display_name = state.player_names.read().await.get(player_id).cloned();
+            let from_name = state
+                .user_names
+                .read()
+                .await
+                .get(&to_user_id)
+                .cloned()
+                .or(player_display_name)
+                .unwrap_or_else(|| "Friend".into());
 
             let decl_msg = ServerMessage::GameInviteDeclined {
                 invite_id,
@@ -924,7 +1171,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
 
             let inviter_pids = {
                 let conns = state.user_connections.read().await;
-                conns.get(&from_user_id).cloned()
+                conns.get(&invite.from_user_id).cloned()
             };
 
             if let Some(pids) = inviter_pids {
@@ -982,10 +1229,71 @@ mod tests {
         higher_lower::HigherLowerGame,
     };
     use crate::protocol::{ClientMessage, ServerMessage};
+    use jsonwebtoken::{encode, EncodingKey, Header};
+    use serde::Serialize;
     use std::sync::Arc;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     fn players() -> Vec<String> {
         vec!["p1".to_string(), "p2".to_string()]
+    }
+
+    #[derive(Serialize)]
+    struct IdentityTestClaims<'a> {
+        kind: &'a str,
+        sub: &'a str,
+        name: &'a str,
+        image: Option<&'a str>,
+        exp: usize,
+    }
+
+    #[derive(Serialize)]
+    struct InviteGrantTestClaims<'a> {
+        kind: &'a str,
+        from_user_id: &'a str,
+        to_user_id: &'a str,
+        game_type: &'a str,
+        variant: Option<&'a str>,
+        exp: usize,
+    }
+
+    fn test_exp() -> usize {
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as usize
+            + 60
+    }
+
+    fn identity_token(user_id: &str, name: &str) -> String {
+        encode(
+            &Header::default(),
+            &IdentityTestClaims {
+                kind: "identity",
+                sub: user_id,
+                name,
+                image: None,
+                exp: test_exp(),
+            },
+            &EncodingKey::from_secret(b"online-multi-games-dev-social-secret"),
+        )
+        .unwrap()
+    }
+
+    fn invite_grant(from_user_id: &str, to_user_id: &str, game_type: &str, variant: Option<&str>) -> String {
+        encode(
+            &Header::default(),
+            &InviteGrantTestClaims {
+                kind: "invite",
+                from_user_id,
+                to_user_id,
+                game_type,
+                variant,
+                exp: test_exp(),
+            },
+            &EncodingKey::from_secret(b"online-multi-games-dev-social-secret"),
+        )
+        .unwrap()
     }
 
     #[test]
@@ -1509,9 +1817,7 @@ mod tests {
             &state,
             "conn1",
             ClientMessage::Identify {
-                user_id: "user_a".into(),
-                name: "Alex".into(),
-                image: None,
+                token: identity_token("user_a", "Alex"),
             },
         )
         .await;
@@ -1523,9 +1829,7 @@ mod tests {
             &state,
             "conn2",
             ClientMessage::Identify {
-                user_id: "user_b".into(),
-                name: "Blair".into(),
-                image: None,
+                token: identity_token("user_b", "Blair"),
             },
         )
         .await;
@@ -1551,9 +1855,16 @@ mod tests {
             &state,
             "conn1",
             ClientMessage::Identify {
-                user_id: "user_a".into(),
-                name: "Alex".into(),
-                image: None,
+                token: identity_token("user_a", "Alex"),
+            },
+        )
+        .await;
+
+        handle_message(
+            &state,
+            "conn2",
+            ClientMessage::Identify {
+                token: identity_token("user_b", "Blair"),
             },
         )
         .await;
@@ -1566,6 +1877,7 @@ mod tests {
                 to_user_id: "user_b".into(),
                 game_type: "tic_tac_toe".into(),
                 variant: Some("blind".into()),
+                grant: invite_grant("user_a", "user_b", "tic_tac_toe", Some("blind")),
             },
         )
         .await;
@@ -1577,5 +1889,6 @@ mod tests {
         assert_eq!(room.game_type, "tic_tac_toe");
         assert_eq!(room.variant, Some("blind".into()));
         assert_eq!(room.players[0], "conn1");
+        assert_eq!(state.active_invites.read().await.len(), 1);
     }
 }

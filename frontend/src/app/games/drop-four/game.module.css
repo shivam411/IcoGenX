@@ -1,0 +1,145 @@
+.shell {
+  width: min(100%, 680px);
+  margin: 0 auto;
+  display: grid;
+  gap: 14px;
+}
+
+.statusBar,
+.controls,
+.columnControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statusBar {
+  min-height: 46px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border: 1px solid rgba(14, 116, 144, 0.2);
+  border-radius: 8px;
+  background: #ecfeff;
+  color: #164e63;
+  font-weight: 800;
+}
+
+.controls {
+  flex-wrap: wrap;
+}
+
+.columnControls {
+  display: grid;
+  width: min(100%, 620px);
+  margin: 0 auto;
+}
+
+.columnBtn,
+.popBtn,
+.powerBtn {
+  min-height: 38px;
+  border: 1px solid rgba(8, 145, 178, 0.28);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #164e63;
+  font-weight: 900;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.columnBtn:hover:not(:disabled),
+.popBtn:hover:not(:disabled),
+.powerBtn:hover:not(:disabled),
+.activePower {
+  border-color: #0891b2;
+  background: #0891b2;
+  color: #ffffff;
+}
+
+.columnBtn:disabled,
+.popBtn:disabled,
+.powerBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.board {
+  width: min(100%, 620px);
+  aspect-ratio: 7 / 6;
+  margin: 0 auto;
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 3px solid #164e63;
+  border-radius: 8px;
+  background: #0e7490;
+}
+
+.cell {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #cffafe;
+  box-shadow: inset 0 4px 10px rgba(22, 78, 99, 0.28);
+}
+
+.hidden {
+  border-radius: 8px;
+  background: repeating-linear-gradient(135deg, #155e75 0 8px, #164e63 8px 16px);
+}
+
+.winning {
+  outline: 4px solid #22c55e;
+  outline-offset: -4px;
+}
+
+.token {
+  width: 74%;
+  height: 74%;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.82);
+  color: #ffffff;
+  font-weight: 900;
+  letter-spacing: 0;
+  box-shadow: inset 0 -8px 0 rgba(0, 0, 0, 0.14);
+}
+
+.mine {
+  background: #22c55e;
+}
+
+.rival {
+  background: #f97316;
+}
+
+.wreckingball {
+  border-color: #fecaca;
+}
+
+.heavy {
+  border-color: #d1d5db;
+  box-shadow: inset 0 -10px 0 rgba(0, 0, 0, 0.24);
+}
+
+@media (max-width: 560px) {
+  .board {
+    gap: 4px;
+    padding: 7px;
+    border-width: 2px;
+  }
+
+  .columnBtn,
+  .popBtn,
+  .powerBtn {
+    min-height: 34px;
+    font-size: 0.76rem;
+  }
+
+  .token {
+    border-width: 3px;
+    font-size: 0.72rem;
+  }
+}
