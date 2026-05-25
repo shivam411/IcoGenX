@@ -49,6 +49,17 @@ function CodeGuessBoard({
           placeholder="____"
           style={{ display: 'block', margin: '20px auto', textAlign: 'center', fontSize: '1.8rem', letterSpacing: '4px', width: '160px' }}
         />
+        <div style={{ padding: '0 20px', marginBottom: '24px' }}>
+          <input
+            type="range"
+            min={0}
+            max={9999}
+            value={parseInt(code, 10) || 0}
+            onChange={(e) => setCode(e.target.value.padStart(4, '0'))}
+            style={{ width: '100%' }}
+            aria-label="Code slider"
+          />
+        </div>
         <button
           className="btn btn-primary btn-lg"
           onClick={handleSubmit}
@@ -85,19 +96,32 @@ function CodeGuessBoard({
       </div>
 
       {isMyTurn && !gameOver && (
-        <div className={styles.inputRow}>
-          <input
-            className="input"
-            type="text"
-            maxLength={4}
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-            placeholder="Enter 4 digits"
-            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-          />
-          <button className="btn btn-primary" onClick={handleSubmit} disabled={code.length !== 4}>
-            Guess
-          </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '16px' }}>
+          <div style={{ padding: '0 8px' }}>
+            <input
+              type="range"
+              min={0}
+              max={9999}
+              value={parseInt(code, 10) || 0}
+              onChange={(e) => setCode(e.target.value.padStart(4, '0'))}
+              style={{ width: '100%' }}
+              aria-label="Guess slider"
+            />
+          </div>
+          <div className={styles.inputRow}>
+            <input
+              className="input"
+              type="text"
+              maxLength={4}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+              placeholder="Enter 4 digits"
+              onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+            />
+            <button className="btn btn-primary" onClick={handleSubmit} disabled={code.length !== 4}>
+              Guess
+            </button>
+          </div>
         </div>
       )}
 

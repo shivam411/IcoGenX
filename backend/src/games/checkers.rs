@@ -1,498 +1,487 @@
+/* backend/src/games/checkers.rs */
+use crate::game_trait::{self, Game};
+use crate::protocol::ServerMessage;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::game_trait::{self, Game};
-use crate::protocol::ServerMessage;
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum CheckersVariant {
-    Classic,
-    Anti,
-    Zombie,
-    Minefield,
-    Vip,
-    Portal,
-}
-
-impl CheckersVariant {
-    fn from_str(value: &str) -> Self {
-        match value {
-            "anti" => Self::Anti,
-            "zombie" => Self::Zombie,
-            "minefield" => Self::Minefield,
-            "vip" => Self::Vip,
-            "portal" => Self::Portal,
-            _ => Self::Classic,
-        }
-    }
-
-    fn as_str(&self) -> &'static str {
-        match self {
-            Self::Classic => "classic",
-            Self::Anti => "anti",
-            Self::Zombie => "zombie",
-            Self::Minefield => "minefield",
-            Self::Vip => "vip",
-            Self::Portal => "portal",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Copy)]
 pub struct CheckerPiece {
     pub owner: u8,
     pub is_king: bool,
-    pub is_vip: bool,
+    #[serde(skip_serializing)]
+    pub is_vip_secret: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct MoveInfo {
-    from: usize,
-    to: usize,
-    captured: Option<usize>,
-}
-
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct CheckersGame {
-    pub board: Vec<Option<CheckerPiece>>,
+    pub board: Vec<Option<CheckerPiece>>, // 64 entries (8x8)
     pub current_player: u8,
-    pub variant: CheckersVariant,
+    pub variant: String,
     pub game_over: bool,
     pub winner: Option<u8>,
     pub must_jump_from: Option<usize>,
+
+    // Setup and Secret Phase state
     pub mines: [Vec<usize>; 2],
     pub vip_pieces: [Option<usize>; 2],
-    pub portals: HashMap<usize, usize>,
     pub setup_complete: [bool; 2],
+    pub needs_setup: bool,
+
+    // Portal state
+    pub portals: HashMap<usize, usize>,
+
+    // Event log
     pub last_event: Option<String>,
 }
 
 impl CheckersGame {
-    pub fn new() -> Self {
-        Self::new_variant("classic")
-    }
-
-    pub fn new_variant(variant: &str) -> Self {
-        let variant = CheckersVariant::from_str(variant);
+    pub fn new(variant: &str) -> Self {
         let mut board = vec![None; 64];
-        for row in 0..3 {
-            for col in 0..8 {
-                if Self::is_dark(row, col) {
-                    board[Self::idx(row, col)] = Some(CheckerPiece {
-                        owner: 1,
-                        is_king: false,
-                        is_vip: false,
-                    });
-                }
-            }
-        }
-        for row in 5..8 {
-            for col in 0..8 {
-                if Self::is_dark(row, col) {
-                    board[Self::idx(row, col)] = Some(CheckerPiece {
+
+        // Standard pieces initialization on dark squares
+        // Red (Player 0) starts on rows 0, 1, 2
+        for r in 0..3 {
+            for c in 0..8 {
+                if (r + c) % 2 == 1 {
+                    board[r * 8 + c] = Some(CheckerPiece {
                         owner: 0,
                         is_king: false,
-                        is_vip: false,
+                        is_vip_secret: false,
                     });
                 }
             }
         }
 
-        let mut portals = HashMap::new();
-        if variant == CheckersVariant::Portal {
-            portals.insert(Self::idx(3, 0), Self::idx(4, 7));
-            portals.insert(Self::idx(4, 7), Self::idx(3, 0));
-            portals.insert(Self::idx(3, 6), Self::idx(4, 1));
-            portals.insert(Self::idx(4, 1), Self::idx(3, 6));
+        // Black (Player 1) starts on rows 5, 6, 7
+        for r in 5..8 {
+            for c in 0..8 {
+                if (r + c) % 2 == 1 {
+                    board[r * 8 + c] = Some(CheckerPiece {
+                        owner: 1,
+                        is_king: false,
+                        is_vip_secret: false,
+                    });
+                }
+            }
         }
 
-        let setup_done = !matches!(variant, CheckersVariant::Minefield | CheckersVariant::Vip);
+        let needs_setup = variant == "minefield" || variant == "vip";
 
-        Self {
+        // Setup portal locations near the center if variant is portal
+        let mut portals = HashMap::new();
+        if variant == "portal" {
+            // Dark squares in rows 3 and 4 are:
+            // Row 3: 25, 27, 29, 31
+            // Row 4: 32, 34, 36, 38
+            // Let's place Portal A (Pennies) at 25 and 38, Portal B (Dimes) at 27 and 36
+            portals.insert(25, 38);
+            portals.insert(38, 25);
+            portals.insert(27, 36);
+            portals.insert(36, 27);
+        }
+
+        CheckersGame {
             board,
             current_player: 0,
-            variant,
+            variant: variant.to_string(),
             game_over: false,
             winner: None,
             must_jump_from: None,
             mines: [Vec::new(), Vec::new()],
             vip_pieces: [None, None],
+            setup_complete: [false, false],
+            needs_setup,
             portals,
-            setup_complete: [setup_done, setup_done],
             last_event: None,
         }
     }
 
-    fn idx(row: usize, col: usize) -> usize {
-        row * 8 + col
-    }
-    fn row(index: usize) -> usize {
-        index / 8
-    }
-    fn col(index: usize) -> usize {
-        index % 8
-    }
-    fn is_dark(row: usize, col: usize) -> bool {
-        (row + col) % 2 == 1
-    }
-    fn valid_index(index: usize) -> bool {
-        index < 64 && Self::is_dark(Self::row(index), Self::col(index))
-    }
-    fn setup_ready(&self) -> bool {
-        self.setup_complete[0] && self.setup_complete[1]
+    pub fn new_variant(variant: &str) -> Self {
+        Self::new(variant)
     }
 
-    fn dirs(piece: CheckerPiece) -> Vec<(i8, i8)> {
-        let mut dirs = Vec::new();
-        if piece.is_king || piece.owner == 0 {
-            dirs.push((-1, -1));
-            dirs.push((-1, 1));
-        }
-        if piece.is_king || piece.owner == 1 {
-            dirs.push((1, -1));
-            dirs.push((1, 1));
-        }
-        dirs
+    fn is_dark(idx: usize) -> bool {
+        let r = idx / 8;
+        let c = idx % 8;
+        (r + c) % 2 == 1
     }
 
-    fn offset(index: usize, dr: i8, dc: i8) -> Option<usize> {
-        let row = Self::row(index) as i8 + dr;
-        let col = Self::col(index) as i8 + dc;
-        if !(0..8).contains(&row) || !(0..8).contains(&col) {
-            return None;
-        }
-        Some(Self::idx(row as usize, col as usize))
-    }
-
-    fn captures_from(&self, from: usize) -> Vec<MoveInfo> {
-        let Some(piece) = self.board.get(from).copied().flatten() else {
-            return Vec::new();
-        };
-        Self::dirs(piece)
-            .into_iter()
-            .filter_map(|(dr, dc)| {
-                let mid = Self::offset(from, dr, dc)?;
-                let to = Self::offset(from, dr * 2, dc * 2)?;
-                let jumped = self.board[mid]?;
-                if jumped.owner == piece.owner || self.board[to].is_some() || !Self::valid_index(to)
-                {
-                    return None;
-                }
-                Some(MoveInfo {
-                    from,
-                    to,
-                    captured: Some(mid),
-                })
-            })
-            .collect()
-    }
-
-    fn legal_moves_from(&self, from: usize) -> Vec<MoveInfo> {
-        let Some(piece) = self.board.get(from).copied().flatten() else {
-            return Vec::new();
-        };
-        if piece.owner != self.current_player {
-            return Vec::new();
-        }
-        let captures = self.captures_from(from);
-        if !captures.is_empty() {
-            return captures;
-        }
-        Self::dirs(piece)
-            .into_iter()
-            .filter_map(|(dr, dc)| {
-                let to = Self::offset(from, dr, dc)?;
-                if Self::valid_index(to) && self.board[to].is_none() {
-                    Some(MoveInfo {
-                        from,
-                        to,
-                        captured: None,
-                    })
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-
-    fn player_has_capture(&self, player: u8) -> bool {
-        self.board.iter().enumerate().any(|(idx, piece)| {
-            piece
-                .map(|p| p.owner == player && !self.captures_from(idx).is_empty())
-                .unwrap_or(false)
-        })
-    }
-
-    fn player_has_move(&self, player: u8) -> bool {
-        self.board.iter().enumerate().any(|(idx, piece)| {
-            piece
-                .map(|p| {
-                    p.owner == player && !self.legal_moves_for_player_from(player, idx).is_empty()
-                })
-                .unwrap_or(false)
-        })
-    }
-
-    fn legal_moves_for_player_from(&self, player: u8, from: usize) -> Vec<MoveInfo> {
-        let Some(piece) = self.board.get(from).copied().flatten() else {
-            return Vec::new();
-        };
-        if piece.owner != player {
-            return Vec::new();
-        }
-        let mut clone = self.clone();
-        clone.current_player = player;
-        clone.legal_moves_from(from)
-    }
-
-    fn piece_count(&self, player: u8) -> usize {
+    /// Check if a player has any pieces left on the board
+    fn has_pieces(&self, player: u8) -> bool {
         self.board
             .iter()
-            .filter(|piece| piece.map(|p| p.owner == player).unwrap_or(false))
-            .count()
+            .any(|slot| slot.map_or(false, |p| p.owner == player))
     }
 
-    fn promote_if_needed(&mut self, index: usize) {
-        if let Some(mut piece) = self.board[index] {
-            if (piece.owner == 0 && Self::row(index) == 0)
-                || (piece.owner == 1 && Self::row(index) == 7)
-            {
-                piece.is_king = true;
-                self.board[index] = Some(piece);
-            }
-        }
-    }
-
-    fn explosion_cells(index: usize) -> Vec<usize> {
-        let mut cells = vec![index];
-        for dr in -1..=1 {
-            for dc in -1..=1 {
-                if dr == 0 && dc == 0 {
-                    continue;
-                }
-                if let Some(next) = Self::offset(index, dr, dc) {
-                    cells.push(next);
-                }
-            }
-        }
-        cells
-    }
-
-    fn apply_mine_if_needed(&mut self, landing: usize, player: u8) -> bool {
-        if self.variant != CheckersVariant::Minefield {
-            return false;
-        }
-        let opponent = 1 - player;
-        if !self.mines[opponent as usize].contains(&landing) {
-            return false;
-        }
-        self.mines[opponent as usize].retain(|mine| *mine != landing);
-        for cell in Self::explosion_cells(landing) {
-            self.board[cell] = None;
-        }
-        self.last_event = Some("Boom! A mine exploded.".into());
-        true
-    }
-
-    fn apply_portal_if_needed(&mut self, landing: usize) -> usize {
-        if self.variant != CheckersVariant::Portal {
-            return landing;
-        }
-        let Some(&destination) = self.portals.get(&landing) else {
-            return landing;
-        };
-        if let Some(piece) = self.board[landing] {
-            self.board[landing] = None;
-            self.board[destination] = Some(piece);
-            self.last_event = Some("Portal jump!".into());
-            destination
-        } else {
-            landing
-        }
-    }
-
-    fn update_game_over(&mut self) {
-        for player in 0..=1 {
-            let no_pieces = self.piece_count(player) == 0;
-            let no_moves = !no_pieces && !self.player_has_move(player);
-            if no_pieces || no_moves {
-                self.game_over = true;
-                self.winner = Some(if self.variant == CheckersVariant::Anti {
-                    player
-                } else {
-                    1 - player
-                });
-                return;
-            }
-        }
-    }
-
-    fn set_secret(
+    /// Set secret mines or VIP pieces
+    pub fn set_secrets(
         &mut self,
         player: u8,
-        mines: Vec<usize>,
+        mines: Option<Vec<usize>>,
         vip: Option<usize>,
     ) -> Result<(), String> {
-        if !matches!(
-            self.variant,
-            CheckersVariant::Minefield | CheckersVariant::Vip
-        ) {
-            return Err("This variant has no setup phase".into());
+        if !self.needs_setup || self.setup_complete[player as usize] {
+            return Err("Setup is already complete or not needed".to_string());
         }
-        if self.setup_complete[player as usize] {
-            return Err("Setup already complete".into());
-        }
-        if self.variant == CheckersVariant::Minefield {
-            if mines.len() > 3 {
-                return Err("Choose up to 3 mines".into());
+
+        if self.variant == "minefield" {
+            let m_list = mines.ok_or_else(|| "Mines list is required".to_string())?;
+            if m_list.is_empty() || m_list.len() > 3 {
+                return Err("Must select 1 to 3 mine locations".to_string());
             }
-            if mines.iter().any(|idx| !Self::valid_index(*idx)) {
-                return Err("Mines must be on dark squares".into());
+
+            for idx in &m_list {
+                if !Self::is_dark(*idx) {
+                    return Err("Mines must be placed on dark squares".to_string());
+                }
+                let row = *idx / 8;
+                if player == 0 && row >= 4 {
+                    return Err("Player 1 mines must be on rows 0-3".to_string());
+                }
+                if player == 1 && row < 4 {
+                    return Err("Player 2 mines must be on rows 4-7".to_string());
+                }
             }
-            self.mines[player as usize] = mines;
-        }
-        if self.variant == CheckersVariant::Vip {
-            let vip = vip.ok_or_else(|| "Choose a VIP piece".to_string())?;
-            let Some(mut piece) = self.board.get(vip).copied().flatten() else {
-                return Err("VIP must be one of your pieces".into());
-            };
+            self.mines[player as usize] = m_list;
+        } else if self.variant == "vip" {
+            let vip_idx = vip.ok_or_else(|| "VIP selection is required".to_string())?;
+            if !Self::is_dark(vip_idx) {
+                return Err("VIP must be on a dark square".to_string());
+            }
+
+            let piece = self.board[vip_idx]
+                .ok_or_else(|| "No piece at selection".to_string())?;
             if piece.owner != player {
-                return Err("VIP must be one of your pieces".into());
+                return Err("You must select your own piece".to_string());
             }
-            piece.is_vip = true;
-            self.board[vip] = Some(piece);
-            self.vip_pieces[player as usize] = Some(vip);
+
+            let row = vip_idx / 8;
+            if player == 0 && row != 0 {
+                return Err("Player 1 VIP must be in the back row (row 0)".to_string());
+            }
+            if player == 1 && row != 7 {
+                return Err("Player 2 VIP must be in the back row (row 7)".to_string());
+            }
+
+            self.vip_pieces[player as usize] = Some(vip_idx);
+            if let Some(p) = self.board[vip_idx].as_mut() {
+                p.is_vip_secret = true;
+            }
         }
+
         self.setup_complete[player as usize] = true;
+        if self.setup_complete[0] && self.setup_complete[1] {
+            self.needs_setup = false;
+        }
         Ok(())
     }
 
-    fn move_piece(&mut self, player: u8, from: usize, to: usize) -> Result<(), String> {
-        if self.game_over {
-            return Err("Game is over".into());
+    /// Check if a diagonal step goes forward for the player
+    fn is_forward(player: u8, from: usize, to: usize) -> bool {
+        let from_row = from / 8;
+        let to_row = to / 8;
+        if player == 0 {
+            to_row > from_row
+        } else {
+            to_row < from_row
         }
-        if !self.setup_ready() {
-            return Err("Both players must finish setup first".into());
+    }
+
+    /// Compute all valid moves or jumps for the current player
+    pub fn get_valid_moves(&self) -> Vec<(usize, usize, bool)> {
+        let mut moves = Vec::new();
+        let mut jumps = Vec::new();
+
+        for from in 0..64 {
+            if let Some(piece) = self.board[from] {
+                if piece.owner != self.current_player {
+                    continue;
+                }
+                if let Some(restrict_from) = self.must_jump_from {
+                    if from != restrict_from {
+                        continue;
+                    }
+                }
+
+                let from_row = from / 8;
+                let from_col = from % 8;
+
+                // Directions: Up-Left, Up-Right, Down-Left, Down-Right
+                let dirs = [(-1, -1), (-1, 1), (1, -1), (1, 1)];
+
+                for (dr, dc) in dirs {
+                    // Check normal move (1 step)
+                    if self.must_jump_from.is_none() {
+                        let to_row = from_row as isize + dr;
+                        let to_col = from_col as isize + dc;
+                        if to_row >= 0 && to_row < 8 && to_col >= 0 && to_col < 8 {
+                            let to = (to_row * 8 + to_col) as usize;
+                            if self.board[to].is_none() {
+                                if piece.is_king || Self::is_forward(self.current_player, from, to) {
+                                    moves.push((from, to, false));
+                                }
+                            }
+                        }
+                    }
+
+                    // Check jump move (2 steps)
+                    let mid_row = from_row as isize + dr;
+                    let mid_col = from_col as isize + dc;
+                    let to_row = from_row as isize + 2 * dr;
+                    let to_col = from_col as isize + 2 * dc;
+
+                    if to_row >= 0 && to_row < 8 && to_col >= 0 && to_col < 8 {
+                        let mid = (mid_row * 8 + mid_col) as usize;
+                        let to = (to_row * 8 + to_col) as usize;
+
+                        if let Some(mid_piece) = self.board[mid] {
+                            if mid_piece.owner != self.current_player && self.board[to].is_none() {
+                                if piece.is_king || Self::is_forward(self.current_player, from, to) {
+                                    jumps.push((from, to, true));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if !jumps.is_empty() {
+            jumps
+        } else {
+            moves
+        }
+    }
+
+    /// Execute a checkers move
+    pub fn make_move(&mut self, player: u8, from: usize, to: usize) -> Result<(), String> {
+        if self.game_over {
+            return Err("Game is over".to_string());
+        }
+        if self.needs_setup {
+            return Err("Wait for setup phase to complete".to_string());
         }
         if player != self.current_player {
-            return Err("Not your turn".into());
-        }
-        if !Self::valid_index(from) || !Self::valid_index(to) {
-            return Err("Move must use dark board squares".into());
-        }
-        if self.must_jump_from.is_some() && self.must_jump_from != Some(from) {
-            return Err("You must continue the jump combo".into());
-        }
-        let legal = self.legal_moves_from(from);
-        let capture_required = self.player_has_capture(player);
-        let selected = legal.iter().find(|mv| mv.to == to).copied();
-        let Some(selected) = selected else {
-            if capture_required {
-                return Err("A capture is required".into());
-            }
-            return Err("Illegal move".into());
-        };
-        if selected.captured.is_none() && capture_required {
-            return Err("A capture is required".into());
+            return Err("Not your turn".to_string());
         }
 
-        let mut piece = self.board[from]
-            .take()
-            .ok_or_else(|| "No piece at source".to_string())?;
-        if let Some(captured_idx) = selected.captured {
-            if let Some(captured) = self.board[captured_idx] {
-                if self.variant == CheckersVariant::Vip && captured.is_vip {
-                    self.game_over = true;
-                    self.winner = Some(player);
-                    self.last_event = Some("VIP captured!".into());
-                }
-                if self.variant == CheckersVariant::Zombie {
-                    self.board[captured_idx] = Some(CheckerPiece {
-                        owner: player,
-                        ..captured
-                    });
-                    self.last_event = Some("Infection!".into());
-                } else {
-                    self.board[captured_idx] = None;
-                }
-            }
-        }
+        let valid_moves = self.get_valid_moves();
+        let matched_move = valid_moves
+            .iter()
+            .find(|(f, t, _)| *f == from && *t == to)
+            .ok_or_else(|| "Invalid move".to_string())?;
 
+        let is_jump = matched_move.2;
+        let mut piece = self.board[from].ok_or_else(|| "No piece to move".to_string())?;
+
+        self.board[from] = None;
         self.board[to] = Some(piece);
-        self.promote_if_needed(to);
-        piece = self.board[to].unwrap();
+        self.last_event = None;
 
-        let mine_exploded = self.apply_mine_if_needed(to, player);
-        let landing = if mine_exploded {
-            to
-        } else {
-            self.apply_portal_if_needed(to)
-        };
-        if !mine_exploded {
-            self.promote_if_needed(landing);
-            if let Some(updated) = self.board[landing] {
-                piece = updated;
+        let mut turn_ended = !is_jump;
+        let mut force_jump_landing = to;
+
+        if is_jump {
+            let mid = (from + to) / 2;
+            if let Some(captured) = self.board[mid] {
+                if self.variant == "zombie" {
+                    // Zombie mode: Convert piece to our side and place it back as normal pawn
+                    self.board[mid] = Some(CheckerPiece {
+                        owner: self.current_player,
+                        is_king: false,
+                        is_vip_secret: false,
+                    });
+                } else {
+                    // Regular capture: remove piece and check VIP
+                    self.board[mid] = None;
+                    if self.variant == "vip" && captured.is_vip_secret {
+                        self.winner = Some(self.current_player);
+                        self.game_over = true;
+                        self.last_event = Some("VIP Captured!".to_string());
+                        return Ok(());
+                    }
+                }
             }
         }
 
-        if self.game_over {
-            return Ok(());
+        // Handle promotions
+        let to_row = to / 8;
+        if (self.current_player == 0 && to_row == 7) || (self.current_player == 1 && to_row == 0) {
+            if !piece.is_king {
+                piece.is_king = true;
+                self.board[to] = Some(piece);
+            }
         }
 
-        let can_continue = selected.captured.is_some()
-            && !mine_exploded
-            && self.variant != CheckersVariant::Portal
-            && self
-                .board
-                .get(landing)
-                .copied()
-                .flatten()
-                .map(|p| p.owner == player)
-                .unwrap_or(false)
-            && !self.captures_from(landing).is_empty();
+        // Portals logic
+        if self.variant == "portal" && self.portals.contains_key(&to) {
+            let twin = self.portals[&to];
+            let telefragged = self.board[twin];
+            
+            // Move piece to the twin portal
+            self.board[twin] = self.board[to];
+            self.board[to] = None;
 
-        if can_continue {
-            self.must_jump_from = Some(landing);
-        } else {
-            self.must_jump_from = None;
-            self.current_player = 1 - self.current_player;
+            if let Some(target) = telefragged {
+                if target.is_vip_secret {
+                    self.winner = Some(self.current_player);
+                    self.game_over = true;
+                }
+            }
+
+            self.last_event = Some("Portal Teleport!".to_string());
+            // Teleportation ends the turn immediately (no chain jumps)
+            turn_ended = true;
         }
 
-        let _ = piece;
-        self.update_game_over();
+        // Minefield logic
+        if self.variant == "minefield" {
+            let opp = 1 - self.current_player;
+            let current_landing = if self.variant == "portal" && self.portals.contains_key(&to) {
+                self.portals[&to]
+            } else {
+                to
+            };
+
+            if self.mines[opp as usize].contains(&current_landing) {
+                // Trigger explosion!
+                self.last_event = Some("Boom! Mine Detonated!".to_string());
+                
+                // Remove mine
+                self.mines[opp as usize].retain(|idx| *idx != current_landing);
+
+                // Remove trigger piece
+                let blown_piece = self.board[current_landing];
+                self.board[current_landing] = None;
+                if let Some(p) = blown_piece {
+                    if p.is_vip_secret {
+                        self.winner = Some(opp);
+                        self.game_over = true;
+                        return Ok(());
+                    }
+                }
+
+                // Remove diagonal neighbors in 1-square radius
+                let r = current_landing / 8;
+                let c = current_landing % 8;
+
+                let neighbors = [
+                    (-1, -1), (-1, 1), (1, -1), (1, 1)
+                ];
+
+                for (dr, dc) in neighbors {
+                    let nr = r as isize + dr;
+                    let nc = c as isize + dc;
+                    if nr >= 0 && nr < 8 && nc >= 0 && nc < 8 {
+                        let target_idx = (nr * 8 + nc) as usize;
+                        if let Some(p) = self.board[target_idx] {
+                            self.board[target_idx] = None;
+                            if p.is_vip_secret {
+                                // If any VIP gets blown up, its owner loses.
+                                // If player's own VIP blows up, they lose. If both blow up, opponent gets it.
+                                self.winner = Some(1 - p.owner);
+                                self.game_over = true;
+                            }
+                        }
+                    }
+                }
+
+                if self.game_over {
+                    return Ok(());
+                }
+
+                // Explosion destroys the active piece, turn must end
+                turn_ended = true;
+            }
+        }
+
+        // If turn isn't ended, check if there are further jumps from the new location
+        if !turn_ended {
+            self.must_jump_from = Some(force_jump_landing);
+            let next_valid = self.get_valid_moves();
+            
+            // Only keep player turn if next moves are JUMPS starting from the landing tile
+            let has_more_jumps = next_valid.iter().any(|(f, _, is_j)| *f == force_jump_landing && *is_j);
+            if has_more_jumps {
+                // Do not switch current player
+                return Ok(());
+            }
+        }
+
+        // End turn and switch player
+        self.current_player = 1 - self.current_player;
+        self.must_jump_from = None;
+
+        // Check if next player is trapped (no pieces or no legal moves)
+        let opponent = self.current_player;
+        let has_opponent_pieces = self.has_pieces(opponent);
+        let opponent_valid_moves = self.get_valid_moves();
+
+        if !has_opponent_pieces || opponent_valid_moves.is_empty() {
+            self.game_over = true;
+            if self.variant == "anti" {
+                // Giveaway Checkers: Player who CANNOT move wins
+                self.winner = Some(opponent);
+            } else {
+                // Classic/Normal Checkers: Player who CANNOT move loses
+                self.winner = Some(1 - opponent);
+            }
+        }
+
+        // Also check if current player has no pieces left (e.g. they blew up all their pieces)
+        let active_has_pieces = self.has_pieces(self.current_player);
+        if !active_has_pieces {
+            self.game_over = true;
+            if self.variant == "anti" {
+                self.winner = Some(self.current_player);
+            } else {
+                self.winner = Some(1 - self.current_player);
+            }
+        }
+
         Ok(())
     }
 
     pub fn state_json(&self, for_player: Option<u8>) -> serde_json::Value {
-        let player = for_player.unwrap_or(0);
-        let board: Vec<_> = self
+        // Map board pieces, hiding the VIP details of the opponent
+        let board_mapped: Vec<serde_json::Value> = self
             .board
             .iter()
-            .map(|piece| {
-                piece.map(|p| {
+            .map(|slot| {
+                if let Some(piece) = slot {
+                    let is_vip_visible = for_player.map_or(false, |p| p == piece.owner) && piece.is_vip_secret;
                     serde_json::json!({
-                        "owner": p.owner,
-                        "isKing": p.is_king,
-                        "isVip": p.is_vip && (self.game_over || p.owner == player),
+                        "owner": piece.owner,
+                        "isKing": piece.is_king,
+                        "isVip": is_vip_visible,
                     })
-                })
+                } else {
+                    serde_json::Value::Null
+                }
             })
             .collect();
 
+        // Render portals as map of string keys
+        let mut portals_json = serde_json::Map::new();
+        for (k, v) in &self.portals {
+            portals_json.insert(k.to_string(), serde_json::json!(v));
+        }
+
+        let my_mines = for_player
+            .map(|p| self.mines[p as usize].clone())
+            .unwrap_or_default();
+
         serde_json::json!({
-            "board": board,
+            "board": board_mapped,
             "currentPlayer": self.current_player,
-            "variant": self.variant.as_str(),
+            "variant": self.variant,
             "gameOver": self.game_over,
             "winner": self.winner,
             "mustJumpFrom": self.must_jump_from,
-            "setupComplete": self.setup_complete,
-            "mySetupComplete": self.setup_complete[player as usize],
-            "needsSetup": !self.setup_ready(),
-            "myMines": if self.variant == CheckersVariant::Minefield { self.mines[player as usize].clone() } else { Vec::new() },
-            "myVip": self.vip_pieces[player as usize],
-            "portals": self.portals,
+            "needsSetup": self.needs_setup,
+            "mySetupComplete": for_player.map(|p| self.setup_complete[p as usize]).unwrap_or(false),
+            "myMines": my_mines,
+            "portals": portals_json,
             "lastEvent": self.last_event,
         })
     }
@@ -505,49 +494,51 @@ impl Game for CheckersGame {
         action: serde_json::Value,
         players: &[String],
     ) -> Result<Vec<(String, ServerMessage)>, String> {
-        match action.get("game").and_then(|value| value.as_str()) {
-            Some("CheckersSecret") => {
-                let mines = action
-                    .get("mines")
-                    .and_then(|value| value.as_array())
-                    .map(|items| {
-                        items
-                            .iter()
-                            .filter_map(|item| item.as_u64().map(|n| n as usize))
-                            .collect()
-                    })
-                    .unwrap_or_else(Vec::new);
-                let vip = action
-                    .get("vip")
-                    .and_then(|value| value.as_u64())
-                    .map(|n| n as usize);
-                self.set_secret(player, mines, vip)?;
-            }
-            Some("CheckersMove") => {
-                let from = action
-                    .get("from")
-                    .and_then(|value| value.as_u64())
-                    .ok_or_else(|| "Missing from square".to_string())?
-                    as usize;
-                let to = action
-                    .get("to")
-                    .and_then(|value| value.as_u64())
-                    .ok_or_else(|| "Missing to square".to_string())?
-                    as usize;
-                self.move_piece(player, from, to)?;
-            }
-            _ => return Err("Unknown checkers action".into()),
+        let game_action = action
+            .get("game")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "Missing 'game' action field".to_string())?;
+
+        if game_action == "CheckersSecret" {
+            let mines = action.get("mines").and_then(|v| {
+                v.as_array().map(|arr| {
+                    arr.iter()
+                        .filter_map(|val| val.as_u64().map(|n| n as usize))
+                        .collect::<Vec<usize>>()
+                })
+            });
+            let vip = action.get("vip").and_then(|v| v.as_u64().map(|n| n as usize));
+            self.set_secrets(player, mines, vip)?;
+        } else if game_action == "CheckersMove" {
+            let from = action
+                .get("from")
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| "Missing 'from' field".to_string())? as usize;
+            let to = action
+                .get("to")
+                .and_then(|v| v.as_u64())
+                .ok_or_else(|| "Missing 'to' field".to_string())? as usize;
+
+            self.make_move(player, from, to)?;
+        } else {
+            return Err("Unknown action".to_string());
         }
-        Ok(game_trait::broadcast_per_player(players, |p| {
-            self.state_json(Some(p))
-        }))
+
+        let msgs = game_trait::broadcast_per_player(players, |p| self.state_json(Some(p)));
+        Ok(msgs)
     }
 
     fn check_game_over(&self) -> Option<ServerMessage> {
         if self.game_over {
             Some(ServerMessage::GameOver {
-                winner: self.winner.map(|winner| format!("Player {}", winner + 1)),
-                reason: "Checkers completed".into(),
+                winner: self.winner.map(|w| format!("Player {}", w + 1)),
+                reason: if self.variant == "anti" {
+                    "All pieces lost or trapped!".to_string()
+                } else if self.variant == "vip" {
+                    "VIP captured!".to_string()
+                } else {
+                    "All opponent pieces captured or trapped!".to_string()
+                },
             })
         } else {
             None
@@ -559,7 +550,7 @@ impl Game for CheckersGame {
     }
 
     fn reset(&mut self) {
-        *self = Self::new_variant(self.variant.as_str());
+        *self = CheckersGame::new(&self.variant);
     }
 
     fn game_type(&self) -> &str {
@@ -572,92 +563,112 @@ mod tests {
     use super::CheckersGame;
 
     #[test]
-    fn classic_move_advances_piece() {
-        let mut game = CheckersGame::new_variant("classic");
-        game.move_piece(0, 40, 33).unwrap();
-
-        assert!(game.board[40].is_none());
-        assert_eq!(game.board[33].unwrap().owner, 0);
-        assert_eq!(game.current_player, 1);
+    fn test_initial_setup() {
+        let game = CheckersGame::new("classic");
+        assert_eq!(game.current_player, 0);
+        assert!(!game.game_over);
+        // P0 (red) has 12 pieces initially
+        let p0_pieces = game.board.iter().filter(|slot| slot.map_or(false, |p| p.owner == 0)).count();
+        assert_eq!(p0_pieces, 12);
     }
 
     #[test]
-    fn forced_capture_is_required() {
-        let mut game = CheckersGame::new_variant("classic");
+    fn test_mandatory_jumps() {
+        let mut game = CheckersGame::new("classic");
+        // Clear board and place custom pieces
         game.board = vec![None; 64];
-        game.board[42] = Some(super::CheckerPiece {
-            owner: 0,
-            is_king: false,
-            is_vip: false,
-        });
-        game.board[33] = Some(super::CheckerPiece {
-            owner: 1,
-            is_king: false,
-            is_vip: false,
-        });
+        // P0 piece
+        game.board[18] = Some(super::CheckerPiece { owner: 0, is_king: false, is_vip_secret: false });
+        // P1 piece in path
+        game.board[27] = Some(super::CheckerPiece { owner: 1, is_king: false, is_vip_secret: false });
 
-        let error = game.move_piece(0, 42, 35).unwrap_err();
-
-        assert_eq!(error, "A capture is required");
+        let moves = game.get_valid_moves();
+        // Since there is a jump (18 -> 27 -> 36), normal moves are disallowed.
+        assert_eq!(moves.len(), 1);
+        assert_eq!(moves[0], (18, 36, true));
     }
 
     #[test]
-    fn zombie_capture_converts_piece() {
-        let mut game = CheckersGame::new_variant("zombie");
+    fn test_anti_checkers_win() {
+        // Giveaway Checkers: player who has no pieces wins
+        let mut game = CheckersGame::new("anti");
         game.board = vec![None; 64];
-        game.board[42] = Some(super::CheckerPiece {
-            owner: 0,
-            is_king: false,
-            is_vip: false,
-        });
-        game.board[33] = Some(super::CheckerPiece {
-            owner: 1,
-            is_king: false,
-            is_vip: false,
-        });
-
-        game.move_piece(0, 42, 24).unwrap();
-
-        assert_eq!(game.board[33].unwrap().owner, 0);
-    }
-
-    #[test]
-    fn minefield_explosion_removes_landing_area() {
-        let mut game = CheckersGame::new_variant("minefield");
-        game.setup_complete = [true, true];
-        game.mines[1] = vec![24];
-        game.board = vec![None; 64];
-        game.board[33] = Some(super::CheckerPiece {
-            owner: 0,
-            is_king: false,
-            is_vip: false,
-        });
-
-        game.move_piece(0, 33, 24).unwrap();
-
-        assert!(game.board[24].is_none());
-        assert_eq!(game.last_event.as_deref(), Some("Boom! A mine exploded."));
-    }
-
-    #[test]
-    fn vip_capture_ends_game() {
-        let mut game = CheckersGame::new_variant("vip");
-        game.setup_complete = [true, true];
-        game.board = vec![None; 64];
-        game.board[42] = Some(super::CheckerPiece {
-            owner: 0,
-            is_king: false,
-            is_vip: false,
-        });
-        game.board[33] = Some(super::CheckerPiece {
-            owner: 1,
-            is_king: false,
-            is_vip: true,
-        });
-
-        game.move_piece(0, 42, 24).unwrap();
-
+        game.board[1] = Some(super::CheckerPiece { owner: 0, is_king: false, is_vip_secret: false });
+        game.current_player = 0;
+        // Make P0 move to index 10
+        let res = game.make_move(0, 1, 10);
+        assert!(res.is_ok());
+        // Since P1 has 0 pieces, the game ends on P0's move (as P1 has no moves and no pieces)
+        // In anti, P1 (who has 0 pieces) wins!
         assert!(game.game_over);
-        assert_eq!(game.winner, Some(0));
+        assert_eq!(game.winner, Some(1));
+    }
+
+    #[test]
+    fn test_zombie_checkers() {
+        let mut game = CheckersGame::new("zombie");
+        game.board = vec![None; 64];
+        game.board[18] = Some(super::CheckerPiece { owner: 0, is_king: false, is_vip_secret: false });
+        game.board[27] = Some(super::CheckerPiece { owner: 1, is_king: false, is_vip_secret: false });
+
+        game.make_move(0, 18, 36).unwrap();
+        // Index 27 is zombie converted to owner 0
+        assert!(game.board[27].is_some());
+        assert_eq!(game.board[27].unwrap().owner, 0);
+    }
+
+    #[test]
+    fn test_minefield_checkers() {
+        let mut game = CheckersGame::new("minefield");
+        game.board = vec![None; 64];
+        // Place P0's piece at 33 (row 4, col 1)
+        game.board[33] = Some(super::CheckerPiece { owner: 0, is_king: false, is_vip_secret: false });
+        // Place P1's mine at index 42 (row 5, col 2)
+        game.mines[1] = vec![42];
+        game.setup_complete = [true, true];
+        game.needs_setup = false;
+        game.current_player = 0;
+
+        // Place a piece at diagonal neighbor 49 (row 6, col 1) to see if it gets blown up
+        game.board[49] = Some(super::CheckerPiece { owner: 1, is_king: false, is_vip_secret: false });
+
+        game.make_move(0, 33, 42).unwrap();
+        // Index 42 should be empty (exploded)
+        assert!(game.board[42].is_none());
+        // Diagonal neighbor 49 should be empty (exploded)
+        assert!(game.board[49].is_none());
+    }
+
+    #[test]
+    fn test_vip_checkers() {
+        let mut game = CheckersGame::new("vip");
+        game.board = vec![None; 64];
+        game.board[18] = Some(super::CheckerPiece { owner: 0, is_king: false, is_vip_secret: true });
+        game.board[27] = Some(super::CheckerPiece { owner: 1, is_king: false, is_vip_secret: false });
+        game.setup_complete = [true, true];
+        game.needs_setup = false;
+
+        game.current_player = 1;
+        game.make_move(1, 27, 9).unwrap(); // Capture P0's VIP at 18
+        assert!(game.game_over);
+        assert_eq!(game.winner, Some(1));
+    }
+
+    #[test]
+    fn test_portal_checkers() {
+        let mut game = CheckersGame::new("portal");
+        game.board = vec![None; 64];
+        game.board[18] = Some(super::CheckerPiece { owner: 0, is_king: false, is_vip_secret: false });
+        // Portal A at 25 and 38
+        game.portals.insert(25, 38);
+        game.portals.insert(38, 25);
+
+        // Move piece from 18 to portal 25
+        game.make_move(0, 18, 25).unwrap();
+        // Portal 25 should be empty
+        assert!(game.board[25].is_none());
+        // Twin portal 38 should contain the piece
+        assert!(game.board[38].is_some());
+        assert_eq!(game.board[38].unwrap().owner, 0);
     }
 }

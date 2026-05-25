@@ -71,8 +71,16 @@ Start the timer; after 3 s it hides. Try to stop at exactly 20.00 s. Closest to 
 ### 🂠 Bluff Card Game
 Standard 52-card deck dealt evenly. The claim rank cycles A → 2 → 3 → … → K → A. On your turn, play 1–4 cards face down as the current rank; the opponent can call bluff *before* their own turn. Wrong claim → bluffer takes the pile. Honest claim → challenger takes the pile. First to empty their hand wins.
 
-### Checkers Variants — 6 variants
-Classic checkers plus Anti-Checkers, Zombie conversion captures, Minefield traps, VIP protection, and Portal movement.
+### 🏁 Checkers Twists — 6 variants
+Classic checkers plus five twists that warp the board.
+| Variant | One-line idea |
+| --- | --- |
+| **Classic** | Standard diagonal movements, forced captures, and king promotions. |
+| **Anti-Checkers** | The goal is to lose all pieces or run out of moves first (Giveaway). |
+| **Zombie Checkers** | Capturing a piece converts it to your side (infection) instead of removing it. |
+| **Minefield** | Secretly place three hidden mines on your side; landing on them triggers explosions. |
+| **VIP Checkers** | Secretly select one VIP piece; capturing the opponent's VIP wins the game instantly. |
+| **Portal Checkers** | Random portal pairs warp pieces to their twin when landed on, telefragging occupants. |
 
 ### Drop Four Chaos — 6 variants
 Connect four in a 7×6 gravity grid, with Wrecking Ball detonations, PopOut removals, Gravity Flip, Battleship Drop hidden cells, and Heavy Token crushes.

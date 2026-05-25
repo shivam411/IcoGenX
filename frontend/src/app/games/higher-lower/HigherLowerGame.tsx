@@ -98,16 +98,28 @@ function HigherLowerBoard({
       <div className={`glass-card ${styles.setupPhase}`}>
         <h2 className={styles.setupTitle}>Lock Your Number</h2>
         <p className={styles.setupSub}>Choose a secret number from 1 to {maxNumber} for {opponentLabel} to find.</p>
-        <input
-          className={`input ${styles.secretInput}`}
-          type="number"
-          min={1}
-          max={maxNumber}
-          value={secretInput}
-          onChange={(event) => setSecretInput(event.target.value.replace(/\D/g, ''))}
-          onKeyDown={(event) => event.key === 'Enter' && handleSecretSubmit()}
-          placeholder={`1-${maxNumber}`}
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%', marginBottom: '20px', maxWidth: '320px', margin: '0 auto 20px' }}>
+          <input
+            type="range"
+            min={1}
+            max={maxNumber}
+            value={parseInt(secretInput, 10) || Math.floor(maxNumber / 2)}
+            onChange={(e) => setSecretInput(e.target.value)}
+            style={{ width: '100%' }}
+            aria-label="Secret slider"
+          />
+          <input
+            className={`input ${styles.secretInput}`}
+            type="number"
+            min={1}
+            max={maxNumber}
+            value={secretInput}
+            onChange={(event) => setSecretInput(event.target.value.replace(/\D/g, ''))}
+            onKeyDown={(event) => event.key === 'Enter' && handleSecretSubmit()}
+            placeholder={`1-${maxNumber}`}
+            style={{ width: '100%', textAlign: 'center' }}
+          />
+        </div>
         <button
           type="button"
           className="btn btn-primary btn-lg"
