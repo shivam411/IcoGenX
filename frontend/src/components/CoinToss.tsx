@@ -34,6 +34,22 @@ export default function CoinToss({
   const [phase, setPhase] = useState<Phase>('idle');
   const [sparkles, setSparkles] = useState<{ id: number; x: number; y: number; tx: number; ty: number }[]>([]);
 
+  const spawnSparkles = useCallback(() => {
+    const newSparkles = Array.from({ length: 12 }, (_, i) => {
+      const angle = (i / 12) * Math.PI * 2;
+      const dist = 60 + Math.random() * 60;
+      return {
+        id: Date.now() + i,
+        x: 80 + Math.random() * 10 - 5,
+        y: 80 + Math.random() * 10 - 5,
+        tx: Math.cos(angle) * dist,
+        ty: Math.sin(angle) * dist,
+      };
+    });
+    setSparkles(newSparkles);
+    setTimeout(() => setSparkles([]), 1200);
+  }, []);
+
   // When result arrives from server, start the flip animation
   useEffect(() => {
     // Only run this ONCE when result becomes non-null
@@ -64,22 +80,6 @@ export default function CoinToss({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result]); // deliberately omitting phase and onComplete to prevent cleanup on phase change
-
-  const spawnSparkles = useCallback(() => {
-    const newSparkles = Array.from({ length: 12 }, (_, i) => {
-      const angle = (i / 12) * Math.PI * 2;
-      const dist = 60 + Math.random() * 60;
-      return {
-        id: Date.now() + i,
-        x: 80 + Math.random() * 10 - 5,
-        y: 80 + Math.random() * 10 - 5,
-        tx: Math.cos(angle) * dist,
-        ty: Math.sin(angle) * dist,
-      };
-    });
-    setSparkles(newSparkles);
-    setTimeout(() => setSparkles([]), 1200);
-  }, []);
 
   const getCoinClass = () => {
     switch (phase) {

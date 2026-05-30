@@ -5,6 +5,7 @@ use crate::games::{
     bluff_card::BluffCardGame, checkers::CheckersGame, code_guess::CodeGuessGame,
     drop_four::DropFourGame, higher_lower::HigherLowerGame, memory_flip::MemoryFlipGame,
     shut_the_box::ShutTheBoxGame, stop_clock::StopClockGame, tic_tac_toe::TicTacToeGame,
+    trivia_battle::TriviaBattleGame,
 };
 
 /// Factory function signature: takes an optional variant string,
@@ -56,6 +57,8 @@ impl GameRegistry {
             Box::new(DropFourGame::new_variant(variant.unwrap_or("classic")))
         });
 
+        registry.register("trivia_battle", |_| Box::new(TriviaBattleGame::new()));
+
         registry
     }
 
@@ -90,6 +93,7 @@ mod tests {
             "bluff_card",
             "checkers",
             "drop_four",
+            "trivia_battle",
         ];
 
         for game_type in game_types {

@@ -367,7 +367,6 @@ export const GAME_CATALOG: GameCatalogItem[] = [
     estimatedTime: '5-10 min',
     tags: ['party', 'quiz', 'friends'],
     featured: true,
-    isComingSoon: true,
   },
   {
     id: 'couples-truth-dare',
@@ -403,6 +402,7 @@ const GAME_TYPE_TO_ID: Record<string, string> = {
   bluff_card: 'bluff-card',
   checkers: 'checkers',
   drop_four: 'drop-four',
+  trivia_battle: 'trivia-battle',
 };
 
 export function getGameCatalogItem(gameTypeOrId: string | null | undefined) {

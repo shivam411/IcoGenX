@@ -285,6 +285,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const playerIdRef = useRef<string | null>(null);
   const currentTurnOwnerRef = useRef<number | null>(null);
   const handleMessageRef = useRef<(event: MessageEvent) => void>(() => {});
+  const connectWsRef = useRef<() => void>(() => {});
 
   const syncGameState = useCallback((nextState: GameState | null, options?: { resetTurnClock?: boolean }) => {
     setGameState(nextState);
@@ -585,7 +586,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         wsLog('[WS] Attempting to reconnect in 2s...');
         reconnectTimerRef.current = setTimeout(() => {
           reconnectTimerRef.current = null;
-          connectWs();
+          connectWsRef.current();
         }, 2000);
       }
     };
@@ -596,6 +597,10 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
     ws.onmessage = (e) => handleMessageRef.current(e);
   }, []); // Stable connection function
+
+  useEffect(() => {
+    connectWsRef.current = connectWs;
+  }, [connectWs]);
 
   // Keep refs in sync
   useEffect(() => {

@@ -7,4 +7,5 @@ pub mod drop_four;
 pub mod memory_flip;
 pub mod higher_lower;
 pub mod stop_clock;
+pub mod trivia_battle;
 

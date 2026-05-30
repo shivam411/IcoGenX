@@ -138,24 +138,40 @@ export default function GameOverOverlay({
         {children}
 
         {/* Match / Series Scoreboard */}
-        <div className={styles.matchResults}>
-          <div className={styles.seriesHeader}>
-            {matchFormat === 'series_5' 
-              ? (gameOverReason === 'SeriesCompleted' ? '🏆 Series Complete' : '⚡ Series Progress') 
-              : '📊 Match Score'}
+        {scores.length <= 2 ? (
+          <div className={styles.matchResults}>
+            <div className={styles.seriesHeader}>
+              {matchFormat === 'series_5' 
+                ? (gameOverReason === 'SeriesCompleted' ? '🏆 Series Complete' : '⚡ Series Progress') 
+                : '📊 Match Score'}
+            </div>
+            <div className={styles.scoreRow}>
+              <span className={`${styles.scorePlayer} ${styles.scorePlayerLeft} ${!isDraw && winnerIndex === 0 ? styles.scoreHighlight : ''}`}>
+                {allPlayerNames[0] || playerName || 'Player 1'}
+              </span>
+              <span className={styles.scoreNumber}>
+                {scores[0] ?? 0} - {scores[1] ?? 0}
+              </span>
+              <span className={`${styles.scorePlayer} ${styles.scorePlayerRight} ${!isDraw && winnerIndex === 1 ? styles.scoreHighlight : ''}`}>
+                {allPlayerNames[1] || opponentName || 'Player 2'}
+              </span>
+            </div>
           </div>
-          <div className={styles.scoreRow}>
-            <span className={`${styles.scorePlayer} ${styles.scorePlayerLeft} ${!isDraw && winnerIndex === 0 ? styles.scoreHighlight : ''}`}>
-              {allPlayerNames[0] || playerName || 'Player 1'}
-            </span>
-            <span className={styles.scoreNumber}>
-              {scores[0] ?? 0} - {scores[1] ?? 0}
-            </span>
-            <span className={`${styles.scorePlayer} ${styles.scorePlayerRight} ${!isDraw && winnerIndex === 1 ? styles.scoreHighlight : ''}`}>
-              {allPlayerNames[1] || opponentName || 'Player 2'}
-            </span>
+        ) : (
+          <div className={styles.matchResults}>
+            <div className={styles.seriesHeader}>📊 Final Standings</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px', width: '100%' }}>
+              {scores.map((score, idx) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: '6px' }}>
+                  <span style={!isDraw && winnerIndex === idx ? { color: '#ec4899', fontWeight: 'bold' } : {}}>
+                    {allPlayerNames[idx] || `Player ${idx + 1}`}
+                  </span>
+                  <span style={{ fontWeight: 'bold' }}>{score}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className={styles.buttonGroup}>
           <button
