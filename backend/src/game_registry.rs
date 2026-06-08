@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use crate::game_trait::Game;
 use crate::games::{
     bluff_card::BluffCardGame, checkers::CheckersGame, code_guess::CodeGuessGame,
-    drop_four::DropFourGame, higher_lower::HigherLowerGame, memory_flip::MemoryFlipGame,
-    shut_the_box::ShutTheBoxGame, stop_clock::StopClockGame, tic_tac_toe::TicTacToeGame,
-    trivia_battle::TriviaBattleGame,
+    dice_grid::DiceGridGame, drop_four::DropFourGame, higher_lower::HigherLowerGame,
+    memory_flip::MemoryFlipGame, row_call::RowCallGame, shut_the_box::ShutTheBoxGame,
+    stop_clock::StopClockGame, tic_tac_toe::TicTacToeGame, trivia_battle::TriviaBattleGame,
 };
 
 /// Factory function signature: takes an optional variant string,
@@ -59,6 +59,12 @@ impl GameRegistry {
 
         registry.register("trivia_battle", |_| Box::new(TriviaBattleGame::new()));
 
+        registry.register("row_call", |_| Box::new(RowCallGame::new()));
+
+        registry.register("dice_grid", |variant| {
+            Box::new(DiceGridGame::new_variant(variant.unwrap_or("classic")))
+        });
+
         registry
     }
 
@@ -94,6 +100,8 @@ mod tests {
             "checkers",
             "drop_four",
             "trivia_battle",
+            "row_call",
+            "dice_grid",
         ];
 
         for game_type in game_types {

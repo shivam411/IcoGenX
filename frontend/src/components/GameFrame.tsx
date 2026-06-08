@@ -1,12 +1,12 @@
 'use client';
 
 import React, { type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
 
 import { useGame } from '@/context/GameContext';
 import { getGameInfo } from '@/lib/gameMetadata';
 import RulesTipPanel from './RulesTipPanel';
 import TurnTimer from './TurnTimer';
+import SpectatorQueue from './SpectatorQueue';
 import styles from './GameFrame.module.css';
 
 interface GameFrameProps {
@@ -26,7 +26,7 @@ export default function GameFrame({
   currentPlayer = null,
   children,
 }: GameFrameProps) {
-  const { playerNumber, playerName, opponentName, allPlayerNames, scores, openRoomActionPrompt, gameType, variant, turnStartedAt } = useGame();
+  const { playerNumber, playerName, opponentName, allPlayerNames, scores, openRoomActionPrompt, gameType, variant, turnStartedAt, isSpectator } = useGame();
   const gameInfo = getGameInfo(gameType, variant);
   const isMyTurn = currentPlayer !== null && currentPlayer === playerNumber;
 
@@ -45,6 +45,11 @@ export default function GameFrame({
         <button type="button" onClick={handleExit} className={`btn btn-ghost btn-sm ${styles.exitBtn}`}>
           🛑 Exit
         </button>
+        {isSpectator && (
+          <span className={styles.spectatorBadge}>
+            👁️ Spectating
+          </span>
+        )}
       </div>
 
       <div className={styles.layout}>
@@ -93,11 +98,12 @@ export default function GameFrame({
             <TurnTimer active={isMyTurn} startedAt={turnStartedAt} />
           </div>
 
-          <div className={styles.content}>{children}</div>
+          <div className={`${styles.content} ${isSpectator ? styles.spectatorContent : ''}`}>{children}</div>
         </div>
 
         <aside className={styles.rulesDock}>
           <RulesTipPanel title={rulesTitle} rules={rules} tips={tips || gameInfo?.tips} defaultOpen={false} compact />
+          <SpectatorQueue />
         </aside>
       </div>
     </div>

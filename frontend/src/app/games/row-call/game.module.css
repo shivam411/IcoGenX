@@ -1,0 +1,205 @@
+/* frontend/src/app/games/row-call/game.module.css */
+
+.gameWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.boardContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.constraintBanner {
+  background: rgba(124, 58, 237, 0.12);
+  border: 1px solid rgba(124, 58, 237, 0.25);
+  color: var(--accent-purple, #a78bfa);
+  padding: 8px 16px;
+  border-radius: var(--radius-md, 12px);
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  margin-bottom: 14px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.08);
+  width: 100%;
+}
+
+.statusText {
+  min-height: 24px;
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.warning {
+  color: var(--accent-rose, #f43f5e);
+  animation: shake 0.3s ease;
+  display: inline-block;
+}
+
+.myTurn {
+  color: var(--accent-cyan, #22d3ee);
+  font-weight: 600;
+}
+
+.pendingCall {
+  color: var(--accent-yellow, #fde047);
+  font-weight: 600;
+  animation: pulse 1.5s infinite alternate ease-in-out;
+  display: inline-block;
+}
+
+.opponentTurn {
+  color: var(--text-secondary, #94a3b8);
+}
+
+.boardWrapper {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  width: 100%;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.rowLabels {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  align-items: center;
+  height: calc(100% - 32px);
+  margin-top: 32px;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--text-secondary, #94a3b8);
+  font-weight: 600;
+}
+
+.gridAndColLabels {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.colLabels {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  height: 32px;
+  width: 100%;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--text-secondary, #94a3b8);
+  font-weight: 600;
+}
+
+.boardGrid {
+  background: rgba(22, 18, 54, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg, 18px);
+  padding: 10px;
+  box-shadow: var(--shadow-card);
+}
+
+.selectedCell {
+  border-color: var(--accent-yellow, #fde047) !important;
+  box-shadow: 0 0 15px rgba(253, 224, 71, 0.35),
+              inset 0 0 10px rgba(253, 224, 71, 0.12) !important;
+}
+
+.constrainedCell {
+  background: rgba(124, 58, 237, 0.03);
+}
+
+.eventLog {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #94a3b8);
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  padding: 6px 14px;
+  border-radius: var(--radius-sm, 8px);
+  margin-top: 10px;
+  text-align: center;
+  width: 100%;
+}
+
+.consoleCard {
+  width: 100%;
+  padding: 18px;
+  margin-top: 10px;
+  background: rgba(20, 16, 48, 0.85);
+  border-radius: var(--radius-lg, 18px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+}
+
+.consoleTitle {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent-yellow, #fde047);
+  text-align: center;
+}
+
+.consoleSubtitle {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #94a3b8);
+  text-align: center;
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+
+.consoleSection {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.consoleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.groupLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary, #f1f5f9);
+}
+
+.buttonRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.buttonRow button {
+  font-size: 0.8rem;
+  padding: 8px 4px;
+  white-space: nowrap;
+}
+
+.buttonRow button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+@keyframes pulse {
+  0% { opacity: 0.75; }
+  100% { opacity: 1; }
+}

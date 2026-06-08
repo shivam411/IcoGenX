@@ -43,6 +43,10 @@ pub enum ClientMessage {
     DeclineGameInvite {
         invite_id: String,
     },
+    SwapPlayer {
+        active_player_number: u8,
+        spectator_player_id: String,
+    },
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -104,6 +108,10 @@ pub enum ServerMessage {
     },
     MatchFormatChanged {
         format: String,
+    },
+    RoomOccupants {
+        players: Vec<PlayerInfo>,
+        spectators: Vec<PlayerInfo>,
     },
 
     // Play again flow

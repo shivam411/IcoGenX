@@ -8,4 +8,7 @@ pub mod memory_flip;
 pub mod higher_lower;
 pub mod stop_clock;
 pub mod trivia_battle;
+pub mod row_call;
+pub mod dice_grid;
+
 

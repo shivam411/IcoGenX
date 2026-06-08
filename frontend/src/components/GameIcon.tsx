@@ -77,6 +77,7 @@ const ICONS = {
   'drop-four-heavy-token': { glyph: 'dropHeavyToken', a: '#4b5563', b: '#facc15', c: '#f8fafc' },
   'trivia-battle': { glyph: 'triviaBattle', a: '#ec4899', b: '#8b5cf6', c: '#f8fafc' },
   'couples-truth-dare': { glyph: 'couplesTruthDare', a: '#f43f5e', b: '#fb7185', c: '#f8fafc' },
+  'row-call': { glyph: 'ticClassic', a: '#a78bfa', b: '#7c3aed', c: '#f472b6' },
 } satisfies Record<string, IconTheme>;
 
 export type GameIconKey = keyof typeof ICONS;
@@ -95,6 +96,7 @@ const ICON_ALIASES: Record<string, GameIconKey> = {
   drop_four: 'drop-four',
   trivia_battle: 'trivia-battle',
   couples_truth_dare: 'couples-truth-dare',
+  row_call: 'row-call',
   CK: 'checkers-classic',
   AC: 'checkers-anti',
   ZC: 'checkers-zombie',

@@ -103,6 +103,12 @@ export interface ActiveInvite {
   roomCode: string;
 }
 
+export interface PlayerInfo {
+  player_id: string;
+  player_number: number;
+  player_name: string;
+}
+
 type FriendResponseAction = 'accept' | 'decline' | 'cancel' | 'remove';
 
 export type PendingRoomActionKind = 'creating' | 'joining' | 'rejoining';
@@ -230,6 +236,9 @@ interface WebSocketContextType {
   addFriend: (friendCode: string) => Promise<any>;
   respondToFriendRequest: (friendshipId: string, action: FriendResponseAction) => Promise<any>;
   refetchFriends: () => Promise<void>;
+  isSpectator: boolean;
+  spectators: PlayerInfo[];
+  swapPlayer: (activePlayerNumber: number, spectatorPlayerId: string) => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | null>(null);
@@ -270,6 +279,9 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [pendingRoomAction, setPendingRoomActionState] = useState<PendingRoomAction | null>(null);
   const [matchFormat, setMatchFormat] = useState<'single' | 'series_5'>('single');
   const [gameOverReason, setGameOverReason] = useState<string | null>(null);
+  // Spectator State
+  const [isSpectator, setIsSpectator] = useState(false);
+  const [spectators, setSpectators] = useState<PlayerInfo[]>([]);
 
   // Social & Friends State
   const [friends, setFriends] = useState<FriendListItem[]>([]);
@@ -352,19 +364,27 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           break;
         case 'PlayerJoined':
           if (msg.player_number !== undefined) {
-            setPlayerCount(msg.player_count || 2);
-            setAllPlayerNames((prev) => {
-              const next = [...prev];
-              while (next.length < (msg.player_count || 2)) {
-                next.push('');
-              }
-              next[msg.player_number] = msg.player_name;
-              return next;
-            });
+            if (msg.player_number !== 99) {
+              setPlayerCount(msg.player_count || 2);
+              setAllPlayerNames((prev) => {
+                const next = [...prev];
+                while (next.length < (msg.player_count || 2)) {
+                  next.push('');
+                }
+                next[msg.player_number] = msg.player_name;
+                return next;
+              });
+            }
 
             // If I am joining, this confirms my number
             if (msg.player_id === playerIdRef.current) {
-              setPlayerNumber(msg.player_number);
+              if (msg.player_number === 99) {
+                setIsSpectator(true);
+                setPlayerNumber(99);
+              } else {
+                setIsSpectator(false);
+                setPlayerNumber(msg.player_number);
+              }
               if (msg.game_type) setGameType(msg.game_type);
               setVariant(msg.variant || null);
               if (msg.match_format) setMatchFormat(msg.match_format);
@@ -383,8 +403,10 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
                 setPendingRoomActionState(null);
               }
             } else {
-              // Someone else joined, they are my opponent
-              setOpponentName(msg.player_name);
+              // Someone else joined, they are my opponent (only if active player)
+              if (msg.player_number !== 99) {
+                setOpponentName(msg.player_name);
+              }
               setOpponentDisconnected(false);
               setOpponentReconnectDeadline(null);
               if (msg.match_format) setMatchFormat(msg.match_format);
@@ -413,8 +435,18 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
             setAllPlayerNames(names);
             setPlayerCount(msg.scores.length);
             
+            // Check if I am in the players list
+            const me = msg.players.find((p: any) => p.player_id === playerIdRef.current);
+            if (me) {
+              setIsSpectator(false);
+              setPlayerNumber(me.player_number);
+            } else {
+              setIsSpectator(true);
+              setPlayerNumber(99);
+            }
+            
             // Set opponentName to first non-me player for backward compatibility
-            const meIndex = msg.players.find((p: any) => p.player_id === playerIdRef.current)?.player_number ?? 0;
+            const meIndex = me?.player_number ?? 0;
             const otherPlayer = msg.players.find((p: any) => p.player_number !== meIndex);
             if (otherPlayer) {
               setOpponentName(otherPlayer.player_name);
@@ -427,6 +459,19 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem(STORAGE_GAME_PATH, getGamePath(msg.game_type, msg.variant || null) || '/');
             localStorage.removeItem(STORAGE_RECONNECT_DEADLINE);
             setSavedSession(null);
+          }
+          break;
+        case 'RoomOccupants':
+          if (msg.players && msg.spectators) {
+            setSpectators(msg.spectators);
+            const inPlayers = msg.players.some((p: any) => p.player_id === playerIdRef.current);
+            const inSpectators = msg.spectators.some((p: any) => p.player_id === playerIdRef.current);
+            if (inSpectators) {
+              setIsSpectator(true);
+              setPlayerNumber(99);
+            } else if (inPlayers) {
+              setIsSpectator(false);
+            }
           }
           break;
         case 'GameUpdate':
@@ -703,7 +748,9 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     setOpponentPlayAgainRequested(false);
     setRecentEmojis([]);
     setRoomActionPromptOpen(false);
-  }, [roomCode, send]);
+    setIsSpectator(false);
+    setSpectators([]);
+  }, [roomCode, send, syncGameState]);
 
   const createRoom = useCallback((gameType: string, variant: string | null, playerName: string, format: 'single' | 'series_5' = 'single') => {
     prepareForRoomTransition();
@@ -792,6 +839,10 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     send({ type: 'RequestPlayAgain' });
   }, [send]);
 
+  const swapPlayer = useCallback((activePlayerNumber: number, spectatorPlayerId: string) => {
+    send({ type: 'SwapPlayer', active_player_number: activePlayerNumber, spectator_player_id: spectatorPlayerId });
+  }, [send]);
+
   const resetGame = useCallback(() => {
     syncGameState(null);
     setGameStarted(false);
@@ -814,6 +865,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     setOpponentPlayAgainRequested(false);
     setRecentEmojis([]);
     setRoomActionPromptOpen(false);
+    setIsSpectator(false);
+    setSpectators([]);
   }, [syncGameState]);
 
   const openRoomActionPrompt = useCallback(() => {
@@ -1031,6 +1084,9 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       addFriend,
       respondToFriendRequest,
       refetchFriends,
+      isSpectator,
+      spectators,
+      swapPlayer,
     }}>
       {children}
     </WebSocketContext.Provider>

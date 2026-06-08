@@ -390,6 +390,74 @@ export const GAME_CATALOG: GameCatalogItem[] = [
     featured: true,
     isComingSoon: true,
   },
+  {
+    id: 'row-call',
+    gameType: 'row_call',
+    name: 'Row Call',
+    icon: 'row-call',
+    description: 'Dictate your opponent\'s next move in this strategic 4x4 line-connecting game.',
+    players: '2 Players',
+    category: 'Strategy',
+    badgeClass: 'badge-purple',
+    gradient: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
+    rulesTitle: 'Row Call Rules',
+    rules: [
+      'Take turns placing tokens on the 4x4 grid (A-D, 1-4).',
+      'The first player places a token anywhere and calls a Row or Column.',
+      'The opponent MUST place their next token inside that called Row or Column.',
+      'After placing their token, that player then calls a Row or Column for the other player\'s next move.',
+      'You cannot call a Row or Column that is already completely full.',
+      'Connect four of your tokens in a straight line (horizontally, vertically, or diagonally) to win.'
+    ],
+    tips: [
+      'Block your opponent\'s threats while setting up your own 4-in-a-row.',
+      'Call rows/columns where your opponent has no good moves or is forced to play in your threat line.',
+      'Keep track of which rows and columns are close to full; they limit your opponent\'s exit options.'
+    ],
+    previewSteps: ['Place token', 'Call Row/Col', 'Force opponent'],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'medium',
+    estimatedTime: '3-6 min',
+    tags: ['strategy', 'couples', 'board'],
+    featured: true,
+  },
+  {
+    id: 'dice-grid',
+    gameType: 'dice_grid',
+    name: 'The Dice Grid',
+    icon: 'dice-grid',
+    description: 'Roll dice, map coordinates, and connect four of your symbols in a line.',
+    players: '2 Players',
+    category: 'Strategy',
+    badgeClass: 'badge-cyan',
+    gradient: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)',
+    rulesTitle: 'The Dice Grid Rules',
+    rules: [
+      'On your turn, roll two six-sided dice.',
+      'The roll generates a coordinate pair (e.g. 4 and 1 lets you place at Row 4 Col 1 or Row 1 Col 4).',
+      'Select and claim one empty coordinate matching your roll.',
+      'Double rolls only offer one coordinate.',
+      'If both coordinate options are occupied, your turn ends immediately without placement.',
+      'First to connect four symbols in a straight line (horizontal, vertical, diagonal) wins.'
+    ],
+    tips: [
+      'Always check both coordinate options to block your opponent or extend your own chain.',
+      'Set up forks where two different rolls can complete your four-in-a-row.',
+      'Double rolls (like 3-3) are restrictive but can secure key center coordinates.'
+    ],
+    previewSteps: ['Roll dice', 'Choose coordinate', 'Connect four'],
+    variants: [
+      { id: 'classic', name: 'Classic', icon: 'dice-grid-classic', desc: 'Standard 6x6 grid with coordinate selection.', path: '/games/dice-grid', previewSteps: ['Roll', 'Select', 'Align'] },
+      { id: 'obstacles', name: 'Block Obstacles', icon: 'dice-grid-obstacles', desc: 'The grid starts with three random cells blocked by dark obstacles.', path: '/games/dice-grid/obstacles', rulesTitle: 'Obstacles Rules', rules: ['Three random grid spaces are blocked by obstacles at start.', 'Obstacles cannot be claimed by either player.', 'Connect four around the obstacles to win.'], tips: ['Use obstacles to divide the board and isolate your opponent.', 'Calculate routes that wrap around the blocked cells.'], previewSteps: ['Scramble board', 'Avoid obstacles', 'Build chain'] }
+    ],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'medium',
+    estimatedTime: '3-8 min',
+    tags: ['strategy', 'dice', 'board'],
+    featured: true,
+  },
 ];
 
 const GAME_TYPE_TO_ID: Record<string, string> = {
@@ -403,6 +471,8 @@ const GAME_TYPE_TO_ID: Record<string, string> = {
   checkers: 'checkers',
   drop_four: 'drop-four',
   trivia_battle: 'trivia-battle',
+  row_call: 'row-call',
+  dice_grid: 'dice-grid',
 };
 
 export function getGameCatalogItem(gameTypeOrId: string | null | undefined) {
