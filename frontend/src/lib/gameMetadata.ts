@@ -114,6 +114,49 @@ const TIC_TAC_TOE_VARIANTS: GameVariantMetadata[] = [
   },
 ];
 
+const SMART_FOUR_VARIANTS: GameVariantMetadata[] = [
+  {
+    id: 'classic',
+    name: 'Classic 3D',
+    icon: 'smart-four-classic',
+    desc: 'Classic 3D Connect Four. Connect 4 in any direction in a 5x5x5 space.',
+    path: '/games/smart-four',
+    rulesTitle: 'Classic 3D Rules',
+    rules: [
+      'Take turns placing your tokens in any column of the 5x5 grid.',
+      'Tokens stack up to a maximum height of 5.',
+      'The first player to align four tokens in a straight line horizontally, vertically, or diagonally in 3D space wins the game!'
+    ],
+    tips: [
+      'Look out for vertical columns; it is easy to forget the vertical dimension.',
+      'Set up dual-threat paths that fork across diagonal planes.',
+      'Control the central 3x3 cells to maximize your connection directions.'
+    ],
+    previewSteps: ['Stack 5 high', 'Scan 3D space', 'Connect 4'],
+  },
+  {
+    id: 'topple',
+    name: 'Topple',
+    icon: 'smart-four-topple',
+    desc: 'Wobbly balancing board. Roll the die to place tokens on matching rings, scoring points without causing a collapse!',
+    path: '/games/smart-four/topple',
+    rulesTitle: 'Topple Rules',
+    rules: [
+      'Start your turn by rolling a 6-sided die.',
+      'Place your token on a cell in the ring matching your roll (Ring 1 = center, Ring 5 = corners). A roll of 6 is Wild (place anywhere).',
+      'Each placed piece adds weight (height * 0.5 + 1.0) and exerts torque on the wobbly board.',
+      'Earn points based on the Ring level of your placement (1 to 5 pts) and bonus points for completing lines of 3 (+3 pts) or 4 (+5 pts).',
+      'If the balance tilt exceeds the safety threshold (11.5), the board TOPPLES and you instantly lose!'
+    ],
+    tips: [
+      'Try to counter-balance your opponent\'s weights by placing on the opposite side.',
+      'Stacking pieces higher increases the weight and torque multiplier.',
+      'Earn line completion bonuses early before the board gets too wobbly.'
+    ],
+    previewSteps: ['Roll the die', 'Place on Ring', 'Balance torque'],
+  },
+];
+
 export const GAME_CATALOG: GameCatalogItem[] = [
   {
     id: 'tic-tac-toe',
@@ -530,6 +573,161 @@ export const GAME_CATALOG: GameCatalogItem[] = [
     tags: ['strategy', 'board', 'enclosure'],
     featured: true,
   },
+  {
+    id: 'dr-eureka',
+    gameType: 'dr_eureka',
+    name: 'Dr. Eureka',
+    icon: 'dr-eureka',
+    description: 'Race to arrange colored chemical balls in test tubes by pouring them to match challenge formulas.',
+    players: '2 Players',
+    category: 'Racing',
+    badgeClass: 'badge-purple',
+    gradient: 'linear-gradient(135deg, #a855f7 0%, #d946ef 100%)',
+    rulesTitle: 'Dr. Eureka Rules',
+    rules: [
+      'Pour balls from tube to tube to recreate the target arrangement.',
+      'You cannot touch the balls or drop them out of the tubes.',
+      'A tube can hold at most 4 balls.',
+      'The target card shows the goal combination in any column order.',
+      'First to solve 5 formulas wins!'
+    ],
+    tips: [
+      'Use the empty tube as a temporary buffer to swap ball orders.',
+      'Look for the shortest sequence of transfers before you start pouring.',
+      'In Stroop variant, ignore the ball colors and focus purely on the target ink or text word as commanded!'
+    ],
+    previewSteps: ['Look at card', 'Pour balls', 'Shout Eureka!'],
+    variants: [
+      { id: 'classic', name: 'Classic', icon: 'dr-eureka-classic', desc: 'Solve random color configurations as fast as you can.', path: '/games/dr-eureka', previewSteps: ['Classic colors', 'Speed sorting', 'Victory'] },
+      { id: 'stroop', name: 'Stroop Royale', icon: 'dr-eureka-stroop', desc: 'Balls have misleading text names and colors. Match by text content or ink color!', path: '/games/dr-eureka/stroop', rulesTitle: 'Stroop Rules', rules: ['A matching constraint is shown: Match by Ball Color, Text Ink Color, or Word Content.', 'Compare the relevant attribute of your balls to match the target colors.'], tips: ['Slow down slightly to override your automatic reading reflex (Stroop effect).'], previewSteps: ['Read target mode', 'Override reflexes', 'Solve'] },
+      { id: 'sequential', name: 'Sequential Stacking', icon: 'dr-eureka-sequential', desc: 'Stack numbered balls 1 to 6 in a single tube in target order.', path: '/games/dr-eureka/sequential', rulesTitle: 'Sequential Rules', rules: ['Stack all 6 numbered balls in one of your tubes in the target sequence.', 'The other two tubes must be empty to claim round completion.'], tips: ['Group numbers at the bottom of temporary tubes to flip their ordering.'], previewSteps: ['Check sequence', 'Stack numbers', 'Complete'] }
+    ],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'medium',
+    estimatedTime: '4-8 min',
+    tags: ['racing', 'logic', 'speed'],
+    featured: true,
+  },
+  {
+    id: 'smart-four',
+    gameType: 'smart_four',
+    name: 'Smart Four & Topple',
+    icon: 'smart-four',
+    description: 'Stack tokens on a 5x5 grid. Win by connecting four in 3D space, or test your balance in the wobbly physics-based Topple.',
+    players: '2 Players',
+    category: 'Strategy',
+    badgeClass: 'badge-cyan',
+    gradient: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)',
+    rulesTitle: 'Smart Four Rules',
+    rules: [
+      'Take turns stacking pieces in a 5x5 grid up to height 5.',
+      'Classic 3D: Connect four tokens in a straight line in 3D space.',
+      'Topple: Roll dice, place on designated rings, and avoid toppling the board.'
+    ],
+    tips: [
+      'Watch the height axis closely in both variants.',
+      'In Topple, check the center of mass bubble level indicators before placing.'
+    ],
+    previewSteps: ['Pick variant', 'Stack pieces', 'Check win/tilt'],
+    variants: SMART_FOUR_VARIANTS,
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'medium',
+    estimatedTime: '3-8 min',
+    tags: ['strategy', '3d', 'physics'],
+    featured: true,
+  },
+  {
+    id: 'ultimate-tic-tac-toe',
+    gameType: 'ultimate_tic_tac_toe',
+    name: 'Ultimate Tic-Tac-Toe',
+    icon: 'ultimate-tic-tac-toe',
+    description: 'Play Tic-Tac-Toe inside Tic-Tac-Toe! Win mini boards to secure squares and align three mini-board claims in a row.',
+    players: '2 Players',
+    category: 'Strategy',
+    badgeClass: 'badge-purple',
+    gradient: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+    rulesTitle: 'Ultimate Tic-Tac-Toe Rules',
+    rules: [
+      'The board is a 3x3 layout of mini 3x3 Tic-Tac-Toe boards.',
+      'Your move in a mini-board forces your opponent to play in the corresponding board of the 3x3 layout.',
+      'If you are sent to a board that is already won or full, you get a FREE MOVE and can play anywhere.',
+      'Align three in a row on a mini-board to win that square.',
+      'Align three won squares in a row globally to win the ultimate game!'
+    ],
+    tips: [
+      'Try not to send your opponent to a mini-board where they can win a square.',
+      'Intentionally sacrifice a move to gain a free move elsewhere on the board.',
+      'Control the center mini-board early as it is crucial for global diagonals and rows.'
+    ],
+    previewSteps: ['Place in mini-board', 'Redirect opponent', 'Claim big squares'],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'medium',
+    estimatedTime: '5-12 min',
+    tags: ['strategy', 'nested', 'classic'],
+  },
+  {
+    id: 'giiker-bolt',
+    gameType: 'giiker_bolt',
+    name: 'Giiker Bolt Memory',
+    icon: 'giiker-bolt',
+    description: 'Replicate sequence patterns on a flashing 3x3 light-up grid. If you forget or input the wrong sequence, you lose!',
+    players: '2 Players',
+    category: 'Memory',
+    badgeClass: 'badge-pink',
+    gradient: 'linear-gradient(135deg, #ec4899 0%, #a855f7 100%)',
+    rulesTitle: 'Giiker Bolt Rules',
+    rules: [
+      'The board will flash a sequence of cells on the 3x3 grid.',
+      'After the flashing finishes, the active player must tap the cells in the exact order shown.',
+      'Successfully replicating the sequence passes the turn to the other player and increases the sequence length by 1.',
+      'Making a wrong input immediately ends the game and awards victory to the other player!'
+    ],
+    tips: [
+      'Focus on the shape or flow of the sequence instead of just remembering coordinates.',
+      'Assign numbers to the 3x3 grid (1-9) to mentally recite the sequence.',
+      'Keep a steady rhythm while inputting the sequence.'
+    ],
+    previewSteps: ['Watch flash', 'Replicate steps', 'Alternate turns'],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'medium',
+    estimatedTime: '2-6 min',
+    tags: ['memory', 'reflex', 'quick'],
+  },
+  {
+    id: 'triple-cross',
+    gameType: 'triple_cross',
+    name: 'Triple Cross',
+    icon: 'triple-cross',
+    description: 'Slide discs into an 8x3 grid, pushing opponent pieces out. Cap rows with blockers and score lines of three.',
+    players: '2 Players',
+    category: 'Strategy',
+    badgeClass: 'badge-cyan',
+    gradient: 'linear-gradient(135deg, #0ea5e9 0%, #0891b2 100%)',
+    rulesTitle: 'Triple Cross Rules',
+    rules: [
+      'Alternate turns pushing standard colored discs into any of the 8 rows from either the Left or Right side.',
+      'Existing pieces in the row shift. Pushing can eject discs on the opposite end, which return to the owner.',
+      'Optional blocker: Place a blocker on either side of a full row (containing 3 discs) to lock it from being pushed.',
+      'Each player has 12 discs and 4 blockers.',
+      'Score 1 point for every vertical or diagonal line of 3 matching discs. Horizontal lines do NOT score.',
+      'Game ends when both players have 0 discs or all rows are blocked. Highest score wins!'
+    ],
+    tips: [
+      'Use blockers to secure rows where you have favorable vertical/diagonal disc connections.',
+      'Shove opponent pieces out of the board to disrupt their alignment chains.',
+      'Save your blockers for high-value vertical towers or defensive locks.'
+    ],
+    previewSteps: ['Push disc', 'Shift row', 'Lock blocker', 'Align three'],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'hard',
+    estimatedTime: '6-12 min',
+    tags: ['strategy', 'displacement', 'board'],
+  },
 ];
 
 const GAME_TYPE_TO_ID: Record<string, string> = {
@@ -547,6 +745,11 @@ const GAME_TYPE_TO_ID: Record<string, string> = {
   dice_grid: 'dice-grid',
   black_hole: 'black-hole',
   trappex: 'trappex',
+  dr_eureka: 'dr-eureka',
+  smart_four: 'smart-four',
+  ultimate_tic_tac_toe: 'ultimate-tic-tac-toe',
+  giiker_bolt: 'giiker-bolt',
+  triple_cross: 'triple-cross',
 };
 
 export function getGameCatalogItem(gameTypeOrId: string | null | undefined) {

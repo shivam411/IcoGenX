@@ -12,5 +12,8 @@ pub mod row_call;
 pub mod dice_grid;
 pub mod black_hole;
 pub mod trappex;
-
-
+pub mod dr_eureka;
+pub mod smart_four;
+pub mod ultimate_tic_tac_toe;
+pub mod giiker_bolt;
+pub mod triple_cross;

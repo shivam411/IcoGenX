@@ -1,0 +1,178 @@
+/* frontend/src/app/games/ultimate-tic-tac-toe/game.module.css */
+
+.shell {
+  width: min(100%, 680px);
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+  color: #f8fafc;
+  padding: 10px;
+}
+
+.statusBar {
+  min-height: 48px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.warningBar {
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.08);
+  color: #fca5a5;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 16px;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 16px;
+  background: rgba(30, 41, 59, 0.4);
+  border: 2px solid #475569;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.miniBoard {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 6px;
+  padding: 8px;
+  background: rgba(15, 23, 42, 0.5);
+  border: 2px solid #334155;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.activeMiniBoard {
+  border-color: #06b6d4;
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.5), inset 0 0 8px rgba(6, 182, 212, 0.2);
+  background: rgba(6, 182, 212, 0.03);
+  animation: pulseActiveBorder 1.5s infinite alternate;
+}
+
+@keyframes pulseActiveBorder {
+  0% { border-color: rgba(6, 182, 212, 0.4); }
+  100% { border-color: rgba(6, 182, 212, 1); }
+}
+
+.cell {
+  aspect-ratio: 1;
+  border-radius: 6px;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: not-allowed;
+  transition: all 0.2s ease;
+}
+
+.cellPlayable {
+  cursor: pointer;
+  border-color: rgba(6, 182, 212, 0.2);
+}
+
+.cellPlayable:hover {
+  background: rgba(6, 182, 212, 0.12);
+  border-color: #06b6d4;
+  transform: scale(1.05);
+}
+
+.token {
+  font-size: 1.4rem;
+  font-weight: 900;
+  user-select: none;
+}
+
+.tokenP1 {
+  color: #22d3ee;
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.5);
+}
+
+.tokenP2 {
+  color: #fb7185;
+  text-shadow: 0 0 8px rgba(251, 113, 133, 0.5);
+}
+
+/* Claim overlays */
+.claimedOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 10px;
+  z-index: 10;
+  backdrop-filter: blur(2px);
+  animation: scaleClaimed 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.claimedP1 {
+  background: rgba(34, 211, 238, 0.12);
+  border: 2px solid #22d3ee;
+}
+
+.claimedP2 {
+  background: rgba(251, 113, 133, 0.12);
+  border: 2px solid #fb7185;
+}
+
+.claimedDraw {
+  background: rgba(148, 163, 184, 0.1);
+  border: 2px dashed #94a3b8;
+}
+
+.claimedSymbol {
+  font-size: 4.5rem;
+  font-weight: 900;
+  user-select: none;
+}
+
+.symbolP1 {
+  color: #22d3ee;
+  text-shadow: 0 0 16px rgba(34, 211, 238, 0.8);
+}
+
+.symbolP2 {
+  color: #fb7185;
+  text-shadow: 0 0 16px rgba(251, 113, 133, 0.8);
+}
+
+.symbolDraw {
+  color: #94a3b8;
+  font-size: 3rem;
+}
+
+@keyframes scaleClaimed {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@media (max-width: 500px) {
+  .grid {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .miniBoard {
+    gap: 3px;
+    padding: 4px;
+  }
+
+  .claimedSymbol {
+    font-size: 3rem;
+  }
+}

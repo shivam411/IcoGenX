@@ -6,7 +6,9 @@ use crate::games::{
     code_guess::CodeGuessGame, dice_grid::DiceGridGame, drop_four::DropFourGame,
     higher_lower::HigherLowerGame, memory_flip::MemoryFlipGame, row_call::RowCallGame,
     shut_the_box::ShutTheBoxGame, stop_clock::StopClockGame, tic_tac_toe::TicTacToeGame,
-    trappex::TrappexGame, trivia_battle::TriviaBattleGame,
+    trappex::TrappexGame, trivia_battle::TriviaBattleGame, dr_eureka::DrEurekaGame,
+    smart_four::SmartFourGame, ultimate_tic_tac_toe::UltimateTicTacToeGame,
+    giiker_bolt::GiikerBoltGame, triple_cross::TripleCrossGame,
 };
 
 /// Factory function signature: takes an optional variant string,
@@ -74,6 +76,26 @@ impl GameRegistry {
             Box::new(TrappexGame::new_variant(variant.unwrap_or("classic")))
         });
 
+        registry.register("dr_eureka", |variant| {
+            Box::new(DrEurekaGame::new_variant(variant.unwrap_or("classic")))
+        });
+
+        registry.register("smart_four", |variant| {
+            Box::new(SmartFourGame::new_variant(variant.unwrap_or("classic")))
+        });
+
+        registry.register("ultimate_tic_tac_toe", |_| {
+            Box::new(UltimateTicTacToeGame::new())
+        });
+
+        registry.register("giiker_bolt", |_| {
+            Box::new(GiikerBoltGame::new())
+        });
+
+        registry.register("triple_cross", |_| {
+            Box::new(TripleCrossGame::new())
+        });
+
         registry
     }
 
@@ -113,6 +135,11 @@ mod tests {
             "dice_grid",
             "black_hole",
             "trappex",
+            "dr_eureka",
+            "smart_four",
+            "ultimate_tic_tac_toe",
+            "giiker_bolt",
+            "triple_cross",
         ];
 
         for game_type in game_types {

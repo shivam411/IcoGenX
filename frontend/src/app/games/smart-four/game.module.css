@@ -1,0 +1,552 @@
+/* frontend/src/app/games/smart-four/game.module.css */
+
+.shell {
+  width: min(100%, 720px);
+  margin: 0 auto;
+  display: grid;
+  gap: 20px;
+  color: #f8fafc;
+  padding: 10px;
+}
+
+.variantSelector {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.variantBtn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #94a3b8;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.variantBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+}
+
+.activeVariant {
+  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+  border-color: #06b6d4;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.4);
+}
+
+.statusPanel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+}
+
+.playersInfo {
+  display: flex;
+  gap: 24px;
+}
+
+.playerCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.playerCard.activeP1 {
+  border-color: rgba(34, 211, 238, 0.4);
+  background: rgba(34, 211, 238, 0.08);
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.15);
+}
+
+.playerCard.activeP2 {
+  border-color: rgba(251, 113, 133, 0.4);
+  background: rgba(251, 113, 133, 0.08);
+  box-shadow: 0 0 10px rgba(251, 113, 133, 0.15);
+}
+
+.playerLabel {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+}
+
+.playerName {
+  font-size: 1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.p1Dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #22d3ee;
+  box-shadow: 0 0 8px #22d3ee;
+}
+
+.p2Dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fb7185;
+  box-shadow: 0 0 8px #fb7185;
+}
+
+.playerScore {
+  font-size: 1.4rem;
+  font-weight: 900;
+  font-family: monospace;
+}
+
+.gameStatusText {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  max-width: 50%;
+  text-align: right;
+}
+
+.diceConsole {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rollPrompt {
+  font-size: 0.9rem;
+  color: #cbd5e1;
+  font-weight: 500;
+}
+
+.rollBtn {
+  padding: 10px 24px;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+.rollBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.45);
+}
+
+.rollBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.diceShowcase {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.die {
+  width: 50px;
+  height: 50px;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #0f172a;
+  display: grid;
+  place-items: center;
+  font-size: 1.6rem;
+  font-weight: 900;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3), inset 0 -4px 0 #cbd5e1;
+  border: 2px solid #ffffff;
+  animation: rollDieAnim 0.4s ease-out;
+}
+
+@keyframes rollDieAnim {
+  0% { transform: rotate(0deg) scale(0.8); }
+  50% { transform: rotate(180deg) scale(1.15); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+.ringPrompt {
+  font-size: 0.95rem;
+  color: #22d3ee;
+  font-weight: 700;
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.3);
+}
+
+/* Wobbly Board Visuals */
+
+.toppleArena {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  margin: 10px 0;
+}
+
+.boardViewport {
+  perspective: 900px;
+  padding: 40px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  overflow: visible;
+}
+
+.boardWrapper {
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(5, 1fr);
+  gap: 12px;
+  width: min(100vw - 80px, 420px);
+  aspect-ratio: 1;
+  padding: 16px;
+  background: rgba(30, 41, 59, 0.85);
+  border: 4px solid #475569;
+  border-radius: 20px;
+  box-shadow: 
+    0 15px 35px rgba(0, 0, 0, 0.5),
+    inset 0 2px 4px rgba(255, 255, 255, 0.1),
+    0 30px 60px rgba(0, 0, 0, 0.4);
+  transform: rotateX(25deg);
+  transform-style: preserve-3d;
+  transition: border-color 0.3s ease;
+}
+
+.toppleActiveBoard {
+  /* Dynamic style is handled by style attribute, but base is similar */
+  transform-style: preserve-3d;
+}
+
+.shakingBoard {
+  animation: toppleCrash 1.2s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes toppleCrash {
+  10%, 90% { transform: rotateX(25deg) translate3d(-2px, 2px, 0) rotateZ(-1deg); }
+  20%, 80% { transform: rotateX(22deg) translate3d(4px, -3px, -5px) rotateZ(2deg); }
+  30%, 50%, 70% { transform: rotateX(28deg) translate3d(-8px, 6px, 5px) rotateZ(-4deg); }
+  40%, 60% { transform: rotateX(20deg) translate3d(8px, -6px, -10px) rotateZ(4deg); }
+}
+
+.cell {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transform-style: preserve-3d;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.cell:hover:not(.cellDisabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.cellDisabled {
+  cursor: not-allowed;
+}
+
+/* Ring colors - concentric Manhattan distances */
+.ring1 { background: rgba(30, 41, 59, 0.4); }
+.ring2 { background: rgba(51, 65, 85, 0.35); }
+.ring3 { background: rgba(71, 85, 105, 0.3); }
+.ring4 { background: rgba(100, 116, 139, 0.25); }
+.ring5 { background: rgba(148, 163, 184, 0.2); }
+
+/* Allowed highlighting for active dice roll placement */
+.allowedCell {
+  border-color: #22d3ee;
+  box-shadow: 0 0 15px rgba(34, 211, 238, 0.6), inset 0 0 8px rgba(34, 211, 238, 0.4);
+  animation: pulseAllowed 1.5s infinite alternate;
+}
+
+@keyframes pulseAllowed {
+  0% { border-color: rgba(34, 211, 238, 0.4); box-shadow: 0 0 8px rgba(34, 211, 238, 0.2); }
+  100% { border-color: rgba(34, 211, 238, 1); box-shadow: 0 0 20px rgba(34, 211, 238, 0.8); }
+}
+
+/* Stacking cylinders & tokens */
+
+.cylinder {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+
+.token {
+  position: absolute;
+  left: 10%;
+  width: 80%;
+  height: 18px;
+  border-radius: 50%;
+  transform-style: preserve-3d;
+  /* Stacked upwards */
+  transform: translateZ(calc(var(--index) * 15px));
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.tokenP1 {
+  background: #22d3ee;
+  border: 1px solid #0891b2;
+  box-shadow: 
+    inset 0 3px 4px rgba(255, 255, 255, 0.6),
+    0 4px 0 #0891b2,
+    0 6px 8px rgba(0, 0, 0, 0.4);
+}
+
+.tokenP2 {
+  background: #fb7185;
+  border: 1px solid #be123c;
+  box-shadow: 
+    inset 0 3px 4px rgba(255, 255, 255, 0.6),
+    0 4px 0 #be123c,
+    0 6px 8px rgba(0, 0, 0, 0.4);
+}
+
+.winningToken {
+  animation: winningPulse 1s infinite alternate;
+}
+
+@keyframes winningPulse {
+  0% { filter: brightness(1); box-shadow: 0 0 10px #f59e0b, 0 4px 0 #d97706; }
+  100% { filter: brightness(1.3); box-shadow: 0 0 22px #fbbf24, 0 4px 0 #f59e0b, 0 8px 12px rgba(251, 191, 36, 0.6); }
+}
+
+.tokenCountBadge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(15, 23, 42, 0.85);
+  color: #e2e8f0;
+  border-radius: 10px;
+  padding: 1px 6px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  z-index: 10;
+}
+
+.ghostToken {
+  position: absolute;
+  left: 10%;
+  width: 80%;
+  height: 18px;
+  border-radius: 50%;
+  opacity: 0.45;
+  border: 2px dashed #94a3b8;
+  transform: translateZ(calc(var(--index) * 15px));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.ghostP1 {
+  border-color: #22d3ee;
+  background: rgba(34, 211, 238, 0.15);
+}
+
+.ghostP2 {
+  border-color: #fb7185;
+  background: rgba(251, 113, 133, 0.15);
+}
+
+/* Wobbly Level Dial Visuals */
+
+.dialWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 18px;
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  width: 220px;
+}
+
+.dialLabel {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.dialContainer {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #1e293b 40%, #0f172a 100%);
+  border: 4px solid #475569;
+  box-shadow: 
+    inset 0 4px 12px rgba(0, 0, 0, 0.6),
+    0 4px 10px rgba(0, 0, 0, 0.3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.dialCrosshairH {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.dialCrosshairV {
+  position: absolute;
+  top: 10%;
+  bottom: 10%;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.dialRingDanger {
+  position: absolute;
+  width: 80%;
+  height: 80%;
+  border-radius: 50%;
+  border: 1px dashed rgba(239, 68, 68, 0.4);
+}
+
+.dialRingTarget {
+  position: absolute;
+  width: 20%;
+  height: 20%;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dialBubble {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #86efac 0%, #22c55e 70%, #15803d 100%);
+  box-shadow: 
+    0 0 10px rgba(34, 197, 94, 0.8),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  /* Controlled dynamically using style custom properties */
+  transform: translate(calc(var(--torque-x) * 4.5px), calc(var(--torque-y) * -4.5px));
+}
+
+.dangerBubble {
+  background: radial-gradient(circle at 35% 35%, #fca5a5 0%, #ef4444 70%, #b91c1c 100%);
+  box-shadow: 
+    0 0 15px rgba(239, 68, 68, 0.9),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.4);
+  animation: pulseDanger 0.8s infinite alternate;
+}
+
+@keyframes pulseDanger {
+  0% { transform: translate(calc(var(--torque-x) * 4.5px), calc(var(--torque-y) * -4.5px)) scale(1); }
+  100% { transform: translate(calc(var(--torque-x) * 4.5px), calc(var(--torque-y) * -4.5px)) scale(1.15); }
+}
+
+.tiltValue {
+  font-family: monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #22c55e;
+  margin-top: 4px;
+}
+
+.dangerTiltValue {
+  color: #ef4444;
+  animation: flashRedText 0.8s infinite alternate;
+}
+
+@keyframes flashRedText {
+  0% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+/* Info Legend */
+.legend {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 10px;
+  background: rgba(15, 23, 42, 0.3);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legendRingSample {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 640px) {
+  .statusBar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .gameStatusText {
+    max-width: 100%;
+    text-align: left;
+  }
+
+  .board {
+    width: 320px;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .token {
+    height: 14px;
+  }
+}

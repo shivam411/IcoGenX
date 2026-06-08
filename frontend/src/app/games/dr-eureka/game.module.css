@@ -1,0 +1,429 @@
+/* frontend/src/app/games/dr-eureka/game.module.css */
+
+.gameWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.statusText {
+  min-height: 28px;
+  margin-bottom: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.warning {
+  color: var(--accent-rose, #f43f5e);
+  animation: shake 0.3s ease;
+  display: inline-block;
+}
+
+.myTurn {
+  color: var(--accent-blue, #3b82f6);
+  text-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+}
+
+.bonusTurn {
+  color: var(--accent-yellow, #fde047);
+  animation: pulse 1.2s infinite alternate ease-in-out;
+  display: inline-block;
+}
+
+.opponentTurn {
+  color: var(--text-secondary, #94a3b8);
+}
+
+/* Layout for Play Area */
+.playArea {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  align-items: center;
+}
+
+@media (min-width: 768px) {
+  .playArea {
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 40px;
+  }
+}
+
+/* Card Column */
+.cardColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 280px;
+}
+
+/* Challenge Card */
+.challengeCard {
+  width: 200px;
+  aspect-ratio: 2 / 3;
+  background: rgba(20, 15, 30, 0.85);
+  border: 2px solid rgba(168, 85, 247, 0.3);
+  border-radius: var(--radius-lg, 24px);
+  box-shadow: 0 8px 32px rgba(168, 85, 247, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+.challengeCard::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.1) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+.cardBanner {
+  position: absolute;
+  top: 12px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: #a855f7;
+  text-shadow: 0 0 8px rgba(168, 85, 247, 0.5);
+  padding: 2px 8px;
+}
+
+.cardStroopBanner {
+  background: rgba(244, 63, 94, 0.15);
+  color: #f43f5e;
+  border-bottom: 1px solid rgba(244, 63, 94, 0.2);
+}
+
+.cardTubes {
+  display: flex;
+  gap: 14px;
+  width: 100%;
+  justify-content: center;
+  align-items: flex-end;
+  height: 75%;
+}
+
+.cardTube {
+  width: 32px;
+  height: 100px;
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  border-top: none;
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  padding-bottom: 4px;
+  gap: 3px;
+}
+
+.cardBall {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.4), 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Main Player Tubes Column */
+.tubesColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  flex-grow: 1;
+  width: 100%;
+  max-width: 480px;
+}
+
+.tubesContainer {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  width: 100%;
+  min-height: 240px;
+  background: rgba(15, 12, 38, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-lg, 24px);
+  padding: 30px 10px;
+  gap: 10px;
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.5);
+}
+
+/* Test Tube Component */
+.testTube {
+  width: 80px;
+  height: 200px;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-top: none;
+  border-bottom-left-radius: 40px;
+  border-bottom-right-radius: 40px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.01) 0%, rgba(255, 255, 255, 0.05) 100%);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  padding-bottom: 12px;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.testTube:hover {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.08) 100%);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.testTubeSelected {
+  border-color: #3b82f6;
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.03) 0%, rgba(59, 130, 246, 0.12) 100%);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.4), inset 0 0 10px rgba(59, 130, 246, 0.2);
+  transform: translateY(-5px) scale(1.02);
+}
+
+/* Balls */
+.ball {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease-in-out;
+  user-select: none;
+}
+
+/* 3D Glass Sphere Gradients */
+.ballRed {
+  background: radial-gradient(circle at 35% 35%, #ff6b6b 0%, #ef4444 45%, #b91c1c 90%);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4), inset 0 -2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.ballGreen {
+  background: radial-gradient(circle at 35% 35%, #4ade80 0%, #22c55e 45%, #15803d 90%);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4), inset 0 -2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.ballPurple {
+  background: radial-gradient(circle at 35% 35%, #c084fc 0%, #a855f7 45%, #7e22ce 90%);
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.4), inset 0 -2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* Sequential Mode Spheres (Metallic Steel look) */
+.ballSteel {
+  background: radial-gradient(circle at 35% 35%, #cbd5e1 0%, #64748b 55%, #334155 100%);
+  box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3), inset 0 -2px 6px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.ballNumber {
+  font-family: var(--font-display, sans-serif);
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #f8fafc;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* Stroop Text Overlay */
+.stroopText {
+  font-family: var(--font-display, sans-serif);
+  font-size: 0.85rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8), 0 0 4px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+/* Text Font Colors */
+.textValRed { color: #f43f5e !important; }
+.textValGreen { color: #10b981 !important; }
+.textValPurple { color: #a855f7 !important; }
+
+/* Opponent Mini Preview Container */
+.opponentPreview {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.01);
+  border: 1px solid rgba(255, 255, 255, 0.02);
+  border-radius: 16px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.opponentPreviewTitle {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary, #94a3b8);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.opponentTubes {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  align-items: flex-end;
+  height: 80px;
+}
+
+.opponentTube {
+  width: 38px;
+  height: 70px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: none;
+  border-bottom-left-radius: 20px;
+  border-bottom-right-radius: 20px;
+  background: rgba(255, 255, 255, 0.01);
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  padding-bottom: 4px;
+  gap: 2px;
+}
+
+.opponentBall {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.3);
+}
+
+/* Scores & Round Winner Card */
+.consoleCard {
+  width: 100%;
+  padding: 16px 24px;
+  border-radius: var(--radius-lg, 16px);
+  background: rgba(20, 15, 30, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.roundWinnerMsg {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent-yellow, #fde047);
+  animation: pulse 1.5s infinite alternate ease-in-out;
+  text-align: center;
+}
+
+.nextBtn {
+  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+}
+
+.nextBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px rgba(168, 85, 247, 0.7);
+}
+
+.eventLog {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #94a3b8);
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  padding: 6px 14px;
+  border-radius: var(--radius-sm, 8px);
+  margin-top: 8px;
+  text-align: center;
+  width: 100%;
+}
+
+.scoreBoard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.scoreItem {
+  padding: 10px;
+  border-radius: 12px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.scoreP1 {
+  border-color: rgba(168, 85, 247, 0.2);
+  background: rgba(168, 85, 247, 0.02);
+}
+
+.scoreP2 {
+  border-color: rgba(236, 72, 153, 0.2);
+  background: rgba(236, 72, 153, 0.02);
+}
+
+.scoreLabel {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #94a3b8);
+  margin-bottom: 2px;
+}
+
+.scoreVal {
+  font-family: var(--font-display, sans-serif);
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.scoreP1 .scoreVal {
+  color: #c084fc;
+}
+
+.scoreP2 .scoreVal {
+  color: #f472b6;
+}
+
+/* Animations */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+@keyframes pulse {
+  0% { opacity: 0.7; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1.03); }
+}
