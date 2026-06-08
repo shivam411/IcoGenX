@@ -1,4 +1,6 @@
 use serde::Serialize;
+use crate::game_trait::{self, Game};
+use crate::protocol::ServerMessage;
 
 
 /// Stop Clock: stop at exactly 20 seconds
@@ -81,6 +83,51 @@ impl StopClockGame {
             "bothReady": self.both_ready,
             "playerReady": self.player_ready,
         })
+    }
+}
+
+impl Game for StopClockGame {
+    fn process_action(
+        &mut self,
+        player: u8,
+        action: serde_json::Value,
+        players: &[String],
+    ) -> Result<Vec<(String, ServerMessage)>, String> {
+        let stopped_at_ms = action
+            .get("stopped_at_ms")
+            .and_then(|v| v.as_u64())
+            .ok_or_else(|| "Missing stopped_at_ms".to_string())?;
+
+        if stopped_at_ms == 0 {
+            self.set_ready(player);
+        } else {
+            self.stop(player, stopped_at_ms)?;
+        }
+
+        Ok(game_trait::broadcast_same(players, self.state_json()))
+    }
+
+    fn check_game_over(&self) -> Option<ServerMessage> {
+        if !self.game_over {
+            return None;
+        }
+        let winner = self.winner.map(|w| format!("Player {}", w + 1));
+        Some(ServerMessage::GameOver {
+            winner,
+            reason: "Game completed".into(),
+        })
+    }
+
+    fn state_for_player(&self, _player: Option<u8>) -> serde_json::Value {
+        self.state_json()
+    }
+
+    fn reset(&mut self) {
+        *self = StopClockGame::new();
+    }
+
+    fn game_type(&self) -> &str {
+        "stop_clock"
     }
 }
 

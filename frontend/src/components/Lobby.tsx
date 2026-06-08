@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { getGamePath, useGame } from '@/context/GameContext';
 import { getGameInfo } from '@/lib/gameMetadata';
+import GameIcon from './GameIcon';
 import RulesTipPanel from './RulesTipPanel';
 import { Celebration } from './Celebration';
 import styles from './Lobby.module.css';
@@ -15,6 +16,7 @@ interface LobbyProps {
   gameIcon: string;
   accentColor: string;
   children: React.ReactNode;
+  hideOverlaysOnGameOver?: boolean;
 }
 
 const QUICK_REACTIONS = ['😀', '😮', '😅', '😤', '🎉', '👏'];
@@ -39,7 +41,7 @@ const ROOM_VARIANTS: Record<string, Array<{ id: string; label: string }>> = {
   ],
 };
 
-export default function Lobby({ gameType, variant, gameName, gameIcon, accentColor, children }: LobbyProps) {
+export default function Lobby({ gameType, variant, gameName, gameIcon, accentColor, children, hideOverlaysOnGameOver = false }: LobbyProps) {
   const {
     connected,
     roomCode,
@@ -98,8 +100,9 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
   const variantOptions = ROOM_VARIANTS[activeGameType] || null;
   const canSwitchVariant = Boolean(roomCode && variantOptions);
   const isCreator = playerNumber === 0;
+  const displayIcon = gameInfo?.icon || gameIcon;
   const [pendingVariant, setPendingVariant] = useState(activeVariant || variantOptions?.[0]?.id || '');
-  const showRoomActionModal = gameOver || roomActionPromptOpen;
+  const showRoomActionModal = (!hideOverlaysOnGameOver && gameOver) || roomActionPromptOpen;
 
   useEffect(() => {
     setPendingVariant(activeVariant || variantOptions?.[0]?.id || '');
@@ -530,7 +533,7 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
         <div className={styles.roomShell}>
           <div className={`glass-card ${styles.waitingBox}`}>
             <div className={styles.waitingPulse} style={{ '--accent': accentColor } as React.CSSProperties}>
-              <span className={styles.gameIconLarge}>{gameIcon}</span>
+              <GameIcon icon={displayIcon} className={styles.gameIconLarge} />
             </div>
             <h2 className={styles.waitingTitle}>Waiting for Opponent</h2>
             <p className={styles.waitingSub}>Share this code with a friend</p>
@@ -581,7 +584,7 @@ export default function Lobby({ gameType, variant, gameName, gameIcon, accentCol
             ← Back
           </button>
           <div className={styles.header}>
-            <span className={styles.gameIconLarge}>{gameIcon}</span>
+            <GameIcon icon={displayIcon} className={styles.gameIconLarge} />
             <h1 className={styles.title}>{gameName}</h1>
           </div>
 

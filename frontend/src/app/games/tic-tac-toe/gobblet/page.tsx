@@ -10,8 +10,9 @@ export default function GobbletTicTacToePage() {
       gameType="tic_tac_toe"
       variant="gobblet"
       gameName="Gobblet Gobblers"
-      gameIcon="🪆"
+      gameIcon="tic-tac-toe-gobblet"
       accentColor="#22c55e"
+      hideOverlaysOnGameOver={true}
     >
       <TicTacToeBoard
         variantTitle="📜 Rules"

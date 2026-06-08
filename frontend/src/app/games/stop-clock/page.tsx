@@ -1,23 +1,17 @@
+/* frontend/src/app/games/stop-clock/page.tsx */
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import GameFrame from '@/components/GameFrame';
-import Lobby from '@/components/Lobby';
-import { useGame } from '@/context/GameContext';
+import GameTemplate, { GameBoardProps } from '@/components/GameTemplate';
 import styles from './game.module.css';
-import Link from 'next/link';
 
-const STOP_CLOCK_RULES = (
-  <ul>
-    <li>Both players ready up before the timer round starts.</li>
-    <li>Start your timer, but it disappears after 3 seconds.</li>
-    <li>Stop as close to 20.00 seconds as you can.</li>
-    <li>The closest time wins the round.</li>
-  </ul>
-);
-
-function StopClockBoard() {
-  const { gameState, playerNumber, opponentName, sendAction, gameOver, winner } = useGame();
+function StopClockBoard({
+  gameState,
+  playerNumber,
+  opponentName,
+  sendAction,
+  gameOver,
+}: GameBoardProps) {
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [stopped, setStopped] = useState(false);
@@ -31,14 +25,11 @@ function StopClockBoard() {
     };
   }, []);
 
-  if (!gameState) return null;
-
   const bothReady: boolean = gameState.bothReady;
-  const playerReady: boolean[] = gameState.playerReady;
+  const playerReady: boolean[] = gameState.playerReady || [false, false];
   const p1Time: number | null = gameState.player1Time;
   const p2Time: number | null = gameState.player2Time;
   const myTime = playerNumber === 0 ? p1Time : p2Time;
-  const opTime = playerNumber === 0 ? p2Time : p1Time;
   const opponentLabel = opponentName || 'Opponent';
 
   const handleReady = () => {
@@ -48,14 +39,16 @@ function StopClockBoard() {
   const handleStart = () => {
     setRunning(true);
     startTimeRef.current = Date.now();
-
-    // Show timer for first 3 seconds, then hide
     setShowTimer(true);
-    setTimeout(() => setShowTimer(false), 3000);
+    const hideTimer = setTimeout(() => setShowTimer(false), 3000);
 
     intervalRef.current = setInterval(() => {
       setElapsed(Date.now() - startTimeRef.current);
     }, 50);
+
+    return () => {
+      clearTimeout(hideTimer);
+    };
   };
 
   const handleStop = () => {
@@ -72,141 +65,130 @@ function StopClockBoard() {
     return s.toFixed(2);
   };
 
-  // Not ready yet
+  // 1. Not ready yet
   if (!bothReady) {
     return (
-      <div className={styles.gameWrapper}>
-        <GameFrame turnText="⏱️ Ready up, then stop as close to 20.00 seconds as possible." rulesTitle="Stop Clock Rules" rules={STOP_CLOCK_RULES}>
-          <div className={styles.clockArea}>
-            <h2 className={styles.clockTitle}>⏱️ The 20-Second Challenge</h2>
-            <p className={styles.clockSub}>
-              Start a timer and stop it at <strong>exactly 20 seconds</strong>. The timer hides after 3 seconds!
-            </p>
+      <div className={styles.clockArea}>
+        <h2 className={styles.clockTitle}>⏱️ The 20-Second Challenge</h2>
+        <p className={styles.clockSub}>
+          Start a timer and stop it at <strong>exactly 20 seconds</strong>. The timer hides after 3 seconds!
+        </p>
 
-            <div className={styles.readyStatus}>
-              <span className={`${styles.readyBadge} ${playerReady[playerNumber || 0] ? styles.readyYes : styles.readyNo}`}>
-                🎮 You: {playerReady[playerNumber || 0] ? 'Ready ✅' : 'Not Ready'}
-              </span>
-              <span className={`${styles.readyBadge} ${playerReady[1 - (playerNumber || 0)] ? styles.readyYes : styles.readyNo}`}>
-                👤 {opponentLabel}: {playerReady[1 - (playerNumber || 0)] ? 'Ready ✅' : 'Not Ready'}
-              </span>
-            </div>
+        <div className={styles.readyStatus}>
+          <span className={`${styles.readyBadge} ${playerReady[playerNumber] ? styles.readyYes : styles.readyNo}`}>
+            🎮 You: {playerReady[playerNumber] ? 'Ready ✅' : 'Not Ready'}
+          </span>
+          <span className={`${styles.readyBadge} ${playerReady[1 - playerNumber] ? styles.readyYes : styles.readyNo}`}>
+            👤 {opponentLabel}: {playerReady[1 - playerNumber] ? 'Ready ✅' : 'Not Ready'}
+          </span>
+        </div>
 
-            {!playerReady[playerNumber || 0] && (
-              <button className="btn btn-primary btn-lg" onClick={handleReady}>
-                I&apos;m Ready!
-              </button>
-            )}
+        {!playerReady[playerNumber] && (
+          <button className="btn btn-primary btn-lg" onClick={handleReady}>
+            I&apos;m Ready!
+          </button>
+        )}
 
-            {playerReady[playerNumber || 0] && (
-              <p className={styles.waitingText}>Waiting for {opponentLabel}...</p>
-            )}
-          </div>
-        </GameFrame>
+        {playerReady[playerNumber] && (
+          <p className={styles.waitingText}>Waiting for {opponentLabel}...</p>
+        )}
       </div>
     );
   }
 
-  // Game in progress
+  // 2. Ready, running or stopping
   if (!stopped && myTime === null) {
     return (
-      <div className={styles.gameWrapper}>
-        <GameFrame turnText="⏱️ Stop at 20.00 seconds. The timer hides after 3 seconds." rulesTitle="Stop Clock Rules" rules={STOP_CLOCK_RULES}>
-          <div className={styles.clockArea}>
-            <h2 className={styles.clockTitle}>Stop at 20.00 seconds!</h2>
+      <div className={styles.clockArea}>
+        <h2 className={styles.clockTitle}>Stop at 20.00 seconds!</h2>
 
-            <div className={`${styles.timerCircle} ${running ? styles.timerRunning : ''}`}>
-              {running ? (
-                showTimer ? (
-                  <span className={styles.timerValue}>{formatTime(elapsed)}</span>
-                ) : (
-                  <span className={styles.timerHidden}>???</span>
-                )
-              ) : (
-                <span className={styles.timerValue}>0.00</span>
-              )}
-              {running && !showTimer && (
-                <span className={styles.timerLabel}>Timer hidden! Trust your gut.</span>
-              )}
-            </div>
-
-            {!running ? (
-              <button
-                className={`${styles.bigButton} ${styles.startBtn}`}
-                onClick={handleStart}
-              >
-                ▶ Start
-              </button>
+        <div className={`${styles.timerCircle} ${running ? styles.timerRunning : ''}`}>
+          {running ? (
+            showTimer ? (
+              <span className={styles.timerValue}>{formatTime(elapsed)}</span>
             ) : (
-              <button
-                className={`${styles.bigButton} ${styles.stopBtn}`}
-                onClick={handleStop}
-              >
-                ⏹ Stop
-              </button>
-            )}
-          </div>
-        </GameFrame>
+              <span className={styles.timerValue}>???</span>
+            )
+          ) : (
+            <span className={styles.timerValue}>0.00</span>
+          )}
+          {running && !showTimer && (
+            <span className={styles.timerLabel}>Timer hidden! Trust your gut.</span>
+          )}
+        </div>
+
+        {!running ? (
+          <button
+            className={`${styles.bigButton} ${styles.startBtn}`}
+            onClick={handleStart}
+          >
+            ▶ Start
+          </button>
+        ) : (
+          <button
+            className={`${styles.bigButton} ${styles.stopBtn}`}
+            onClick={handleStop}
+          >
+            ⏹ Stop
+          </button>
+        )}
       </div>
     );
   }
 
-  // Stopped, waiting for results or showing them
+  // 3. Stopped, waiting for opponent to finish
   return (
-    <div className={styles.gameWrapper}>
-      {!gameOver ? (
-        <GameFrame turnText={`⏳ You locked your time in. Waiting for ${opponentLabel} to stop.`} rulesTitle="Stop Clock Rules" rules={STOP_CLOCK_RULES}>
-          <div className={styles.clockArea}>
-            <h2 className={styles.clockTitle}>You stopped at</h2>
-            <div className={`${styles.timerCircle} ${styles.timerStopped}`}>
-              <span className={styles.timerValue}>{(myTime || 0).toFixed(2)}s</span>
-            </div>
-            <p className={styles.waitingText}>Waiting for {opponentLabel} to stop...</p>
-          </div>
-        </GameFrame>
-      ) : (
-        <div className={styles.winOverlay}>
-          <div className={`glass-card ${styles.winCard}`}>
-            <span className={styles.winEmoji}>
-              {winner?.includes(`${(playerNumber || 0) + 1}`) ? '⏱️' : '😢'}
-            </span>
-            <h2 className={styles.winTitle}>
-              {winner?.includes(`${(playerNumber || 0) + 1}`) ? 'Perfect Timing!' : 'So Close!'}
-            </h2>
+    <div className={styles.clockArea}>
+      <h2 className={styles.clockTitle}>You stopped at</h2>
+      <div className={`${styles.timerCircle} ${styles.timerStopped}`}>
+        <span className={styles.timerValue}>{(myTime || 0).toFixed(2)}s</span>
+      </div>
+      <p className={styles.waitingText}>Waiting for {opponentLabel} to stop...</p>
+    </div>
+  );
+}
 
-            <div className={styles.resultCards}>
-              <div className={`glass-card ${styles.resultCard} ${
-                winner?.includes(`${(playerNumber || 0) + 1}`) ? styles.resultWinner : ''
-              }`}>
-                <div className={styles.resultLabel}>🎮 You</div>
-                <div className={styles.resultTime}>{(myTime || 0).toFixed(2)}s</div>
-                <div className={styles.resultDiff}>
-                  off by {Math.abs((myTime || 0) - 20).toFixed(2)}s
-                </div>
-              </div>
-              <div className={`glass-card ${styles.resultCard} ${
-                winner && !winner.includes(`${(playerNumber || 0) + 1}`) ? styles.resultWinner : ''
-              }`}>
-                <div className={styles.resultLabel}>👤 {opponentLabel}</div>
-                <div className={styles.resultTime}>{(opTime || 0).toFixed(2)}s</div>
-                <div className={styles.resultDiff}>
-                  off by {Math.abs((opTime || 0) - 20).toFixed(2)}s
-                </div>
-              </div>
-            </div>
+function StopClockResults({ gameState, playerNumber, opponentName, winner }: GameBoardProps) {
+  const p1Time: number = gameState.player1Time || 0;
+  const p2Time: number = gameState.player2Time || 0;
+  const myTime = playerNumber === 0 ? p1Time : p2Time;
+  const opTime = playerNumber === 0 ? p2Time : p1Time;
+  const opponentLabel = opponentName || 'Opponent';
+  const isWinner = winner?.includes(`${playerNumber + 1}`);
 
-            <Link href="/" className="btn btn-primary">Play Again</Link>
-          </div>
+  return (
+    <div className={styles.resultCards} style={{ marginBottom: '20px' }}>
+      <div className={`glass-card ${styles.resultCard} ${isWinner ? styles.resultWinner : ''}`}>
+        <div className={styles.resultLabel}>🎮 You</div>
+        <div className={styles.resultTime}>{myTime.toFixed(2)}s</div>
+        <div className={styles.resultDiff}>
+          off by {Math.abs(myTime - 20).toFixed(2)}s
         </div>
-      )}
+      </div>
+      <div className={`glass-card ${styles.resultCard} ${winner && !isWinner ? styles.resultWinner : ''}`}>
+        <div className={styles.resultLabel}>👤 {opponentLabel}</div>
+        <div className={styles.resultTime}>{opTime.toFixed(2)}s</div>
+        <div className={styles.resultDiff}>
+          off by {Math.abs(opTime - 20).toFixed(2)}s
+        </div>
+      </div>
     </div>
   );
 }
 
 export default function StopClockPage() {
   return (
-    <Lobby gameType="stop_clock" gameName="The 20-Second Challenge" gameIcon="⏱️" accentColor="#3b82f6">
-      <StopClockBoard />
-    </Lobby>
+    <GameTemplate
+      gameType="stop_clock"
+      gameName="The 20-Second Challenge"
+      gameIcon="stop-clock"
+      accentColor="#3b82f6"
+      winEmoji="⏱️"
+      winTitle="Perfect Timing!"
+      loseTitle="So Close!"
+      gameOverChildren={(props) => <StopClockResults {...props} />}
+    >
+      {(props) => <StopClockBoard {...props} />}
+    </GameTemplate>
   );
 }

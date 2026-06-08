@@ -7,7 +7,7 @@ export default function NumberCodeBreakerPage() {
     <HigherLowerGamePage
       variant="code_breaker_number"
       gameName="Code Breaker: Number Range"
-      gameIcon="🔎"
+      gameIcon="code-guess-number-range"
       accentColor="#06b6d4"
     />
   );

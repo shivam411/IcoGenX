@@ -31,6 +31,51 @@
   max-width: 500px;
 }
 
+.setupPhase {
+  width: min(100%, 440px);
+  margin: 40px auto;
+  padding: 40px;
+  text-align: center;
+}
+
+.setupTitle {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.setupSub {
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.secretInput {
+  display: block;
+  width: 160px;
+  margin: 0 auto 18px;
+  font-size: 1.7rem;
+  text-align: center;
+  font-weight: 900;
+}
+
+.waitingSetup {
+  width: min(100%, 440px);
+  margin: 40px auto;
+  padding: 40px;
+  text-align: center;
+}
+
+.waitingSetup h3 {
+  font-family: var(--font-display);
+  margin-bottom: 8px;
+}
+
+.waitingSetup p {
+  color: var(--text-secondary);
+}
+
 /* Range Bar */
 .rangeBar {
   position: relative;
@@ -116,6 +161,9 @@
   display: flex;
   gap: 12px;
   align-items: center;
+  justify-content: center;
+  margin-top: 12px;
+  flex-wrap: wrap;
 }
 
 .numberInput {

@@ -30,6 +30,13 @@ export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardPr
   const [selectedGobbletFrom, setSelectedGobbletFrom] = useState<number | null>(null);
   const [bidValue, setBidValue] = useState('0');
   const [winLineVisible, setWinLineVisible] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+
+  useEffect(() => {
+    if (!gameOver) {
+      setIsMinimized(false);
+    }
+  }, [gameOver]);
   const [winLineGeometry, setWinLineGeometry] = useState<{
     left: number;
     top: number;
@@ -39,34 +46,11 @@ export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardPr
   const boardRef = useRef<HTMLDivElement | null>(null);
   const cellRefs = useRef<Array<HTMLDivElement | null>>([]);
 
-  if (!gameState) return null;
-
-  const board: (number | null)[] = gameState.board;
-  const currentPlayer: number = gameState.currentPlayer;
-  const fadingCells: (number | null)[] = gameState.fadingCells || [];
-  const xPlayer: number | undefined = gameState.xPlayer;
-  const isMyTurn = currentPlayer === playerNumber;
-  const coinTossed: boolean = gameState.coinTossed;
-  const jokerCell: number | undefined = gameState.jokerCell;
-  const variant: string = gameState.variant || 'classic';
-  const winningLine: number[] | null = gameState.winningLine || null;
-  const gobbletStacks: GobbletPiece[][] = gameState.gobbletStacks || [];
-  const remainingPieces: number[][] = gameState.remainingPieces || [[0, 0, 0], [0, 0, 0]];
-  const biddingChips: number[] = gameState.biddingChips || [0, 0];
-  const pendingBids: boolean[] = gameState.pendingBids || [false, false];
-  const biddingPhase: string = gameState.biddingPhase || 'bidding';
-  const biddingWinner: number | null = gameState.biddingWinner ?? null;
-  const lastBids: number[] | null = gameState.lastBids || null;
-  const lastEvent: string | null = gameState.lastEvent || null;
-
-  const p1Name = playerNumber === 0 ? (playerName || 'You') : (opponentName || 'Opponent');
-  const p2Name = playerNumber === 1 ? (playerName || 'You') : (opponentName || 'Opponent');
-  const opponentLabel = opponentName || 'Opponent';
-
+  const winningLine: number[] | null = gameState?.winningLine || null;
   const winningLineKey = winningLine?.join(',') || '';
 
   useEffect(() => {
-    if (!gameOver || !winningLine || winningLine.length !== 3) {
+    if (!gameState || !gameOver || !winningLine || winningLine.length !== 3) {
       setWinLineGeometry(null);
       setWinLineVisible(false);
       return;
@@ -108,7 +92,30 @@ export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardPr
       window.cancelAnimationFrame(animationFrame);
       window.removeEventListener('resize', handleResize);
     };
-  }, [gameOver, winningLineKey]);
+  }, [gameOver, winningLineKey, gameState]);
+
+  if (!gameState) return null;
+
+  const board: (number | null)[] = gameState.board;
+  const currentPlayer: number = gameState.currentPlayer;
+  const fadingCells: (number | null)[] = gameState.fadingCells || [];
+  const xPlayer: number | undefined = gameState.xPlayer;
+  const isMyTurn = currentPlayer === playerNumber;
+  const coinTossed: boolean = gameState.coinTossed;
+  const jokerCell: number | undefined = gameState.jokerCell;
+  const variant: string = gameState.variant || 'classic';
+  const gobbletStacks: GobbletPiece[][] = gameState.gobbletStacks || [];
+  const remainingPieces: number[][] = gameState.remainingPieces || [[0, 0, 0], [0, 0, 0]];
+  const biddingChips: number[] = gameState.biddingChips || [0, 0];
+  const pendingBids: boolean[] = gameState.pendingBids || [false, false];
+  const biddingPhase: string = gameState.biddingPhase || 'bidding';
+  const biddingWinner: number | null = gameState.biddingWinner ?? null;
+  const lastBids: number[] | null = gameState.lastBids || null;
+  const lastEvent: string | null = gameState.lastEvent || null;
+
+  const p1Name = playerNumber === 0 ? (playerName || 'You') : (opponentName || 'Opponent');
+  const p2Name = playerNumber === 1 ? (playerName || 'You') : (opponentName || 'Opponent');
+  const opponentLabel = opponentName || 'Opponent';
 
   const showWarning = (message: string) => {
     setWarningMsg(message);
@@ -446,39 +453,64 @@ export default function TicTacToeBoard({ variantTitle, rules }: TicTacToeBoardPr
       </div>
 
       {gameOver && (
-        <div className={styles.winOverlay}>
-          <div className={`glass-card ${styles.winCard}`}>
-            <span className={styles.winEmoji}>
-              {winnerName === playerName ? '🎉' : winnerName ? '😢' : '🤝'}
-            </span>
-            <h2 className={styles.winTitle}>
-              {winnerName ? (winnerName === playerName ? 'You Win!' : 'You Lose!') : 'Draw!'}
-            </h2>
-            <p className={styles.winSub}>
-              {winnerName ? `${winnerName} won this round!` : "It's a tie!"}
-            </p>
-            
-            <div className={styles.playAgainStatus}>
-              {playAgainRequested ? (
-                <p>Waiting for {opponentLabel} to accept...</p>
-              ) : opponentPlayAgainRequested ? (
-                <p>{opponentLabel} wants to play again!</p>
-              ) : null}
-            </div>
-
-            <div className={styles.winActions}>
-              {!playAgainRequested && (
+        isMinimized ? (
+          <button
+            type="button"
+            className={styles.reopenBtn}
+            onClick={() => setIsMinimized(false)}
+          >
+            🎮 Play Again / Results
+          </button>
+        ) : (
+          <div className={styles.winOverlay}>
+            <div className={`glass-card ${styles.winCard}`}>
+              <button
+                type="button"
+                className={styles.overlayCloseBtn}
+                onClick={() => setIsMinimized(true)}
+                aria-label="Close overlay"
+              >
+                ×
+              </button>
+              <div className={styles.metaSection}>
+                <span className={styles.winEmoji}>
+                  {winnerName === playerName ? '🎉' : winnerName ? '😢' : '🤝'}
+                </span>
+                <div className={styles.titleWrapper}>
+                  <h2 className={styles.winTitle}>
+                    {winnerName ? (winnerName === playerName ? 'You Win!' : 'You Lose!') : 'Draw!'}
+                  </h2>
+                  <p className={styles.winSub}>
+                    {winnerName ? `${winnerName} won this round!` : "It's a tie!"}
+                  </p>
+                </div>
+              </div>
+              
+              <div className={styles.buttonGroup}>
+                {!playAgainRequested && (
+                  <button 
+                    className={`${styles.btnPrimary} btn btn-primary`} 
+                    onClick={requestPlayAgain}
+                  >
+                    🔄 Play Again
+                  </button>
+                )}
+                
+                {playAgainRequested ? (
+                  <p className={styles.pendingVoteText}>Waiting for {opponentLabel} to accept...</p>
+                ) : opponentPlayAgainRequested ? (
+                  <p className={styles.pendingVoteText}>{opponentLabel} wants to play again!</p>
+                ) : null}
                 <button 
-                  className="btn btn-primary" 
-                  onClick={requestPlayAgain}
+                  onClick={handleExit} 
+                  className={`${styles.btnSecondary} btn btn-ghost`}
                 >
-                  🔄 Play Again
+                  Change Game
                 </button>
-              )}
-              <button onClick={handleExit} className="btn btn-ghost">Change Game</button>
+              </div>
             </div>
           </div>
-        </div>
+        )
       )}
     </div>
   );

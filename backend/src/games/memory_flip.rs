@@ -1,5 +1,7 @@
 use serde::Serialize;
 use rand::seq::SliceRandom;
+use crate::game_trait::Game;
+use crate::protocol::ServerMessage;
 
 /// Sequence Memory Flip: flip cards 1-9 in order
 #[derive(Debug, Clone, Serialize)]
@@ -125,6 +127,62 @@ impl MemoryFlipGame {
             "winner": self.winner,
             "gameOver": self.game_over,
         })
+    }
+}
+
+fn broadcast_same(players: &[String], state: serde_json::Value) -> Vec<(String, ServerMessage)> {
+    players
+        .iter()
+        .map(|pid| {
+            (
+                pid.clone(),
+                ServerMessage::GameUpdate {
+                    game_state: state.clone(),
+                },
+            )
+        })
+        .collect()
+}
+
+impl Game for MemoryFlipGame {
+    fn process_action(
+        &mut self,
+        player: u8,
+        action: serde_json::Value,
+        players: &[String],
+    ) -> Result<Vec<(String, ServerMessage)>, String> {
+        let card_index = action
+            .get("card_index")
+            .and_then(|v| v.as_u64())
+            .ok_or_else(|| "Missing or invalid card_index".to_string())?
+            as usize;
+
+        self.flip_card(player, card_index)?;
+
+        Ok(broadcast_same(players, self.state_json()))
+    }
+
+    fn check_game_over(&self) -> Option<ServerMessage> {
+        if self.game_over {
+            Some(ServerMessage::GameOver {
+                winner: self.winner.map(|w| format!("Player {}", w + 1)),
+                reason: "All cards revealed in order!".to_string(),
+            })
+        } else {
+            None
+        }
+    }
+
+    fn state_for_player(&self, _player: Option<u8>) -> serde_json::Value {
+        self.state_json()
+    }
+
+    fn reset(&mut self) {
+        *self = MemoryFlipGame::new();
+    }
+
+    fn game_type(&self) -> &str {
+        "memory_flip"
     }
 }
 

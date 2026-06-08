@@ -1,6 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 const LOCAL_WS_PORT = 6100;
 const PRODUCTION_WS_URL = 'wss://api.icogenx.com/ws';
@@ -75,6 +77,34 @@ interface EmojiReaction {
   fromSelf: boolean;
 }
 
+export interface FriendListItem {
+  friendshipId: string;
+  friend: {
+    id: string;
+    name: string;
+    email?: string;
+    image?: string;
+    isGuest: boolean;
+    createdAt: number;
+    friendCode?: string;
+  };
+  status: 'pending' | 'accepted';
+  isInitiator: boolean;
+  online?: boolean;
+  currentRoom?: string | null;
+}
+
+export interface ActiveInvite {
+  inviteId: string;
+  fromUserId: string;
+  fromName: string;
+  gameType: string;
+  variant: string | null;
+  roomCode: string;
+}
+
+type FriendResponseAction = 'accept' | 'decline' | 'cancel' | 'remove';
+
 export type PendingRoomActionKind = 'creating' | 'joining' | 'rejoining';
 
 export interface PendingRoomAction {
@@ -104,6 +134,16 @@ export function getGamePath(gameType: string | null, variant: string | null) {
     return variant && variant !== 'classic'
       ? `/games/higher-lower/${variant}`
       : '/games/higher-lower';
+  }
+  if (gameType === 'checkers') {
+    return variant && variant !== 'classic'
+      ? `/games/checkers/${variant}`
+      : '/games/checkers';
+  }
+  if (gameType === 'drop_four') {
+    return variant && variant !== 'classic'
+      ? `/games/drop-four/${variant}`
+      : '/games/drop-four';
   }
   return `/games/${gameType.replace(/_/g, '-')}`;
 }
@@ -143,11 +183,13 @@ interface WebSocketContextType {
   roomCode: string | null;
   playerName: string | null;
   opponentName: string | null;
+  allPlayerNames: string[];
+  playerCount: number;
   gameState: GameState | null;
   gameType: string | null;
   variant: string | null;
   turnStartedAt: number | null;
-  scores: [number, number];
+  scores: number[];
   gameStarted: boolean;
   gameOver: boolean;
   winner: string | null;
@@ -177,11 +219,24 @@ interface WebSocketContextType {
   resetGame: () => void;
   openRoomActionPrompt: () => void;
   closeRoomActionPrompt: () => void;
+  // Friends & Presence System
+  friends: FriendListItem[];
+  activeInvite: ActiveInvite | null;
+  declinedInvite: { inviteId: string; fromName: string } | null;
+  clearDeclinedInvite: () => void;
+  sendGameInvite: (toUserId: string, gameType: string, variant?: string | null) => Promise<void>;
+  declineGameInvite: (inviteId: string) => void;
+  acceptGameInvite: (invite: { roomCode: string; gameType: string; variant: string | null }) => void;
+  addFriend: (friendCode: string) => Promise<any>;
+  respondToFriendRequest: (friendshipId: string, action: FriendResponseAction) => Promise<any>;
+  refetchFriends: () => Promise<void>;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | null>(null);
 
 export function WebSocketProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const { data: session } = useSession();
   const wsRef = useRef<WebSocket | null>(null);
   const intentionalCloseRef = useRef(false);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -192,12 +247,14 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [playerNumber, setPlayerNumber] = useState<number | null>(null);
   const [playerName, setPlayerNameState] = useState<string | null>(null);
   const [opponentName, setOpponentName] = useState<string | null>(null);
+  const [allPlayerNames, setAllPlayerNames] = useState<string[]>([]);
+  const [playerCount, setPlayerCount] = useState<number>(2);
   const [roomCode, setRoomCode] = useState<string | null>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [gameType, setGameType] = useState<string | null>(null);
   const [variant, setVariant] = useState<string | null>(null);
   const [turnStartedAt, setTurnStartedAt] = useState<number | null>(null);
-  const [scores, setScores] = useState<[number, number]>([0, 0]);
+  const [scores, setScores] = useState<number[]>([0, 0]);
   const [gameStarted, setGameStarted] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
@@ -214,6 +271,11 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const [matchFormat, setMatchFormat] = useState<'single' | 'series_5'>('single');
   const [gameOverReason, setGameOverReason] = useState<string | null>(null);
 
+  // Social & Friends State
+  const [friends, setFriends] = useState<FriendListItem[]>([]);
+  const [activeInvite, setActiveInvite] = useState<ActiveInvite | null>(null);
+  const [declinedInvite, setDeclinedInvite] = useState<{ inviteId: string; fromName: string } | null>(null);
+
   const setPendingRoomAction = useCallback((next: PendingRoomAction | null) => {
     pendingRoomActionRef.current = next;
     setPendingRoomActionState(next);
@@ -223,6 +285,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
   const playerIdRef = useRef<string | null>(null);
   const currentTurnOwnerRef = useRef<number | null>(null);
   const handleMessageRef = useRef<(event: MessageEvent) => void>(() => {});
+  const connectWsRef = useRef<() => void>(() => {});
 
   const syncGameState = useCallback((nextState: GameState | null, options?: { resetTurnClock?: boolean }) => {
     setGameState(nextState);
@@ -265,6 +328,13 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           setGameType(msg.game_type);
           setVariant(msg.variant || null);
           if (msg.match_format) setMatchFormat(msg.match_format);
+          setPlayerCount(msg.player_count || 2);
+          setAllPlayerNames(() => {
+            const names = Array(msg.player_count || 2).fill('');
+            const myName = localStorage.getItem(STORAGE_PLAYER_NAME) || 'Player 1';
+            names[0] = myName;
+            return names;
+          });
           setGameStarted(false);
           syncGameState(null);
           setGameOver(false);
@@ -282,6 +352,16 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           break;
         case 'PlayerJoined':
           if (msg.player_number !== undefined) {
+            setPlayerCount(msg.player_count || 2);
+            setAllPlayerNames((prev) => {
+              const next = [...prev];
+              while (next.length < (msg.player_count || 2)) {
+                next.push('');
+              }
+              next[msg.player_number] = msg.player_name;
+              return next;
+            });
+
             // If I am joining, this confirms my number
             if (msg.player_id === playerIdRef.current) {
               setPlayerNumber(msg.player_number);
@@ -325,6 +405,21 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
           setOpponentPlayAgainRequested(false);
           setRecentEmojis([]);
           setRoomActionPromptOpen(false);
+          if (msg.players) {
+            const names = Array(msg.scores.length).fill('');
+            msg.players.forEach((p: any) => {
+              names[p.player_number] = p.player_name;
+            });
+            setAllPlayerNames(names);
+            setPlayerCount(msg.scores.length);
+            
+            // Set opponentName to first non-me player for backward compatibility
+            const meIndex = msg.players.find((p: any) => p.player_id === playerIdRef.current)?.player_number ?? 0;
+            const otherPlayer = msg.players.find((p: any) => p.player_number !== meIndex);
+            if (otherPlayer) {
+              setOpponentName(otherPlayer.player_name);
+            }
+          }
           if (msg.game_type) {
             localStorage.setItem(STORAGE_GAME_TYPE, msg.game_type);
             if (msg.variant) localStorage.setItem(STORAGE_VARIANT, msg.variant);
@@ -395,6 +490,50 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         case 'MatchFormatChanged':
           if (msg.format) setMatchFormat(msg.format);
           break;
+        case 'PresenceUpdate':
+          setFriends((prev) =>
+            prev.map((f) =>
+              f.friend.id === msg.user_id
+                ? { ...f, online: msg.online, currentRoom: msg.current_room }
+                : f
+            )
+          );
+          break;
+        case 'GameInviteReceived':
+          setActiveInvite({
+            inviteId: msg.invite_id,
+            fromUserId: msg.from_user_id,
+            fromName: msg.from_name,
+            gameType: msg.game_type,
+            variant: msg.variant || null,
+            roomCode: msg.room_code,
+          });
+          break;
+        case 'GameInviteFailed':
+          setError(msg.message || 'Could not send invite.');
+          setTimeout(() => setError(null), 5000);
+          break;
+        case 'GameInviteSent':
+          setError(null);
+          break;
+        case 'GameInviteDeclined':
+          setDeclinedInvite({
+            inviteId: msg.invite_id,
+            fromName: msg.from_name,
+          });
+          setTimeout(() => {
+            setDeclinedInvite(null);
+          }, 5000);
+          break;
+        case 'GameInviteAccepted':
+          setError(`${msg.from_name || 'Your friend'} accepted your invitation.`);
+          setTimeout(() => setError(null), 5000);
+          break;
+        case 'GameInviteExpired':
+          setActiveInvite((prev) => (prev?.inviteId === msg.invite_id ? null : prev));
+          setError('Game invitation expired.');
+          setTimeout(() => setError(null), 5000);
+          break;
       }
     } catch (e) {
       wsError('[WS] Failed to parse message:', e);
@@ -447,7 +586,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
         wsLog('[WS] Attempting to reconnect in 2s...');
         reconnectTimerRef.current = setTimeout(() => {
           reconnectTimerRef.current = null;
-          connectWs();
+          connectWsRef.current();
         }, 2000);
       }
     };
@@ -458,6 +597,10 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 
     ws.onmessage = (e) => handleMessageRef.current(e);
   }, []); // Stable connection function
+
+  useEffect(() => {
+    connectWsRef.current = connectWs;
+  }, [connectWs]);
 
   // Keep refs in sync
   useEffect(() => {
@@ -542,6 +685,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     setRoomCode(null);
     setPlayerNumber(null);
     setOpponentName(null);
+    setAllPlayerNames([]);
+    setPlayerCount(2);
     syncGameState(null);
     setGameType(null);
     setVariant(null);
@@ -657,6 +802,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     setPlayerNumber(null);
     setPlayerNameState(null);
     setOpponentName(null);
+    setAllPlayerNames([]);
+    setPlayerCount(2);
     setOpponentDisconnected(false);
     setOpponentReconnectDeadline(null);
     setGameType(null);
@@ -689,6 +836,140 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     resetGame();
   }, [send, resetGame]);
 
+  // Social & Presence side effects and callbacks
+  const refetchFriends = useCallback(async () => {
+    if (!session?.user) return;
+    try {
+      const res = await fetch('/api/social/friends');
+      if (res.ok) {
+        const data = await res.json();
+        setFriends(data.friends || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch friends', err);
+    }
+  }, [session]);
+
+  useEffect(() => {
+    refetchFriends();
+  }, [session, refetchFriends]);
+
+  // Identify user on websocket connect
+  useEffect(() => {
+    if (connected && session?.user) {
+      let cancelled = false;
+      fetch('/api/social/token', { cache: 'no-store' })
+        .then((res) => {
+          if (!res.ok) throw new Error(`social_token_${res.status}`);
+          return res.json();
+        })
+        .then((data) => {
+          if (cancelled || !data.token) return;
+          send({
+            type: 'Identify',
+            token: data.token,
+          });
+        })
+        .catch((err) => {
+          wsWarn('Failed to fetch social token', err);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
+  }, [connected, session, send]);
+
+  // Subscribe to friends presence once friends list is loaded
+  useEffect(() => {
+    if (connected && session?.user && friends.length > 0) {
+      const friendIds = friends.map((f) => f.friend.id);
+      send({
+        type: 'SubscribePresence',
+        friend_ids: friendIds,
+      });
+    }
+  }, [connected, session, friends.length, send]);
+
+  const sendGameInvite = useCallback(async (toUserId: string, gameType: string, inviteVariant: string | null = null) => {
+    if (!connected) {
+      throw new Error('WebSocket is not connected');
+    }
+    const res = await fetch('/api/social/invites/grant', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ toUserId, gameType, variant: inviteVariant }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.grant) {
+      throw new Error(data.error || 'Failed to create invite');
+    }
+    send({
+      type: 'SendGameInvite',
+      to_user_id: toUserId,
+      game_type: gameType,
+      variant: inviteVariant,
+      grant: data.grant,
+    });
+  }, [connected, send]);
+
+  const declineGameInvite = useCallback((inviteId: string) => {
+    send({
+      type: 'DeclineGameInvite',
+      invite_id: inviteId,
+    });
+    setActiveInvite(null);
+  }, [send]);
+
+  const acceptGameInvite = useCallback((invite: { roomCode: string; gameType: string; variant: string | null }) => {
+    const defaultName = session?.user?.name || localStorage.getItem(STORAGE_PLAYER_NAME) || 'Player';
+    const path = getGamePath(invite.gameType, invite.variant);
+    joinRoom(invite.roomCode, defaultName, invite.gameType, invite.variant);
+    if (path) router.push(path);
+    setActiveInvite(null);
+  }, [session, joinRoom, router]);
+
+  const addFriend = useCallback(async (friendCode: string) => {
+    try {
+      const res = await fetch('/api/social/friends/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ friendCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to add friend');
+      }
+      await refetchFriends();
+      return data;
+    } catch (err: any) {
+      console.error(err);
+      throw err;
+    }
+  }, [refetchFriends]);
+
+  const respondToFriendRequest = useCallback(async (friendshipId: string, action: FriendResponseAction) => {
+    try {
+      const res = await fetch('/api/social/friends/respond', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ friendshipId, action }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to respond to friend request');
+      }
+      await refetchFriends();
+      return data;
+    } catch (err: any) {
+      console.error(err);
+      throw err;
+    }
+  }, [refetchFriends]);
+
+  const clearDeclinedInvite = useCallback(() => {
+    setDeclinedInvite(null);
+  }, []);
+
   const savedSessionSecondsLeft = savedSession?.reconnectDeadline
     ? Math.max(0, Math.ceil((savedSession.reconnectDeadline - clockNow) / 1000))
     : null;
@@ -704,6 +985,8 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       roomCode,
       playerName,
       opponentName,
+      allPlayerNames,
+      playerCount,
       gameState,
       gameType,
       variant,
@@ -738,6 +1021,16 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
       resetGame,
       openRoomActionPrompt,
       closeRoomActionPrompt,
+      friends,
+      activeInvite,
+      declinedInvite,
+      clearDeclinedInvite,
+      sendGameInvite,
+      declineGameInvite,
+      acceptGameInvite,
+      addFriend,
+      respondToFriendRequest,
+      refetchFriends,
     }}>
       {children}
     </WebSocketContext.Provider>

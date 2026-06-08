@@ -3,6 +3,7 @@ import type {
   AnalyticsSnapshot,
   DbAdapter,
   GameSocialRecord,
+  FriendshipRecord,
   TeamMembership,
   TeamMemberRole,
   TeamRecord,
@@ -25,6 +26,7 @@ export class MemoryDb implements DbAdapter {
   readonly mode = 'memory' as const;
 
   private users = new Map<string, UserRecord>();
+  private friendships = new Map<string, FriendshipRecord>();
   private social = new Map<string, GameSocialRecord>();
   private interactions = new Map<string, UserGameInteraction>();
 
@@ -53,6 +55,25 @@ export class MemoryDb implements DbAdapter {
     throw new Error('unable to allocate team join code');
   }
 
+  private createUniqueFriendCode(): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    for (let i = 0; i < 20; i += 1) {
+      let code = '';
+      for (let j = 0; j < 6; j++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      let exists = false;
+      for (const u of this.users.values()) {
+        if (u.friendCode === code) {
+          exists = true;
+          break;
+        }
+      }
+      if (!exists) return code;
+    }
+    throw new Error('unable to allocate friend code');
+  }
+
   private ensureSocial(gameId: string): GameSocialRecord {
     let rec = this.social.get(gameId);
     if (!rec) {
@@ -75,6 +96,10 @@ export class MemoryDb implements DbAdapter {
   // ---------- users
   async upsertUser(input: Omit<UserRecord, 'createdAt'> & { createdAt?: number }): Promise<UserRecord> {
     const existing = this.users.get(input.id);
+    let friendCode = existing?.friendCode ?? input.friendCode;
+    if (!input.isGuest && !friendCode) {
+      friendCode = this.createUniqueFriendCode();
+    }
     const rec: UserRecord = {
       id: input.id,
       name: input.name,
@@ -83,6 +108,7 @@ export class MemoryDb implements DbAdapter {
       isGuest: input.isGuest,
       createdAt: existing?.createdAt ?? input.createdAt ?? Date.now(),
       role: existing?.role ?? 'player',
+      friendCode,
     };
     this.users.set(rec.id, rec);
     return rec;
@@ -102,6 +128,81 @@ export class MemoryDb implements DbAdapter {
     if (!u) return null;
     u.role = role;
     return { ...u };
+  }
+
+  // ---------- friends & presence
+  async getUserIdByFriendCode(code: string): Promise<string | null> {
+    const searchCode = code.trim().toUpperCase();
+    for (const u of this.users.values()) {
+      if (u.friendCode === searchCode) return u.id;
+    }
+    return null;
+  }
+
+  async sendFriendRequest(userId: string, targetFriendCode: string): Promise<FriendshipRecord> {
+    const targetId = await this.getUserIdByFriendCode(targetFriendCode);
+    if (!targetId) {
+      throw new Error('Friend code not found');
+    }
+    if (targetId === userId) {
+      throw new Error('Cannot add yourself as a friend');
+    }
+
+    // Check if duplicate friendship exists
+    for (const f of this.friendships.values()) {
+      if (
+        (f.userId === userId && f.friendId === targetId) ||
+        (f.userId === targetId && f.friendId === userId)
+      ) {
+        return { ...f };
+      }
+    }
+
+    const id = this.uuid();
+    const rec: FriendshipRecord = {
+      id,
+      userId,
+      friendId: targetId,
+      status: 'pending',
+      createdAt: Date.now(),
+    };
+    this.friendships.set(id, rec);
+    return { ...rec };
+  }
+
+  async acceptFriendRequest(friendshipId: string): Promise<void> {
+    const f = this.friendships.get(friendshipId);
+    if (f) {
+      f.status = 'accepted';
+    }
+  }
+
+  async declineFriendRequest(friendshipId: string): Promise<void> {
+    this.friendships.delete(friendshipId);
+  }
+
+  async listFriends(userId: string) {
+    const list: Array<{
+      friendshipId: string;
+      friend: UserRecord;
+      status: 'pending' | 'accepted';
+      isInitiator: boolean;
+    }> = [];
+    for (const f of this.friendships.values()) {
+      if (f.userId === userId || f.friendId === userId) {
+        const friendId = f.userId === userId ? f.friendId : f.userId;
+        const friend = this.users.get(friendId);
+        if (friend) {
+          list.push({
+            friendshipId: f.id,
+            friend: { ...friend },
+            status: f.status,
+            isInitiator: f.userId === userId,
+          });
+        }
+      }
+    }
+    return list;
   }
 
   // ---------- social

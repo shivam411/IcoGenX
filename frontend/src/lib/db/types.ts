@@ -18,6 +18,15 @@ export interface UserRecord {
   isGuest: boolean;
   createdAt: number;
   role?: UserRole;
+  friendCode?: string;
+}
+
+export interface FriendshipRecord {
+  id: string;
+  userId: string;
+  friendId: string;
+  status: 'pending' | 'accepted';
+  createdAt: number;
 }
 
 export interface GameSocialRecord {
@@ -134,6 +143,18 @@ export interface DbAdapter {
   getUser(id: string): Promise<UserRecord | null>;
   listUsers(limit?: number): Promise<UserRecord[]>;
   setUserRole(userId: string, role: UserRole): Promise<UserRecord | null>;
+
+  // Friends & Presence
+  getUserIdByFriendCode(code: string): Promise<string | null>;
+  sendFriendRequest(userId: string, targetFriendCode: string): Promise<FriendshipRecord>;
+  acceptFriendRequest(friendshipId: string): Promise<void>;
+  declineFriendRequest(friendshipId: string): Promise<void>;
+  listFriends(userId: string): Promise<Array<{
+    friendshipId: string;
+    friend: UserRecord;
+    status: 'pending' | 'accepted';
+    isInitiator: boolean;
+  }>>;
 
   // Social
   getGameSocial(gameId: string): Promise<GameSocialRecord>;

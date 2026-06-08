@@ -23,8 +23,9 @@ export default function DisappearingTicTacToePage() {
       gameType="tic_tac_toe" 
       variant="disappearing"
       gameName="Disappearing Tic-Tac-Toe" 
-      gameIcon="🪄" 
+      gameIcon="tic-tac-toe-disappearing"
       accentColor="#8b5cf6"
+      hideOverlaysOnGameOver={true}
     >
       <TicTacToeBoard 
         variantTitle="📜 Rules"

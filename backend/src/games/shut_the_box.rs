@@ -1,4 +1,6 @@
 use serde::Serialize;
+use crate::game_trait::{self, Game};
+use crate::protocol::ServerMessage;
 
 /// Shut the Box / Tug-of-War Dice Game
 #[derive(Debug, Clone, Serialize)]
@@ -157,6 +159,61 @@ impl ShutTheBoxGame {
             "winner": self.winner,
             "gameOver": self.game_over,
         })
+    }
+}
+
+impl Game for ShutTheBoxGame {
+    fn process_action(
+        &mut self,
+        player: u8,
+        action: serde_json::Value,
+        players: &[String],
+    ) -> Result<Vec<(String, ServerMessage)>, String> {
+        let combination: Vec<u8> = action
+            .get("combination")
+            .and_then(|v| serde_json::from_value(v.clone()).ok())
+            .unwrap_or_default();
+        let target = action
+            .get("target")
+            .and_then(|v| v.as_str())
+            .unwrap_or("self")
+            .to_string();
+
+        if combination.is_empty() {
+            if target == "pass" {
+                self.pass_turn(player)?;
+            } else {
+                self.roll_dice(player)?;
+            }
+        } else {
+            self.apply_combination(player, &combination, &target)?;
+        }
+
+        Ok(game_trait::broadcast_same(players, self.state_json()))
+    }
+
+    fn check_game_over(&self) -> Option<ServerMessage> {
+        if self.game_over {
+            let winner = self.winner.map(|w| format!("Player {}", w + 1));
+            Some(ServerMessage::GameOver {
+                winner,
+                reason: "All cards opened!".into(),
+            })
+        } else {
+            None
+        }
+    }
+
+    fn state_for_player(&self, _player: Option<u8>) -> serde_json::Value {
+        self.state_json()
+    }
+
+    fn reset(&mut self) {
+        *self = ShutTheBoxGame::new();
+    }
+
+    fn game_type(&self) -> &str {
+        "shut_the_box"
     }
 }
 

@@ -104,10 +104,19 @@
 
 
 .gameIconLarge {
-  font-size: 3.5rem;
   display: block;
+  width: 5.25rem;
+  height: 5.25rem;
+  margin-left: auto;
+  margin-right: auto;
   margin-bottom: 12px;
   filter: drop-shadow(0 0 22px rgba(167, 139, 250, 0.45)) drop-shadow(0 0 32px rgba(34, 211, 238, 0.18));
+}
+
+.waitingPulse .gameIconLarge {
+  width: 4.6rem;
+  height: 4.6rem;
+  margin-bottom: 0;
 }
 
 .title {

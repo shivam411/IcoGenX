@@ -10,8 +10,9 @@ export default function ClassicTicTacToePage() {
       gameType="tic_tac_toe" 
       variant="classic"
       gameName="Classic Tic-Tac-Toe" 
-      gameIcon="❌⭕" 
+      gameIcon="tic-tac-toe-classic"
       accentColor="#3b82f6"
+      hideOverlaysOnGameOver={true}
     >
       <TicTacToeBoard 
         variantTitle="📜 Rules"

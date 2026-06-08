@@ -1,0 +1,152 @@
+.shell {
+  width: min(100%, 720px);
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+}
+
+.statusBar {
+  min-height: 48px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid rgba(3, 105, 161, 0.18);
+  border-radius: 8px;
+  background: #f0f9ff;
+  color: #0c4a6e;
+  font-weight: 700;
+}
+
+.setupPanel {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid rgba(12, 74, 110, 0.18);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0c4a6e;
+}
+
+.setupPanel h2,
+.setupPanel p {
+  margin: 0;
+}
+
+.board {
+  width: min(100%, 640px);
+  aspect-ratio: 1;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  border: 3px solid #0c4a6e;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #0c4a6e;
+}
+
+.square {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 0;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  cursor: pointer;
+  transition: filter 160ms ease, outline-color 160ms ease;
+}
+
+.square:focus-visible {
+  outline: 3px solid #22c55e;
+  outline-offset: -3px;
+  z-index: 2;
+}
+
+.square:hover {
+  filter: brightness(1.06);
+}
+
+.light {
+  background: #e0f2fe;
+}
+
+.dark {
+  background: #075985;
+}
+
+.selected {
+  outline: 4px solid #22c55e;
+  outline-offset: -4px;
+  z-index: 2;
+}
+
+.mine::after,
+.portal::after {
+  position: absolute;
+  inset: 8px;
+  border: 2px dashed rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  content: '';
+}
+
+.portal::after {
+  border-style: solid;
+  border-color: #67e8f9;
+}
+
+.piece {
+  width: 68%;
+  height: 68%;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.78);
+  color: #ffffff;
+  font-size: clamp(0.62rem, 2.5vw, 1rem);
+  font-weight: 900;
+  letter-spacing: 0;
+  box-shadow: inset 0 -8px 0 rgba(0, 0, 0, 0.14);
+}
+
+.minePiece {
+  background: #16a34a;
+}
+
+.rivalPiece {
+  background: #be123c;
+}
+
+.marker {
+  position: relative;
+  z-index: 1;
+  width: 44%;
+  height: 44%;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.86);
+  color: #0c4a6e;
+  font-weight: 900;
+}
+
+@media (max-width: 560px) {
+  .shell {
+    gap: 12px;
+  }
+
+  .statusBar,
+  .setupPanel {
+    padding: 12px;
+  }
+
+  .board {
+    border-width: 2px;
+  }
+
+  .piece {
+    border-width: 3px;
+  }
+}

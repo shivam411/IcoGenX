@@ -19,8 +19,9 @@ export default function JokerTicTacToePage() {
       gameType="tic_tac_toe" 
       variant="joker"
       gameName="Joker Tic-Tac-Toe" 
-      gameIcon="🃏" 
+      gameIcon="tic-tac-toe-joker"
       accentColor="#f59e0b"
+      hideOverlaysOnGameOver={true}
     >
       <TicTacToeBoard 
         variantTitle="📜 Rules"

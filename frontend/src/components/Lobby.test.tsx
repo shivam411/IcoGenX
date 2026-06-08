@@ -101,7 +101,7 @@ describe('Lobby', () => {
 
     fireEvent.change(screen.getByPlaceholderText('Enter your name'), { target: { value: 'Jamie' } });
     fireEvent.click(screen.getByText('🎮 Create Room'));
-    expect(createRoom).toHaveBeenCalledWith('tic_tac_toe', 'classic', 'Jamie');
+    expect(createRoom).toHaveBeenCalledWith('tic_tac_toe', 'classic', 'Jamie', 'single');
 
     fireEvent.change(screen.getByPlaceholderText('Enter room code'), { target: { value: 'ab12cd' } });
     fireEvent.click(screen.getByText('Join'));
