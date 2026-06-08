@@ -1,0 +1,301 @@
+/* frontend/src/app/games/black-hole/game.module.css */
+
+.gameWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.boardContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.statusText {
+  min-height: 24px;
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.warning {
+  color: var(--accent-rose, #f43f5e);
+  animation: shake 0.3s ease;
+  display: inline-block;
+}
+
+.myTurn {
+  color: var(--accent-purple, #a855f7);
+  font-weight: 600;
+  text-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+}
+
+.opponentTurn {
+  color: var(--text-secondary, #94a3b8);
+}
+
+/* Pyramid Board Layout */
+.pyramidBoard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 24px;
+  background: rgba(15, 12, 38, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg, 24px);
+  box-shadow: var(--shadow-card), inset 0 0 30px rgba(0, 0, 0, 0.5);
+  margin-bottom: 20px;
+}
+
+.rowWrapper {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+}
+
+/* Pyramid Slots */
+.circleCell {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.15rem;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  user-select: none;
+  background: rgba(255, 255, 255, 0.02);
+  border: 2px dashed rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+}
+
+.circleCell:hover:not(.occupied):not(.disabled) {
+  transform: scale(1.08);
+  border-color: rgba(168, 85, 247, 0.6);
+  background: rgba(168, 85, 247, 0.06);
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
+}
+
+.occupied {
+  cursor: not-allowed;
+  border-style: solid;
+}
+
+.player1Token {
+  background: radial-gradient(circle at 35% 35%, #22d3ee 0%, #0891b2 70%, #044e60 100%);
+  border: 2px solid #22d3ee;
+  color: #0f172a;
+  box-shadow: 0 4px 10px rgba(6, 182, 212, 0.4), inset 0 -4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.player2Token {
+  background: radial-gradient(circle at 35% 35%, #f43f5e 0%, #be123c 70%, #6f0d22 100%);
+  border: 2px solid #f43f5e;
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(244, 63, 94, 0.4), inset 0 -4px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Glowing neighbor highlight when Black Hole appears */
+.adjacentToBlackHole {
+  animation: pulseNeighbor 1.5s infinite alternate ease-in-out;
+  box-shadow: 0 0 16px rgba(253, 224, 71, 0.5), inset 0 0 10px rgba(253, 224, 71, 0.2);
+  border-width: 3px !important;
+  border-color: #fde047 !important;
+}
+
+/* Swirling Black Hole Circle */
+.blackHoleCell {
+  background: radial-gradient(circle, #000000 0%, #1e1b4b 60%, #4c1d95 100%) !important;
+  border: 3px solid #7c3aed !important;
+  box-shadow: 0 0 25px rgba(124, 58, 237, 0.8), inset 0 0 20px rgba(0, 0, 0, 0.9);
+  animation: swirl 4s linear infinite;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: not-allowed;
+}
+
+.blackHoleIcon {
+  font-size: 1.6rem;
+  filter: drop-shadow(0 0 8px #7c3aed);
+  animation: counterSwirl 4s linear infinite;
+}
+
+/* Hand / Selection Dock for Chaos variant */
+.dockCard {
+  width: 100%;
+  padding: 16px;
+  background: rgba(20, 16, 48, 0.85);
+  border-radius: var(--radius-lg, 18px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+}
+
+.dockTitle {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary, #f1f5f9);
+}
+
+.handTokens {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.handToken {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.handTokenP1 {
+  background: rgba(6, 182, 212, 0.1);
+  border-color: rgba(6, 182, 212, 0.3);
+  color: #22d3ee;
+}
+
+.handTokenP1:hover {
+  background: rgba(6, 182, 212, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+}
+
+.handTokenP1Selected {
+  background: #22d3ee !important;
+  color: #0f172a !important;
+  border-color: #ffffff !important;
+  box-shadow: 0 0 14px #22d3ee !important;
+  transform: translateY(-3px) scale(1.05);
+}
+
+.handTokenP2 {
+  background: rgba(244, 63, 94, 0.1);
+  border-color: rgba(244, 63, 94, 0.3);
+  color: #fb7185;
+}
+
+.handTokenP2:hover {
+  background: rgba(244, 63, 94, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.3);
+}
+
+.handTokenP2Selected {
+  background: #f43f5e !important;
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+  box-shadow: 0 0 14px #f43f5e !important;
+  transform: translateY(-3px) scale(1.05);
+}
+
+/* Event Logs and Scores */
+.eventLog {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #94a3b8);
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  padding: 6px 14px;
+  border-radius: var(--radius-sm, 8px);
+  margin-top: 10px;
+  text-align: center;
+  width: 100%;
+}
+
+.scoreBoard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.scoreItem {
+  padding: 12px;
+  border-radius: 12px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.scoreP1 {
+  border-color: rgba(6, 182, 212, 0.2);
+  background: rgba(6, 182, 212, 0.02);
+}
+
+.scoreP2 {
+  border-color: rgba(244, 63, 94, 0.2);
+  background: rgba(244, 63, 94, 0.02);
+}
+
+.scoreLabel {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #94a3b8);
+  margin-bottom: 4px;
+}
+
+.scoreVal {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.scoreP1 .scoreVal {
+  color: #22d3ee;
+}
+
+.scoreP2 .scoreVal {
+  color: #fb7185;
+}
+
+/* Animations */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+@keyframes swirl {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes counterSwirl {
+  0% { transform: rotate(360deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes pulseNeighbor {
+  0% { transform: scale(1); box-shadow: 0 0 10px rgba(253, 224, 71, 0.3); }
+  100% { transform: scale(1.04); box-shadow: 0 0 20px rgba(253, 224, 71, 0.7); }
+}

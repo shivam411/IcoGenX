@@ -10,5 +10,7 @@ pub mod stop_clock;
 pub mod trivia_battle;
 pub mod row_call;
 pub mod dice_grid;
+pub mod black_hole;
+pub mod trappex;
 
 

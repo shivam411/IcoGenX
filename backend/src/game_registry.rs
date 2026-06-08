@@ -2,10 +2,11 @@ use std::collections::HashMap;
 
 use crate::game_trait::Game;
 use crate::games::{
-    bluff_card::BluffCardGame, checkers::CheckersGame, code_guess::CodeGuessGame,
-    dice_grid::DiceGridGame, drop_four::DropFourGame, higher_lower::HigherLowerGame,
-    memory_flip::MemoryFlipGame, row_call::RowCallGame, shut_the_box::ShutTheBoxGame,
-    stop_clock::StopClockGame, tic_tac_toe::TicTacToeGame, trivia_battle::TriviaBattleGame,
+    black_hole::BlackHoleGame, bluff_card::BluffCardGame, checkers::CheckersGame,
+    code_guess::CodeGuessGame, dice_grid::DiceGridGame, drop_four::DropFourGame,
+    higher_lower::HigherLowerGame, memory_flip::MemoryFlipGame, row_call::RowCallGame,
+    shut_the_box::ShutTheBoxGame, stop_clock::StopClockGame, tic_tac_toe::TicTacToeGame,
+    trivia_battle::TriviaBattleGame,
 };
 
 /// Factory function signature: takes an optional variant string,
@@ -65,6 +66,10 @@ impl GameRegistry {
             Box::new(DiceGridGame::new_variant(variant.unwrap_or("classic")))
         });
 
+        registry.register("black_hole", |variant| {
+            Box::new(BlackHoleGame::new_variant(variant.unwrap_or("classic")))
+        });
+
         registry
     }
 
@@ -102,6 +107,7 @@ mod tests {
             "trivia_battle",
             "row_call",
             "dice_grid",
+            "black_hole",
         ];
 
         for game_type in game_types {

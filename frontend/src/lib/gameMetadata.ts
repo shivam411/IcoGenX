@@ -458,6 +458,42 @@ export const GAME_CATALOG: GameCatalogItem[] = [
     tags: ['strategy', 'dice', 'board'],
     featured: true,
   },
+  {
+    id: 'black-hole',
+    gameType: 'black_hole',
+    name: 'Black Hole',
+    icon: 'black-hole',
+    description: 'Place your tokens strategically in a pyramid to minimize the sum of your tokens touching the final Black Hole.',
+    players: '2 Players',
+    category: 'Strategy',
+    badgeClass: 'badge-purple',
+    gradient: 'linear-gradient(135deg, #a855f7 0%, #4f46e5 100%)',
+    rulesTitle: 'Black Hole Rules',
+    rules: [
+      'Each player has 10 tokens numbered 1 through 10.',
+      'On your turn, place a token on an empty circle in the 21-circle pyramid board.',
+      'Classic variant forces placing tokens in order (1, 2, ... 10). Chaos variant lets you choose which remaining token to play.',
+      'After all 20 tokens are placed, the single remaining empty cell is filled with the Black Hole token.',
+      'Your score is the sum of the values of your tokens directly adjacent to the Black Hole.',
+      'The player with the LOWEST score wins!'
+    ],
+    tips: [
+      'Place your high-value tokens (8, 9, 10) near the edges or corners where they are less likely to touch the final empty slot.',
+      'Try to leave empty slots adjacent to your opponent\'s high tokens to force them into a high-scoring hazard.',
+      'In Chaos variant, save low-value tokens for late-game placement next to potential Black Hole cells.'
+    ],
+    previewSteps: ['Place tokens', 'Leave one empty', 'Lowest adjacent sum wins'],
+    variants: [
+      { id: 'classic', name: 'Classic', icon: 'black-hole-classic', desc: 'Tokens must be placed sequentially from 1 to 10.', path: '/games/black-hole', previewSteps: ['Place 1..10', 'Spot empty cell', 'Sum adjacent'] },
+      { id: 'chaos', name: 'Chaos', icon: 'black-hole-chaos', desc: 'Choose which remaining token from your hand to play on your turn.', path: '/games/black-hole/chaos', rulesTitle: 'Chaos Rules', rules: ['You can choose any remaining token from your hand (1-10) to place.', 'Turns alternate until all 20 tokens are played.', 'The final empty slot becomes the Black Hole. Lowest adjacent sum wins.'], tips: ['Keep track of which numbers your opponent has left.', 'Bait your opponent into placing high numbers early.'], previewSteps: ['Select token from hand', 'Place strategically', 'Sum adjacent'] }
+    ],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'hard',
+    estimatedTime: '4-8 min',
+    tags: ['strategy', 'board', 'math'],
+    featured: true,
+  },
 ];
 
 const GAME_TYPE_TO_ID: Record<string, string> = {
@@ -473,6 +509,7 @@ const GAME_TYPE_TO_ID: Record<string, string> = {
   trivia_battle: 'trivia-battle',
   row_call: 'row-call',
   dice_grid: 'dice-grid',
+  black_hole: 'black-hole',
 };
 
 export function getGameCatalogItem(gameTypeOrId: string | null | undefined) {
