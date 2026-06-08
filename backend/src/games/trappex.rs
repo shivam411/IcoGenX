@@ -5,10 +5,10 @@ use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct TrappexGame {
-    pub grid_size: usize,                  // 4 (quick) or 5 (classic/obstacles)
-    pub horizontal_barriers: Vec<bool>,   // size = (N+1) * N
-    pub vertical_barriers: Vec<bool>,     // size = N * (N+1)
-    pub claimed_squares: Vec<Option<u8>>, // size = N * N. Some(0)=P1, Some(1)=P2, Some(2)=Obstacle, None=Empty
+    pub grid_size: usize,                         // 4 (quick) or 5 (classic/obstacles)
+    pub horizontal_barriers: Vec<Option<u8>>,     // size = (N+1) * N. Some(0)=P1, Some(1)=P2, Some(2)=Obstacle, None=Empty
+    pub vertical_barriers: Vec<Option<u8>>,       // size = N * (N+1). Some(0)=P1, Some(1)=P2, Some(2)=Obstacle, None=Empty
+    pub claimed_squares: Vec<Option<u8>>,        // size = N * N. Some(0)=P1, Some(1)=P2, Some(2)=Obstacle, None=Empty
     pub current_player: u8,
     pub winner: Option<u8>,
     pub game_over: bool,
@@ -27,8 +27,8 @@ impl TrappexGame {
         let v_size = grid_size * (grid_size + 1);
         let s_size = grid_size * grid_size;
 
-        let mut horizontal_barriers = vec![false; h_size];
-        let mut vertical_barriers = vec![false; v_size];
+        let mut horizontal_barriers = vec![None; h_size];
+        let mut vertical_barriers = vec![None; v_size];
         let mut claimed_squares = vec![None; s_size];
         let mut last_event = Some("Game started! Player 1 goes first.".to_string());
 
@@ -44,16 +44,16 @@ impl TrappexGame {
                 let r = sq_idx / 5;
                 let c = sq_idx % 5;
 
-                // Mark the 4 walls as placed
+                // Mark the 4 walls as placed by obstacle (owner = 2)
                 let top = r * 5 + c;
                 let bottom = (r + 1) * 5 + c;
                 let left = r * (5 + 1) + c;
                 let right = r * (5 + 1) + (c + 1);
 
-                horizontal_barriers[top] = true;
-                horizontal_barriers[bottom] = true;
-                vertical_barriers[left] = true;
-                vertical_barriers[right] = true;
+                horizontal_barriers[top] = Some(2);
+                horizontal_barriers[bottom] = Some(2);
+                vertical_barriers[left] = Some(2);
+                vertical_barriers[right] = Some(2);
             }
             last_event = Some("Game started with 3 random obstacles! Player 1 goes first.".to_string());
         }
@@ -77,10 +77,10 @@ impl TrappexGame {
         let left = r * (self.grid_size + 1) + c;
         let right = r * (self.grid_size + 1) + (c + 1);
 
-        self.horizontal_barriers[top]
-            && self.horizontal_barriers[bottom]
-            && self.vertical_barriers[left]
-            && self.vertical_barriers[right]
+        self.horizontal_barriers[top].is_some()
+            && self.horizontal_barriers[bottom].is_some()
+            && self.vertical_barriers[left].is_some()
+            && self.vertical_barriers[right].is_some()
     }
 
     pub fn make_move(&mut self, player: u8, barrier_type: &str, index: usize) -> Result<(), String> {
@@ -98,10 +98,10 @@ impl TrappexGame {
             if index >= h_size {
                 return Err("Horizontal index out of bounds".into());
             }
-            if self.horizontal_barriers[index] {
+            if self.horizontal_barriers[index].is_some() {
                 return Err("Barrier is already placed".into());
             }
-            self.horizontal_barriers[index] = true;
+            self.horizontal_barriers[index] = Some(player);
 
             // Find adjacent squares
             let row = index / self.grid_size;
@@ -127,10 +127,10 @@ impl TrappexGame {
             if index >= v_size {
                 return Err("Vertical index out of bounds".into());
             }
-            if self.vertical_barriers[index] {
+            if self.vertical_barriers[index].is_some() {
                 return Err("Barrier is already placed".into());
             }
-            self.vertical_barriers[index] = true;
+            self.vertical_barriers[index] = Some(player);
 
             // Find adjacent squares
             let row = index / (self.grid_size + 1);
@@ -161,13 +161,13 @@ impl TrappexGame {
         }
 
         // Check if all slots are full
-        let all_h = self.horizontal_barriers.iter().all(|&b| b);
-        let all_v = self.vertical_barriers.iter().all(|&b| b);
+        let all_h = self.horizontal_barriers.iter().all(|b| b.is_some());
+        let all_v = self.vertical_barriers.iter().all(|b| b.is_some());
         let all_squares_claimed = self.claimed_squares.iter().all(|c| c.is_some());
 
         if all_h && all_v || all_squares_claimed {
             self.game_over = true;
-            // Count scores (ignoring obstacles, which have Some(2))
+            // Count scores
             let score0 = self.claimed_squares.iter().filter(|&&c| c == Some(0)).count();
             let score1 = self.claimed_squares.iter().filter(|&&c| c == Some(1)).count();
 
@@ -242,7 +242,11 @@ impl Game for TrappexGame {
     }
 
     fn state_for_player(&self, _player: Option<u8>) -> serde_json::Value {
-        serde_json::to_value(self).unwrap()
+        let mut val = serde_json::to_value(self).unwrap();
+        if let serde_json::Value::Object(ref mut map) = val {
+            map.insert("currentPlayer".to_string(), serde_json::json!(self.current_player));
+        }
+        val
     }
 
     fn reset(&mut self) {
@@ -284,7 +288,7 @@ mod tests {
     fn test_place_horizontal_barrier() {
         let mut game = TrappexGame::new();
         assert!(game.make_move(0, "H", 0).is_ok());
-        assert!(game.horizontal_barriers[0]);
+        assert!(game.horizontal_barriers[0].is_some());
         assert_eq!(game.current_player, 1);
     }
 
@@ -296,9 +300,9 @@ mod tests {
         // Top: H(0, 0) -> index 0
         // Left: V(0, 0) -> index 0
         // Right: V(0, 1) -> index 1
-        game.horizontal_barriers[0] = true;
-        game.vertical_barriers[0] = true;
-        game.vertical_barriers[1] = true;
+        game.horizontal_barriers[0] = Some(0);
+        game.vertical_barriers[0] = Some(1);
+        game.vertical_barriers[1] = Some(0);
 
         // Bottom: H(1, 0) -> index 5
         assert_eq!(game.current_player, 0);

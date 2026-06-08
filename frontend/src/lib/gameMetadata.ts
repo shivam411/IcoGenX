@@ -494,6 +494,42 @@ export const GAME_CATALOG: GameCatalogItem[] = [
     tags: ['strategy', 'board', 'math'],
     featured: true,
   },
+  {
+    id: 'trappex',
+    gameType: 'trappex',
+    name: 'Trappex',
+    icon: 'trappex',
+    description: 'Place barriers in a grid to enclose and claim more squares than your opponent.',
+    players: '2 Players',
+    category: 'Strategy',
+    badgeClass: 'badge-blue',
+    gradient: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+    rulesTitle: 'Trappex Rules',
+    rules: [
+      'On your turn, place exactly one barrier in an empty slot between dots.',
+      'Enclosing the fourth side of a square claims that box.',
+      'Claiming a square awards you 1 point and an immediate bonus turn!',
+      'The game ends when all available barrier slots are filled.',
+      'The player who claims the most squares wins.'
+    ],
+    tips: [
+      'Avoid placing the third wall of a square, as it allows your opponent to easily claim it.',
+      'Look for chain-reaction opportunities where a single placement can complete multiple squares.',
+      'Sacrifice small squares to secure control of larger corridors if it blocks your opponent.'
+    ],
+    previewSteps: ['Place barrier', 'Enclose square', 'Earn bonus turn'],
+    variants: [
+      { id: 'classic', name: 'Classic', icon: 'trappex-classic', desc: 'Standard 5x5 grid enclosure battle.', path: '/games/trappex', previewSteps: ['5x5 Grid', 'Place wall', 'Enclose'] },
+      { id: 'quick', name: 'Quick Play', icon: 'trappex-quick', desc: 'A smaller 4x4 grid for fast-paced enclosure matches.', path: '/games/trappex/quick', rulesTitle: 'Quick Rules', rules: ['Played on a smaller 4x4 grid of squares.', 'Total of 40 placement segments. First to claim the majority of 16 cells wins.'], tips: ['The smaller board means conflicts happen immediately. Guard your corridors early.'], previewSteps: ['4x4 Grid', 'Place wall', 'Enclose'] },
+      { id: 'obstacles', name: 'Obstacles', icon: 'trappex-obstacles', desc: 'The 5x5 grid starts with 3 random squares pre-blocked by obstacles.', path: '/games/trappex/obstacles', rulesTitle: 'Obstacles Rules', rules: ['Three random squares are pre-blocked by brick obstacles at start.', 'Their borders are pre-placed and cannot be clicked.', 'Pre-blocked squares cannot be claimed by either player.'], tips: ['Use pre-blocked boundaries to complete your adjacent squares safely.'], previewSteps: ['Obstacle blocks', 'Route around blocks', 'Enclose'] }
+    ],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'medium',
+    estimatedTime: '4-10 min',
+    tags: ['strategy', 'board', 'enclosure'],
+    featured: true,
+  },
 ];
 
 const GAME_TYPE_TO_ID: Record<string, string> = {
@@ -510,6 +546,7 @@ const GAME_TYPE_TO_ID: Record<string, string> = {
   row_call: 'row-call',
   dice_grid: 'dice-grid',
   black_hole: 'black-hole',
+  trappex: 'trappex',
 };
 
 export function getGameCatalogItem(gameTypeOrId: string | null | undefined) {
