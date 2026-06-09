@@ -13,6 +13,9 @@ use crate::games::{
     uno_matrix::UnoMatrixGame, connect_numbers::ConnectNumbersGame, knarr_placement::KnarrPlacementGame,
     scrabble_slam::ScrabbleSlamGame, hand_hunt::HandHuntGame, pengoloo::PengolooGame,
     battle_flips::BattleFlipsGame, bowtie_matrix::BowtieMatrixGame,
+    stick_dice_race::StickDiceRaceGame, s_curve_race::SCurveRaceGame,
+    qomet::QometGame, in_a_nutshell::InANutshellGame,
+    vortex::VortexGame, tabletop_pinball::TabletopPinballGame,
 };
 
 /// Factory function signature: takes an optional variant string,
@@ -144,6 +147,30 @@ impl GameRegistry {
             Box::new(BowtieMatrixGame::new())
         });
 
+        registry.register("stick_dice_race", |_| {
+            Box::new(StickDiceRaceGame::new())
+        });
+
+        registry.register("s_curve_race", |_| {
+            Box::new(SCurveRaceGame::new())
+        });
+
+        registry.register("qomet", |_| {
+            Box::new(QometGame::new())
+        });
+
+        registry.register("in_a_nutshell", |_| {
+            Box::new(InANutshellGame::new())
+        });
+
+        registry.register("vortex", |variant| {
+            Box::new(VortexGame::new_variant(variant.unwrap_or("classic")))
+        });
+
+        registry.register("tabletop_pinball", |variant| {
+            Box::new(TabletopPinballGame::new_variant(variant.unwrap_or("classic")))
+        });
+
         registry
     }
 
@@ -199,6 +226,12 @@ mod tests {
             "pengoloo",
             "battle_flips",
             "bowtie_matrix",
+            "stick_dice_race",
+            "s_curve_race",
+            "qomet",
+            "in_a_nutshell",
+            "vortex",
+            "tabletop_pinball",
         ];
 
         for game_type in game_types {

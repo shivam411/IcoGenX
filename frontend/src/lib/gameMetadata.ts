@@ -968,6 +968,195 @@ export const GAME_CATALOG: GameCatalogItem[] = [
     estimatedTime: '5-12 min',
     tags: ['strategy', 'board', 'tactical'],
   },
+  {
+    id: 'stick-dice-race',
+    gameType: 'stick_dice_race',
+    name: 'Stick Figure Dice Race',
+    icon: 'stick-dice-race',
+    description: 'A strategic point-allocation dice race. Roll to cross out your custom stick figures army.',
+    players: '2 Players',
+    category: 'Strategy',
+    badgeClass: 'badge-purple',
+    gradient: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
+    rulesTitle: 'Stick Figure Dice Race Rules',
+    rules: [
+      'Take turns rolling a standard 6-sided die.',
+      'The roll gives you points to cross out figures on your side.',
+      'Allocate points to subtract health: Big Boss (5 pts), Medium (3 pts), Small (1 pt).',
+      'You can split points from a single roll across multiple figures.',
+      'End your turn manually when you cannot or do not want to allocate further.',
+      'First player to completely eliminate their stick figure army wins!'
+    ],
+    tips: [
+      'Save rolls of 1 or 2 to polish off nearly eliminated figures.',
+      'Target the Big Boss (5 pts) early when you roll high numbers (5 or 6).',
+      'Split your points wisely to clear multiple Small guys (1 pt) to gain a numerical lead.'
+    ],
+    previewSteps: ['Roll the die', 'Select figures', 'Allocate health points', 'Cross out army'],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'easy',
+    estimatedTime: '3-6 min',
+    tags: ['strategy', 'dice', 'quick'],
+  },
+  {
+    id: 's-curve-race',
+    gameType: 's_curve_race',
+    name: 'The S-Curve Race',
+    icon: 's-curve-race',
+    description: 'A snakes-and-ladders race along symmetrical S-shaped curves. Roll to reach the common finish line.',
+    players: '2 Players',
+    category: 'Quick',
+    badgeClass: 'badge-green',
+    gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    rulesTitle: 'The S-Curve Race Rules',
+    rules: [
+      'Alternate turns rolling a standard 6-sided die.',
+      'Advance your marker along your symmetrical S-shaped track.',
+      'Landing on Green Shortcut spaces (5 and 12) advances you by +3 spaces.',
+      'Landing on Red Hazard spaces (8 and 15) slides you back by -3 spaces.',
+      'A roll does not need to be exact to win; reaching or exceeding 20 claims the END.'
+    ],
+    tips: [
+      'Shortcuts and hazards create volatile swings, so never lose hope if you fall behind!',
+      'Landing exactly on a shortcut moves you past hazards.',
+      'Rng decides, but matching pace with rolls keeps the pressure on.'
+    ],
+    previewSteps: ['Roll die', 'Advance track', 'Trigger shortcuts', 'Reach END space'],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'easy',
+    estimatedTime: '2-4 min',
+    tags: ['quick', 'dice', 'racing'],
+  },
+  {
+    id: 'qomet',
+    gameType: 'qomet',
+    name: 'Qomet',
+    icon: 'qomet',
+    description: 'Place or move pieces on a 4x4 grid. Be the first to align four of your pieces in a perfect square.',
+    players: '2 Players',
+    category: 'Strategy',
+    badgeClass: 'badge-purple',
+    gradient: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
+    rulesTitle: 'Qomet Rules',
+    rules: [
+      'Take turns placing a piece from your reserve (6 pieces) or moving one of your pieces on the board.',
+      'Pieces can be placed on any empty intersection of the 4x4 grid.',
+      'Pieces on the board can be moved to any empty intersection.',
+      'First player to arrange four of their pieces in a perfect square wins!',
+      'Perfect squares can be axis-aligned or tilted at any angle.'
+    ],
+    tips: [
+      'Watch out for tilted squares; they are hard to spot but completely valid.',
+      'Use movement to block your opponent\'s squares while keeping your own threats alive.',
+      'Try to control the central positions to maximize your square configuration paths.'
+    ],
+    previewSteps: ['Place piece', 'Relocate piece', 'Form perfect square'],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'medium',
+    estimatedTime: '3-8 min',
+    tags: ['strategy', 'grid', 'geometry'],
+  },
+  {
+    id: 'in-a-nutshell',
+    gameType: 'in_a_nutshell',
+    name: 'In a Nutshell',
+    icon: 'in-a-nutshell',
+    description: 'Reveal clue words by sliding window tabs one by one. Reconstruct and guess the hidden question first.',
+    players: '2 Players',
+    category: 'Logic',
+    badgeClass: 'badge-green',
+    gradient: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+    rulesTitle: 'In a Nutshell Rules',
+    rules: [
+      'Take turns pulling virtual sliding tabs to reveal hidden clue words of a phrase or question.',
+      'Submit a text guess at any point on your turn to solve the question.',
+      'A correct guess wins the card and awards points: 1-2 clues = 5 pts, 3-4 clues = 3 pts, 5+ clues = 1 pt.',
+      'An incorrect guess locks you out of guessing for the current card.',
+      'First to reach 15 points wins the match.'
+    ],
+    tips: [
+      'Only guess when you are confident; incorrect guesses trigger lockout for the entire card.',
+      'Keep track of clues your opponent reveals; they are visible to both players.',
+      'Guessing early awards maximum points but carries the risk of lockout.'
+    ],
+    previewSteps: ['Pull slide tab', 'Deduce hidden clue', 'Submit guess'],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'medium',
+    estimatedTime: '4-8 min',
+    tags: ['logic', 'words', 'trivia'],
+  },
+  {
+    id: 'vortex',
+    gameType: 'vortex',
+    name: 'Vortex & Stay Alive',
+    icon: 'vortex',
+    description: 'Rotate dial wheels or slide levers to shift the board layout, steering your pieces or dropping opponents.',
+    players: '2 Players',
+    category: 'Strategy',
+    badgeClass: 'badge-purple',
+    gradient: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)',
+    rulesTitle: 'Vortex Rules',
+    rules: [
+      'Classic: Rotate overlapping 2x2 dials to navigate your 3 triangles from top to bottom before your opponent.',
+      'Stay Alive: Toggle row and column levers (0 or 1). If both intersecting levers for a cell are set to 1, any marble there falls through and is eliminated.',
+      'Shift Puzzle: Rotate dials on a shared board of colored cells to match a target color pattern.',
+      'Take turns making rotations or toggling levers.'
+    ],
+    tips: [
+      'In Stay Alive, plan ahead to avoid dropping your own marbles when toggling levers.',
+      'In Classic, use the middle overlap cells to move pieces between the top and bottom dials.',
+      'In Shift Puzzle, block your opponent\'s progress by shifting dials they need.'
+    ],
+    previewSteps: ['Pick variant', 'Rotate dial / slide lever', 'Complete goal'],
+    variants: [
+      { id: 'classic', name: 'Classic Vortex', icon: 'vortex-classic', desc: 'Navigate pieces to the opposite side using overlapping circular dial spins.', path: '/games/vortex' },
+      { id: 'stay_alive', name: 'Stay Alive!', icon: 'vortex-stay-alive', desc: 'Toggle row/column grid shutters to align trapdoors and drop opponent marbles.', path: '/games/vortex/stay_alive' },
+      { id: 'shift_puzzle', name: 'Shift Puzzle', icon: 'vortex-shift-puzzle', desc: 'A fast rotation race to match a shared target color grid pattern.', path: '/games/vortex/shift_puzzle' }
+    ],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'medium',
+    estimatedTime: '4-10 min',
+    tags: ['strategy', 'board', 'physics'],
+  },
+  {
+    id: 'tabletop-pinball',
+    gameType: 'tabletop_pinball',
+    name: 'Tabletop Pinball & Targets',
+    icon: 'tabletop-pinball',
+    description: 'Flick plunger launchers or time throws to target high-scoring rings, tiered ramps, or spinning wheels.',
+    players: '2 Players',
+    category: 'Reflex',
+    badgeClass: 'badge-orange',
+    gradient: 'linear-gradient(135deg, #f97316 0%, #ef4444 100%)',
+    rulesTitle: 'Pinball Rules',
+    rules: [
+      'Classic Pinball: Adjust the spring plunger tension slider and click Launch to target scoring rings (50, 100, 200) or the center dinger (300).',
+      'Tumblin Dice: Launch dice down a tiered ramp to rest on multiplier shelves (x1 to x4). Score is face value times multiplier. Try to knock off opponent dice!',
+      'Watermelon Knife Hit: Time your throws to stick knives into empty segments of a rotating wheel. Hitting existing knives scores 0.',
+      'Take turns launching. Most points wins.'
+    ],
+    tips: [
+      'In Pinball, find the sweet spot tension value that consistently hits high rings rather than aiming for din-bell.',
+      'In Tumblin Dice, target occupied high multipliers for a chance to knock off opponent points.',
+      'In Knife Hit, focus on the rotation rhythm and lead your target segment slightly.'
+    ],
+    previewSteps: ['Pick variant', 'Adjust tension / time throw', 'Launch and score'],
+    variants: [
+      { id: 'classic', name: 'Classic Pinball', icon: 'pinball-classic', desc: 'Adjust launcher plunger tension to spiral balls into concentric rings.', path: '/games/tabletop-pinball' },
+      { id: 'tumblin_dice', name: 'Tumblin\' Dice', icon: 'pinball-tumblin-dice', desc: 'Roll dice down tiered multiplier steps, knocking opponent dice off.', path: '/games/tabletop-pinball/tumblin_dice' },
+      { id: 'watermelon_knife', name: 'Watermelon Knife Hit', icon: 'pinball-knife-hit', desc: 'Throw knives at a spinning wheel, avoiding obstacles.', path: '/games/tabletop-pinball/watermelon_knife' }
+    ],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'medium',
+    estimatedTime: '3-6 min',
+    tags: ['reflex', 'aim', 'speed'],
+  },
 ];
 
 const GAME_TYPE_TO_ID: Record<string, string> = {
@@ -998,6 +1187,12 @@ const GAME_TYPE_TO_ID: Record<string, string> = {
   pengoloo: 'pengoloo',
   battle_flips: 'battle-flips',
   bowtie_matrix: 'bowtie-matrix',
+  stick_dice_race: 'stick-dice-race',
+  s_curve_race: 's-curve-race',
+  qomet: 'qomet',
+  in_a_nutshell: 'in-a-nutshell',
+  vortex: 'vortex',
+  tabletop_pinball: 'tabletop-pinball',
 };
 
 
