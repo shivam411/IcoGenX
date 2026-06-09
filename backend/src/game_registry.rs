@@ -12,6 +12,7 @@ use crate::games::{
     dot_matrix::DotMatrixGame, sos_dot::SosDotGame, line_crosser::LineCrosserGame,
     uno_matrix::UnoMatrixGame, connect_numbers::ConnectNumbersGame, knarr_placement::KnarrPlacementGame,
     scrabble_slam::ScrabbleSlamGame, hand_hunt::HandHuntGame, pengoloo::PengolooGame,
+    battle_flips::BattleFlipsGame, bowtie_matrix::BowtieMatrixGame,
 };
 
 /// Factory function signature: takes an optional variant string,
@@ -135,6 +136,14 @@ impl GameRegistry {
             Box::new(PengolooGame::new())
         });
 
+        registry.register("battle_flips", |_| {
+            Box::new(BattleFlipsGame::new())
+        });
+
+        registry.register("bowtie_matrix", |_| {
+            Box::new(BowtieMatrixGame::new())
+        });
+
         registry
     }
 
@@ -188,6 +197,8 @@ mod tests {
             "scrabble_slam",
             "hand_hunt",
             "pengoloo",
+            "battle_flips",
+            "bowtie_matrix",
         ];
 
         for game_type in game_types {

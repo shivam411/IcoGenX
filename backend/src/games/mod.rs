@@ -26,5 +26,5 @@ pub mod knarr_placement;
 pub mod scrabble_slam;
 pub mod hand_hunt;
 pub mod pengoloo;
-
-
+pub mod battle_flips;
+pub mod bowtie_matrix;

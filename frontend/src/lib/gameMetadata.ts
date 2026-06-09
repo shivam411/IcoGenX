@@ -907,6 +907,67 @@ export const GAME_CATALOG: GameCatalogItem[] = [
     estimatedTime: '4-8 min',
     tags: ['memory', 'board', 'turn-based'],
   },
+  {
+    id: 'battle-flips',
+    gameType: 'battle_flips',
+    name: 'Battle Flips',
+    icon: 'battle-flips',
+    description: 'A tactical word guessing game. Deduce the opponent\'s secret word while managing the risk of double reveals.',
+    players: '2 Players',
+    category: 'Logic',
+    badgeClass: 'badge-purple',
+    gradient: 'linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%)',
+    rulesTitle: 'Battle Flips Rules',
+    rules: [
+      'Set a secret word of 3 to 10 letters during the setup phase.',
+      'On your turn, guess a single letter.',
+      'If the letter is in the opponent\'s word, they reveal it.',
+      'If the letter is in your own word, you must also reveal it to your opponent!',
+      'Guessing an opponent\'s letter correctly awards a bonus turn.',
+      'Deduce and guess the opponent\'s full word first to win!'
+    ],
+    tips: [
+      'Vowels are high risk—they are in almost every word, so guessing them will likely reveal your own letters.',
+      'Look at your own revealed letters to see what the opponent might deduce.',
+      'Guess the full word only when you are highly confident; a miss passes your turn.'
+    ],
+    previewSteps: ['Choose secret word', 'Guess letters', 'Avoid double-reveals', 'Deduce secret word'],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'hard',
+    estimatedTime: '4-8 min',
+    tags: ['logic', 'words', 'couples'],
+  },
+  {
+    id: 'bowtie-matrix',
+    gameType: 'bowtie_matrix',
+    name: 'The Bowtie Matrix',
+    icon: 'bowtie-matrix',
+    description: 'A tactical abstract board game of movement and leaping captures played on a bowtie-shaped grid.',
+    players: '2 Players',
+    category: 'Strategy',
+    badgeClass: 'badge-cyan',
+    gradient: 'linear-gradient(135deg, #06b6d4 0%, #0369a1 100%)',
+    rulesTitle: 'The Bowtie Matrix Rules',
+    rules: [
+      'Move one of your pieces to an adjacent empty node along connecting lines.',
+      'Capture an opponent piece by jumping over it to an empty node immediately beyond it.',
+      'The jump must follow a straight line path.',
+      'Control the central chokepoint to traverse between board triangles.',
+      'Eliminate all opponent pieces or block them completely to win.'
+    ],
+    tips: [
+      'Guard the center vertex—it connects both halves of the bowtie and controls all crossings.',
+      'Avoid placing pieces where your opponent has an easy straight jump line.',
+      'Keep your pieces supported in blocks of two to prevent isolated captures.'
+    ],
+    previewSteps: ['Position pieces', 'Slide adjacent nodes', 'Jump to capture', 'Block opponent'],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'medium',
+    estimatedTime: '5-12 min',
+    tags: ['strategy', 'board', 'tactical'],
+  },
 ];
 
 const GAME_TYPE_TO_ID: Record<string, string> = {
@@ -935,6 +996,8 @@ const GAME_TYPE_TO_ID: Record<string, string> = {
   scrabble_slam: 'scrabble-slam',
   hand_hunt: 'hand-hunt',
   pengoloo: 'pengoloo',
+  battle_flips: 'battle-flips',
+  bowtie_matrix: 'bowtie-matrix',
 };
 
 
