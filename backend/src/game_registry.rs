@@ -9,6 +9,9 @@ use crate::games::{
     trappex::TrappexGame, trivia_battle::TriviaBattleGame, dr_eureka::DrEurekaGame,
     smart_four::SmartFourGame, ultimate_tic_tac_toe::UltimateTicTacToeGame,
     giiker_bolt::GiikerBoltGame, triple_cross::TripleCrossGame,
+    dot_matrix::DotMatrixGame, sos_dot::SosDotGame, line_crosser::LineCrosserGame,
+    uno_matrix::UnoMatrixGame, connect_numbers::ConnectNumbersGame, knarr_placement::KnarrPlacementGame,
+    scrabble_slam::ScrabbleSlamGame, hand_hunt::HandHuntGame, pengoloo::PengolooGame,
 };
 
 /// Factory function signature: takes an optional variant string,
@@ -96,6 +99,42 @@ impl GameRegistry {
             Box::new(TripleCrossGame::new())
         });
 
+        registry.register("dot_matrix", |_| {
+            Box::new(DotMatrixGame::new())
+        });
+
+        registry.register("sos_dot", |_| {
+            Box::new(SosDotGame::new())
+        });
+
+        registry.register("line_crosser", |_| {
+            Box::new(LineCrosserGame::new())
+        });
+
+        registry.register("uno_matrix", |_| {
+            Box::new(UnoMatrixGame::new())
+        });
+
+        registry.register("connect_numbers", |_| {
+            Box::new(ConnectNumbersGame::new())
+        });
+
+        registry.register("knarr_placement", |_| {
+            Box::new(KnarrPlacementGame::new())
+        });
+
+        registry.register("scrabble_slam", |_| {
+            Box::new(ScrabbleSlamGame::new())
+        });
+
+        registry.register("hand_hunt", |_| {
+            Box::new(HandHuntGame::new())
+        });
+
+        registry.register("pengoloo", |_| {
+            Box::new(PengolooGame::new())
+        });
+
         registry
     }
 
@@ -140,6 +179,15 @@ mod tests {
             "ultimate_tic_tac_toe",
             "giiker_bolt",
             "triple_cross",
+            "dot_matrix",
+            "sos_dot",
+            "line_crosser",
+            "uno_matrix",
+            "connect_numbers",
+            "knarr_placement",
+            "scrabble_slam",
+            "hand_hunt",
+            "pengoloo",
         ];
 
         for game_type in game_types {

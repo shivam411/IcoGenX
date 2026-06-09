@@ -1,0 +1,308 @@
+/* frontend/src/app/games/knarr-placement/game.module.css */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 650px;
+  margin: 0 auto;
+  gap: 1.25rem;
+  color: #f8fafc;
+}
+
+.statusBar {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 500;
+  backdrop-filter: blur(8px);
+  color: #e2e8f0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.scoreBoard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  gap: 1rem;
+}
+
+.scoreCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.activeP1 {
+  border-color: #22d3ee;
+  box-shadow: 0 0 15px rgba(34, 211, 238, 0.2);
+  background: rgba(34, 211, 238, 0.05);
+}
+
+.activeP2 {
+  border-color: #fb7185;
+  box-shadow: 0 0 15px rgba(251, 113, 133, 0.2);
+  background: rgba(251, 113, 133, 0.05);
+}
+
+.scoreLabel {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin-bottom: 0.25rem;
+}
+
+.scoreVal {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.scoreP1 { color: #22d3ee; text-shadow: 0 0 8px rgba(34, 211, 238, 0.4); }
+.scoreP2 { color: #fb7185; text-shadow: 0 0 8px rgba(251, 113, 133, 0.4); }
+
+/* Playfield */
+.playfield {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 1.5rem;
+  gap: 1.5rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.divider {
+  height: 2px;
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0) 100%);
+  width: 100%;
+}
+
+/* Grids and Columns */
+.boardGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.gridCol {
+  display: flex;
+  flex-direction: column;
+  background: rgba(30, 41, 59, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  padding: 0.75rem;
+  gap: 0.75rem;
+  align-items: center;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.colHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0 0.25rem;
+}
+
+.colScore {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #64748b;
+}
+
+.scoreActiveP1 { color: #22d3ee; text-shadow: 0 0 6px rgba(34, 211, 238, 0.4); }
+.scoreActiveP2 { color: #fb7185; text-shadow: 0 0 6px rgba(251, 113, 133, 0.4); }
+
+.multBadge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  background: #eab308;
+  color: #0f172a;
+  padding: 0.1rem 0.4rem;
+  border-radius: 6px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  text-shadow: 0 1px 0 rgba(255,255,255,0.2);
+}
+
+/* Slots */
+.slotsContainer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 0.75rem;
+}
+
+/* We reverse column direction for opponent board so it fills from center outwards */
+.oppColDirection {
+  flex-direction: column-reverse;
+}
+
+.dieSlot {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: rgba(15, 23, 42, 0.4);
+  border: 1.5px dashed rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.colPlayable {
+  cursor: pointer;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.colPlayable:hover {
+  background: rgba(34, 211, 238, 0.04);
+  border-color: rgba(34, 211, 238, 0.25);
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.05);
+}
+
+/* Ghost Preview */
+.ghostDie {
+  opacity: 0.4;
+  border-style: dotted;
+  transform: scale(0.95);
+  animation: pulseGhost 1.5s infinite alternate;
+}
+
+@keyframes pulseGhost {
+  from { opacity: 0.25; }
+  to { opacity: 0.55; }
+}
+
+/* 3D Die Styles */
+.placedDie {
+  width: 80%;
+  height: 80%;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3), inset 0 -4px 0 rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  font-weight: 800;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.dieP1 {
+  background: #ffffff;
+  color: #0f172a;
+  border: 3px solid #22d3ee;
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.3), 0 4px 10px rgba(0, 0, 0, 0.3), inset 0 -4px 0 rgba(0, 0, 0, 0.1);
+}
+
+.dieP2 {
+  background: #ffffff;
+  color: #0f172a;
+  border: 3px solid #fb7185;
+  box-shadow: 0 0 12px rgba(251, 113, 133, 0.3), 0 4px 10px rgba(0, 0, 0, 0.3), inset 0 -4px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* Dice Console */
+.diceConsole {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  width: 100%;
+}
+
+.rollBtn {
+  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+  color: #ffffff;
+  border: none;
+  padding: 0.75rem 2rem;
+  font-weight: 700;
+  font-size: 1rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+}
+
+.rollBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
+  background: linear-gradient(135deg, #9333ea 0%, #6d28d9 100%);
+}
+
+.rollBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.dieConsoleShow {
+  width: 55px;
+  height: 55px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3), inset 0 -4px 0 rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.dieRolling {
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg) scale(1.1); }
+  50% { transform: rotate(180deg) scale(0.9); }
+  100% { transform: rotate(360deg) scale(1.1); }
+}
+
+.rollText {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.rollTextActive {
+  color: #a855f7;
+  animation: pulseText 1.5s infinite alternate;
+}
+
+@keyframes pulseText {
+  from { opacity: 0.8; }
+  to { opacity: 1; }
+}
+
+.diceShowcase {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1.5rem;
+}

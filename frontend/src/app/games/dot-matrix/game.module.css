@@ -1,0 +1,225 @@
+/* frontend/src/app/games/dot-matrix/game.module.css */
+
+.shell {
+  width: min(100%, 620px);
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+  color: #f8fafc;
+  padding: 10px;
+}
+
+.statusBar {
+  min-height: 48px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.diceConsole {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.rollPrompt {
+  font-size: 0.95rem;
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
+.rollBtn {
+  padding: 8px 18px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
+}
+
+.rollBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(234, 88, 12, 0.45);
+}
+
+.rollBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dieShowcase {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.die {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #0f172a;
+  display: grid;
+  place-items: center;
+  font-size: 1.4rem;
+  font-weight: 900;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3), inset 0 -3px 0 #cbd5e1;
+  border: 2px solid #ffffff;
+  animation: rollDieAnim 0.4s ease-out;
+}
+
+@keyframes rollDieAnim {
+  0% { transform: rotate(0deg) scale(0.8); }
+  50% { transform: rotate(180deg) scale(1.15); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+
+.linesTracker {
+  font-size: 0.9rem;
+  color: #a855f7;
+  font-weight: 700;
+}
+
+.boardContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.svgBoard {
+  width: 100%;
+  max-width: 440px;
+  aspect-ratio: 1;
+  background: rgba(30, 41, 59, 0.35);
+  border: 4px solid #475569;
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+}
+
+.squareClaimedP1 {
+  fill: rgba(34, 211, 238, 0.12);
+  stroke: none;
+}
+
+.squareClaimedP2 {
+  fill: rgba(251, 113, 133, 0.12);
+  stroke: none;
+}
+
+.candyIcon {
+  font-size: 1.8rem;
+  user-select: none;
+}
+
+.squareText {
+  font-size: 1.4rem;
+  font-weight: 900;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+.textP1 {
+  fill: #22d3ee;
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.5);
+}
+
+.textP2 {
+  fill: #fb7185;
+  text-shadow: 0 0 8px rgba(251, 113, 133, 0.5);
+}
+
+.barrierLine {
+  stroke-linecap: round;
+  transition: all 0.2s ease;
+}
+
+.lineEmpty {
+  stroke: rgba(255, 255, 255, 0.05);
+  stroke-width: 4;
+}
+
+.lineP1 {
+  stroke: #22d3ee;
+  stroke-width: 6;
+  filter: drop-shadow(0 0 4px #22d3ee);
+}
+
+.lineP2 {
+  stroke: #fb7185;
+  stroke-width: 6;
+  filter: drop-shadow(0 0 4px #fb7185);
+}
+
+.hitbox {
+  fill: transparent;
+  cursor: pointer;
+}
+
+.hitboxPlayable:hover {
+  fill: rgba(255, 255, 255, 0.08);
+}
+
+.gridDot {
+  fill: #475569;
+  transition: fill 0.3s ease, r 0.3s ease;
+}
+
+.gridDotActive {
+  fill: #94a3b8;
+}
+
+.scoreBoard {
+  display: flex;
+  width: 100%;
+  max-width: 440px;
+  justify-content: space-between;
+  margin-top: 14px;
+  gap: 12px;
+}
+
+.scoreItem {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.scoreP1 {
+  border-color: rgba(34, 211, 238, 0.3);
+}
+
+.scoreP2 {
+  border-color: rgba(251, 113, 133, 0.3);
+}
+
+.scoreLabel {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.scoreVal {
+  font-size: 1.4rem;
+  font-weight: 900;
+  font-family: monospace;
+}

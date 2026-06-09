@@ -17,3 +17,14 @@ pub mod smart_four;
 pub mod ultimate_tic_tac_toe;
 pub mod giiker_bolt;
 pub mod triple_cross;
+pub mod dot_matrix;
+pub mod sos_dot;
+pub mod line_crosser;
+pub mod uno_matrix;
+pub mod connect_numbers;
+pub mod knarr_placement;
+pub mod scrabble_slam;
+pub mod hand_hunt;
+pub mod pengoloo;
+
+

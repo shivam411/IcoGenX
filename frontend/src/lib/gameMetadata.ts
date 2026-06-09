@@ -728,6 +728,185 @@ export const GAME_CATALOG: GameCatalogItem[] = [
     estimatedTime: '6-12 min',
     tags: ['strategy', 'displacement', 'board'],
   },
+  {
+    id: 'dot-matrix',
+    gameType: 'dot_matrix',
+    name: 'The dot Matrix',
+    icon: 'dot-matrix',
+    description: 'A die-controlled Dots & Boxes game where players roll to determine the number of line segments they must place.',
+    players: '2 Players',
+    category: 'Strategy',
+    badgeClass: 'badge-orange',
+    gradient: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+    rulesTitle: 'The dot Matrix Rules',
+    rules: [
+      'Roll the 6-sided die to determine your line limit for the turn.',
+      'You must place exactly that number of line segments on the 5x5 grid of dots.',
+      'Enclosing the fourth side of a square claims that box for 1 point.',
+      'Completing a box does NOT grant a bonus turn. Turn ends only when all lines are placed.',
+      'The player who claims the most squares wins when all 40 slots are filled.'
+    ],
+    tips: [
+      'Do not place the third wall of a square unless you have enough moves to complete it yourself.',
+      'Use large die rolls to claim multiple squares in a row if corridors are open.',
+      'Count remaining open lines to force your opponent into making dangerous moves.'
+    ],
+    previewSteps: ['Roll die', 'Draw lines', 'Claim boxes'],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'medium',
+    estimatedTime: '4-8 min',
+    tags: ['strategy', 'dice', 'enclosure'],
+  },
+  {
+    id: 'sos-dot',
+    gameType: 'sos_dot',
+    name: 'SOS Dot Game',
+    icon: 'sos-dot',
+    description: 'Place S or O letters on a 6x6 grid. Complete SOS lines to score points and earn bonus turns.',
+    players: '2 Players',
+    category: 'Strategy',
+    badgeClass: 'badge-pink',
+    gradient: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+    rulesTitle: 'SOS Dot Game Rules',
+    rules: [
+      'On your turn, choose "S" or "O" and place it in any empty grid cell.',
+      'If you form one or more horizontal, vertical, or diagonal "S-O-S" sequences, you earn 1 point per sequence.',
+      'Forming an SOS sequence grants you an immediate bonus turn.',
+      'The game ends when the board is full. The player with the highest score wins.'
+    ],
+    tips: [
+      'Be careful placing an "O" between two empty cells, as the opponent can complete an SOS on both sides.',
+      'Look for multiple overlapping SOS opportunities to chain high-scoring combos.',
+      'Use your bonus turns to place letters defensively and avoid setting up the opponent.'
+    ],
+    previewSteps: ['Select S or O', 'Place on grid', 'Complete SOS'],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'easy',
+    estimatedTime: '3-6 min',
+    tags: ['strategy', 'board', 'combo'],
+  },
+  {
+    id: 'line-crosser',
+    gameType: 'line_crosser',
+    name: 'Line Crosser',
+    icon: 'line-crosser',
+    description: 'Connect boundary dots to draw lines across the grid. Intersecting existing lines scores points.',
+    players: '2 Players',
+    category: 'Strategy',
+    badgeClass: 'badge-cyan',
+    gradient: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
+    rulesTitle: 'Line Crosser Rules',
+    rules: [
+      'Alternate turns drawing a straight line between two unused perimeter dots (out of 16).',
+      'Connecting a dot consumes it permanently. Each dot can only be used once.',
+      'Intersecting an opponent\'s line scores +1 point.',
+      'Intersecting one of your own lines scores +2 points.',
+      'The game ends when 1 or fewer dots remain. The player with the highest score wins.'
+    ],
+    tips: [
+      'Place early lines across the center to create a target zone for future crossings.',
+      'Try to cross multiple of your own lines in a single move for a huge +2 points per crossing.',
+      'Keep track of remaining dots to ensure you don\'t run out of connection options.'
+    ],
+    previewSteps: ['Select unused dots', 'Draw crossing line', 'Score intersections'],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'hard',
+    estimatedTime: '3-7 min',
+    tags: ['strategy', 'lines', 'geometry'],
+  },
+  {
+    id: 'scrabble-slam',
+    gameType: 'scrabble_slam',
+    name: 'Scrabble Slam!',
+    icon: 'scrabble-slam',
+    description: 'Slam letter cards to change an active four-letter word as fast as you can. Real-time spelling race!',
+    players: '2 Players',
+    category: 'Speed',
+    badgeClass: 'badge-orange',
+    gradient: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)',
+    rulesTitle: 'Scrabble Slam! Rules',
+    rules: [
+      'Spell a new word by slamming a letter from your hand onto the active four-letter word.',
+      'You can only change exactly one letter of the word at a time.',
+      'The proposed word must be a valid 4-letter English word in our dictionary.',
+      'Simultaneous play—no turns! Play as fast as you can.',
+      'First player to empty their hand of cards wins.'
+    ],
+    tips: [
+      'Plan your next transitions before dragging cards.',
+      'Watch out for invalid words; they trigger a 1.2-second submission penalty lock.',
+      'Be quick—the opponent might change the active word before you can drop your card!'
+    ],
+    previewSteps: ['Read active word', 'Pick matching card', 'Slam first'],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'hard',
+    estimatedTime: '2-4 min',
+    tags: ['speed', 'words', 'realtime'],
+  },
+  {
+    id: 'hand-hunt',
+    gameType: 'hand_hunt',
+    name: 'Hand Hunt',
+    icon: 'hand-hunt',
+    description: 'Spot and click target numbers on a scattered circular board as fast as you can.',
+    players: '2 Players',
+    category: 'Reflex',
+    badgeClass: 'badge-pink',
+    gradient: 'linear-gradient(135deg, #d946ef 0%, #a21caf 100%)',
+    rulesTitle: 'Hand Hunt Rules',
+    rules: [
+      'Look at the target number displayed at the top.',
+      'Find and click its corresponding circle inside the scattered central board.',
+      'Correct clicks stamp that number on your grid and update the target.',
+      'Wrong clicks trigger a 1.5-second penalty lockout.',
+      'First to find 18 target numbers wins the match.'
+    ],
+    tips: [
+      'Concentrate on the target value and scan concentric circle perimeters.',
+      'Avoid clicking randomly; the 1.5-second lockout is highly punitive.',
+      'React immediately to spots—your opponent sees the same target!'
+    ],
+    previewSteps: ['Check target number', 'Spot in center', 'Click and stamp'],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'medium',
+    estimatedTime: '3-5 min',
+    tags: ['reflex', 'speed', 'realtime'],
+  },
+  {
+    id: 'pengoloo',
+    gameType: 'pengoloo',
+    name: 'Pengoloo',
+    icon: 'pengoloo',
+    description: 'Roll colored dice and lift penguins to find matching eggs in this classic memory match game.',
+    players: '2 Players',
+    category: 'Memory',
+    badgeClass: 'badge-blue',
+    gradient: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+    rulesTitle: 'Pengoloo Rules',
+    rules: [
+      'On your turn, roll the two colored dice.',
+      'Lift exactly two penguins from the center of the board to reveal hidden eggs.',
+      'If an egg color matches one of the rolled colors, you claim that penguin for your iceberg.',
+      'Claiming at least one penguin grants you a bonus turn.',
+      'First to claim 6 penguins to fill their iceberg board wins.'
+    ],
+    tips: [
+      'Pay close attention to egg colors revealed on the opponent\'s turn.',
+      'Try to match both rolled colors to maximize your penguin gains.',
+      'Remember where claimed colors used to be in case they are rolled again.'
+    ],
+    previewSteps: ['Roll colored dice', 'Lift two penguins', 'Match and claim'],
+    playerCount: 2,
+    playerLabel: '2 Players',
+    difficulty: 'easy',
+    estimatedTime: '4-8 min',
+    tags: ['memory', 'board', 'turn-based'],
+  },
 ];
 
 const GAME_TYPE_TO_ID: Record<string, string> = {
@@ -750,7 +929,14 @@ const GAME_TYPE_TO_ID: Record<string, string> = {
   ultimate_tic_tac_toe: 'ultimate-tic-tac-toe',
   giiker_bolt: 'giiker-bolt',
   triple_cross: 'triple-cross',
+  dot_matrix: 'dot-matrix',
+  sos_dot: 'sos-dot',
+  line_crosser: 'line-crosser',
+  scrabble_slam: 'scrabble-slam',
+  hand_hunt: 'hand-hunt',
+  pengoloo: 'pengoloo',
 };
+
 
 export function getGameCatalogItem(gameTypeOrId: string | null | undefined) {
   if (!gameTypeOrId) return null;
