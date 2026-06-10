@@ -22,7 +22,7 @@ impl TrappexGame {
     }
 
     pub fn new_variant(variant: &str) -> Self {
-        let grid_size = if variant == "quick" { 4 } else { 5 };
+        let grid_size = if variant == "quick" { 4 } else if variant == "pathagon" { 6 } else { 5 };
         let h_size = (grid_size + 1) * grid_size;
         let v_size = grid_size * (grid_size + 1);
         let s_size = grid_size * grid_size;
@@ -182,7 +182,7 @@ impl TrappexGame {
                 self.last_event = Some(format!("Game over! It's a draw with {} to {} claimed squares.", score0, score1));
             }
         } else {
-            if completed_any {
+            if completed_any && self.variant != "pathagon" {
                 self.last_event = Some(format!(
                     "Player {} completed {} square(s) and gets a bonus turn!",
                     player + 1, completed_squares.len()
@@ -313,5 +313,26 @@ mod tests {
         assert_eq!(game.claimed_squares[0], Some(0));
         // Player 0 should retain turn (bonus turn)
         assert_eq!(game.current_player, 0);
+    }
+
+    #[test]
+    fn test_pathagon_no_bonus_turn() {
+        let mut game = TrappexGame::new_variant("pathagon");
+        assert_eq!(game.grid_size, 6);
+        assert_eq!(game.variant, "pathagon");
+        
+        // Form 3 walls of square S(0, 0)
+        game.horizontal_barriers[0] = Some(0);
+        game.vertical_barriers[0] = Some(1);
+        game.vertical_barriers[1] = Some(0);
+
+        assert_eq!(game.current_player, 0);
+        // Player 0 places the 4th wall (H barrier at row 1, col 0 for 6x6 is index 6)
+        assert!(game.make_move(0, "H", 6).is_ok());
+
+        // Square should be claimed by player 0
+        assert_eq!(game.claimed_squares[0], Some(0));
+        // But since it is Pathagon, no bonus turn, so turn switches to player 1!
+        assert_eq!(game.current_player, 1);
     }
 }

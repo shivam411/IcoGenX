@@ -304,11 +304,14 @@ function TrappexBoard({
 export default function TrappexGamePage({ variant = 'classic' }: { variant?: string }) {
   const isQuick = variant === 'quick';
   const isObstacles = variant === 'obstacles';
+  const isPathagon = variant === 'pathagon';
   
   const displayName = isQuick
     ? 'Trappex (Quick Play)'
     : isObstacles
     ? 'Trappex (Obstacles)'
+    : isPathagon
+    ? 'Pathagon'
     : 'Trappex';
 
   return (
@@ -316,8 +319,8 @@ export default function TrappexGamePage({ variant = 'classic' }: { variant?: str
       gameType="trappex"
       variant={variant}
       gameName={displayName}
-      gameIcon="trappex"
-      accentColor="#3b82f6"
+      gameIcon={isPathagon ? 'pathagon' : 'trappex'}
+      accentColor={isPathagon ? '#10b981' : '#3b82f6'}
       winEmoji="🏆"
       winTitle="Victory!"
       loseTitle="Defeat!"

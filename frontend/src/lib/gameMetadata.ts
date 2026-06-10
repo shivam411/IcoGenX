@@ -564,7 +564,8 @@ export const GAME_CATALOG: GameCatalogItem[] = [
     variants: [
       { id: 'classic', name: 'Classic', icon: 'trappex-classic', desc: 'Standard 5x5 grid enclosure battle.', path: '/games/trappex', previewSteps: ['5x5 Grid', 'Place wall', 'Enclose'] },
       { id: 'quick', name: 'Quick Play', icon: 'trappex-quick', desc: 'A smaller 4x4 grid for fast-paced enclosure matches.', path: '/games/trappex/quick', rulesTitle: 'Quick Rules', rules: ['Played on a smaller 4x4 grid of squares.', 'Total of 40 placement segments. First to claim the majority of 16 cells wins.'], tips: ['The smaller board means conflicts happen immediately. Guard your corridors early.'], previewSteps: ['4x4 Grid', 'Place wall', 'Enclose'] },
-      { id: 'obstacles', name: 'Obstacles', icon: 'trappex-obstacles', desc: 'The 5x5 grid starts with 3 random squares pre-blocked by obstacles.', path: '/games/trappex/obstacles', rulesTitle: 'Obstacles Rules', rules: ['Three random squares are pre-blocked by brick obstacles at start.', 'Their borders are pre-placed and cannot be clicked.', 'Pre-blocked squares cannot be claimed by either player.'], tips: ['Use pre-blocked boundaries to complete your adjacent squares safely.'], previewSteps: ['Obstacle blocks', 'Route around blocks', 'Enclose'] }
+      { id: 'obstacles', name: 'Obstacles', icon: 'trappex-obstacles', desc: 'The 5x5 grid starts with 3 random squares pre-blocked by obstacles.', path: '/games/trappex/obstacles', rulesTitle: 'Obstacles Rules', rules: ['Three random squares are pre-blocked by brick obstacles at start.', 'Their borders are pre-placed and cannot be clicked.', 'Pre-blocked squares cannot be claimed by either player.'], tips: ['Use pre-blocked boundaries to complete your adjacent squares safely.'], previewSteps: ['Obstacle blocks', 'Route around blocks', 'Enclose'] },
+      { id: 'pathagon', name: 'Pathagon', icon: 'pathagon', desc: 'A larger 6x6 grid enclosure game with strictly alternating turns (no bonus turns).', path: '/games/trappex/pathagon', rulesTitle: 'Pathagon Rules', rules: ['Played on a larger 6x6 grid of squares.', 'No bonus turn on enclosing a square — turns alternate strictly.', 'More strategic and punishing as setting up the fourth wall is a constant risk.'], tips: ['Since there is no bonus turn, placing the third wall of a square is extremely dangerous because your opponent can immediately claim it on their turn without losing their flow.'], previewSteps: ['6x6 Grid', 'Strict alternating turns', 'Strategy play'] }
     ],
     playerCount: 2,
     playerLabel: '2 Players',
@@ -1115,7 +1116,10 @@ export const GAME_CATALOG: GameCatalogItem[] = [
     variants: [
       { id: 'classic', name: 'Classic Vortex', icon: 'vortex-classic', desc: 'Navigate pieces to the opposite side using overlapping circular dial spins.', path: '/games/vortex' },
       { id: 'stay_alive', name: 'Stay Alive!', icon: 'vortex-stay-alive', desc: 'Toggle row/column grid shutters to align trapdoors and drop opponent marbles.', path: '/games/vortex/stay_alive' },
-      { id: 'shift_puzzle', name: 'Shift Puzzle', icon: 'vortex-shift-puzzle', desc: 'A fast rotation race to match a shared target color grid pattern.', path: '/games/vortex/shift_puzzle' }
+      { id: 'shift_puzzle', name: 'Shift Puzzle', icon: 'vortex-shift-puzzle', desc: 'A fast rotation race to match a shared target color grid pattern.', path: '/games/vortex/shift_puzzle' },
+      { id: 'marble_slide', name: 'Marble Slide', icon: 'vortex-marble-slide', desc: 'Push perimeter marbles inward on a 6x6 board to score the longest contiguous line.', path: '/games/vortex/marble-slide' },
+      { id: 'roll_a_ball', name: 'Roll-A-Ball', icon: 'vortex-roll-a-ball', desc: 'Flick force and tilt to roll marbles into score target holes.', path: '/games/vortex/roll-a-ball' },
+      { id: 'twizzle', name: 'Twizzle Game', icon: 'vortex-twizzle', desc: 'Rotate a central cone to launch marbles at scoring gates.', path: '/games/vortex/twizzle' }
     ],
     playerCount: 2,
     playerLabel: '2 Players',
@@ -1149,7 +1153,9 @@ export const GAME_CATALOG: GameCatalogItem[] = [
     variants: [
       { id: 'classic', name: 'Classic Pinball', icon: 'pinball-classic', desc: 'Adjust launcher plunger tension to spiral balls into concentric rings.', path: '/games/tabletop-pinball' },
       { id: 'tumblin_dice', name: 'Tumblin\' Dice', icon: 'pinball-tumblin-dice', desc: 'Roll dice down tiered multiplier steps, knocking opponent dice off.', path: '/games/tabletop-pinball/tumblin_dice' },
-      { id: 'watermelon_knife', name: 'Watermelon Knife Hit', icon: 'pinball-knife-hit', desc: 'Throw knives at a spinning wheel, avoiding obstacles.', path: '/games/tabletop-pinball/watermelon_knife' }
+      { id: 'watermelon_knife', name: 'Watermelon Knife Hit', icon: 'pinball-knife-hit', desc: 'Throw knives at a spinning wheel, avoiding obstacles.', path: '/games/tabletop-pinball/watermelon_knife' },
+      { id: 'nokkenhole', name: 'Nokkenhole', icon: 'pinball-nokkenhole', desc: 'Flick plunger to target zone scores on a vertical board in a race to 21.', path: '/games/tabletop-pinball/nokkenhole' },
+      { id: 'tzaar_cup', name: 'Tzaar Cup Slam', icon: 'pinball-tzaar-cup', desc: 'Slam and move cups across a connected pentagram node network to capture opponent pieces.', path: '/games/tabletop-pinball/tzaar-cup' }
     ],
     playerCount: 2,
     playerLabel: '2 Players',
