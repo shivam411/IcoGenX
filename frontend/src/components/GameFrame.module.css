@@ -127,6 +127,38 @@
   box-sizing: border-box;
 }
 
+.spectatorBadge {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(37, 99, 235, 0.2) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #60a5fa;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.15);
+  animation: pulseBadge 2s infinite ease-in-out;
+  margin-top: 4px;
+}
+
+@keyframes pulseBadge {
+  0%, 100% {
+    opacity: 0.95;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.15);
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 4px rgba(59, 130, 246, 0.05);
+  }
+}
+
+.spectatorContent {
+  pointer-events: none;
+  opacity: 0.85;
+}
+
 @media (max-width: 980px) {
   .frame {
     padding: 20px 16px 24px;

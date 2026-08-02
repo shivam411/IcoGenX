@@ -18,6 +18,7 @@ pub struct Room {
     pub variant: Option<String>,
     pub match_format: String,
     pub players: Vec<String>,   // player IDs
+    pub spectators: Vec<String>, // spectator IDs
     pub game: Option<Box<dyn Game>>,
     pub started: bool,
     pub scores: Vec<u32>,
@@ -32,6 +33,7 @@ impl std::fmt::Debug for Room {
             .field("variant", &self.variant)
             .field("match_format", &self.match_format)
             .field("players", &self.players)
+            .field("spectators", &self.spectators)
             .field("started", &self.started)
             .field("scores", &self.scores)
             .field("play_again_votes", &self.play_again_votes)
@@ -286,19 +288,25 @@ impl AppState {
         self.player_names.write().await.remove(player_id);
 
         if let Some(code) = room_code {
+            let mut was_player = false;
             let remaining = {
                 let mut rooms = self.rooms.write().await;
                 if let Some(room) = rooms.get_mut(&code) {
-                    room.players.retain(|p| p != player_id);
-                    if !room.started {
-                        let mut player_numbers = self.player_numbers.write().await;
-                        for (idx, pid) in room.players.iter().enumerate() {
-                            player_numbers.insert(pid.clone(), idx as u8);
+                    if room.players.contains(&player_id.to_string()) {
+                        was_player = true;
+                        room.players.retain(|p| p != player_id);
+                        if !room.started {
+                            let mut player_numbers = self.player_numbers.write().await;
+                            for (idx, pid) in room.players.iter().enumerate() {
+                                player_numbers.insert(pid.clone(), idx as u8);
+                            }
                         }
+                    } else {
+                        room.spectators.retain(|p| p != player_id);
                     }
                     let remaining = room.players.clone();
                     // Clean up empty rooms
-                    if remaining.is_empty() {
+                    if room.players.is_empty() && room.spectators.is_empty() {
                         rooms.remove(&code);
                     }
                     remaining
@@ -306,9 +314,15 @@ impl AppState {
                     vec![]
                 }
             };
-            // Send disconnect outside lock scope
-            for pid in remaining {
-                self.send_to(&pid, &ServerMessage::OpponentDisconnected).await;
+            
+            // Send RoomOccupants to everyone left
+            send_room_occupants(self, &code).await;
+
+            // Send disconnect outside lock scope only if the player who left was active
+            if was_player {
+                for pid in remaining {
+                    self.send_to(&pid, &ServerMessage::OpponentDisconnected).await;
+                }
             }
         }
 
@@ -364,6 +378,55 @@ fn generate_room_code() -> String {
     code
 }
 
+pub async fn send_room_occupants(state: &Arc<AppState>, room_code: &str) {
+    let (players_pids, spectators_pids) = {
+        let rooms = state.rooms.read().await;
+        if let Some(room) = rooms.get(room_code) {
+            (room.players.clone(), room.spectators.clone())
+        } else {
+            return;
+        }
+    };
+
+    let mut players_info = Vec::new();
+    let mut spectators_info = Vec::new();
+
+    {
+        let names = state.player_names.read().await;
+        let numbers = state.player_numbers.read().await;
+
+        for pid in &players_pids {
+            let name = names.get(pid).cloned().unwrap_or_else(|| "Unknown".to_string());
+            let number = numbers.get(pid).copied().unwrap_or(0);
+            players_info.push(crate::protocol::PlayerInfo {
+                player_id: pid.clone(),
+                player_number: number,
+                player_name: name,
+            });
+        }
+
+        for pid in &spectators_pids {
+            let name = names.get(pid).cloned().unwrap_or_else(|| "Unknown".to_string());
+            let number = numbers.get(pid).copied().unwrap_or(99);
+            spectators_info.push(crate::protocol::PlayerInfo {
+                player_id: pid.clone(),
+                player_number: number,
+                player_name: name,
+            });
+        }
+    }
+
+    let msg = ServerMessage::RoomOccupants {
+        players: players_info,
+        spectators: spectators_info,
+    };
+
+    // Broadcast to everyone (players + spectators)
+    let mut all_occupants = players_pids;
+    all_occupants.extend(spectators_pids);
+    state.send_to_players(&all_occupants, &msg).await;
+}
+
 pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientMessage) {
     match msg {
         ClientMessage::CreateRoom { game_type, variant, player_name, match_format } => {
@@ -397,6 +460,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                 variant: variant.clone(),
                 match_format: format_val.clone(),
                 players: vec![player_id.to_string()],
+                spectators: vec![],
                 game: None,
                 started: false,
                 scores: vec![0; player_count as usize],
@@ -446,14 +510,18 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                         tracing::warn!("Room {} not found", room_code);
                         Err("Room not found".to_string())
                     }
-                    Some(room) if room.players.len() >= room.scores.len() => {
-                        tracing::warn!("Room {} is full", room_code);
+                    Some(room) if room.players.len() >= room.scores.len() && room.spectators.len() >= 16 => {
+                        tracing::warn!("Room {} is full (spectator cap reached)", room_code);
                         Err("Room is full".to_string())
                     }
                     Some(room) => {
                         let is_rejoining_started_game = room.started && room.game.is_some() && room.players.len() < room.scores.len();
-
-                        let player_num = if is_rejoining_started_game {
+                        let is_spectator = !is_rejoining_started_game && room.players.len() >= room.scores.len();
+                        
+                        let player_num = if is_spectator {
+                            room.spectators.push(player_id.to_string());
+                            99
+                        } else if is_rejoining_started_game {
                             let player_numbers = state.player_numbers.read().await;
                             let occupied: std::collections::HashSet<u8> = room.players
                                 .iter()
@@ -494,7 +562,36 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                             }
                         }
 
-                        let start_messages = if is_rejoining_started_game {
+                        let mut start_messages = if is_spectator {
+                            if room.started && room.game.is_some() {
+                                let game = room.game.as_ref().unwrap();
+                                let mut players_info = Vec::new();
+                                {
+                                    let names = state.player_names.read().await;
+                                    let numbers = state.player_numbers.read().await;
+                                    for pid in &room.players {
+                                        players_info.push(crate::protocol::PlayerInfo {
+                                            player_id: pid.clone(),
+                                            player_number: numbers.get(pid).copied().unwrap_or(0),
+                                            player_name: names.get(pid).cloned().unwrap_or_else(|| "Unknown".to_string()),
+                                        });
+                                    }
+                                }
+                                vec![(
+                                    player_id.to_string(),
+                                    ServerMessage::GameStart {
+                                        game_state: game.state_for_player(None),
+                                        scores: scores.clone(),
+                                        game_type: game_type_str.clone(),
+                                        variant: variant_str.clone(),
+                                        match_format: match_format_str.clone(),
+                                        players: players_info,
+                                    }
+                                )]
+                            } else {
+                                Vec::new()
+                            }
+                        } else if is_rejoining_started_game {
                             room.game
                                 .as_ref()
                                 .map(|game| build_game_start_messages(game.as_ref(), &players, &pnames_vec, scores.clone(), &game_type_str, &variant_str, &match_format_str))
@@ -516,11 +613,37 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                             Vec::new()
                         };
 
-                        if is_rejoining_started_game {
-                            tracing::info!("Player {} ({}) rejoined running room {} as player {}", player_id, player_name, room_code, player_num);
+                        // If game just started, build GameStart messages for all current spectators
+                        if !is_spectator && room.players.len() == room.scores.len() && room.game.is_some() {
+                            let game = room.game.as_ref().unwrap();
+                            let mut players_info = Vec::new();
+                            {
+                                let names = state.player_names.read().await;
+                                let numbers = state.player_numbers.read().await;
+                                for pid in &room.players {
+                                    players_info.push(crate::protocol::PlayerInfo {
+                                        player_id: pid.clone(),
+                                        player_number: numbers.get(pid).copied().unwrap_or(0),
+                                        player_name: names.get(pid).cloned().unwrap_or_else(|| "Unknown".to_string()),
+                                    });
+                                }
+                            }
+                            for spec_id in &room.spectators {
+                                start_messages.push((
+                                    spec_id.clone(),
+                                    ServerMessage::GameStart {
+                                        game_state: game.state_for_player(None),
+                                        scores: scores.clone(),
+                                        game_type: game_type_str.clone(),
+                                        variant: variant_str.clone(),
+                                        match_format: match_format_str.clone(),
+                                        players: players_info.clone(),
+                                    }
+                                ));
+                            }
                         }
 
-                        Ok((player_num, players, room_code.clone(), start_messages, game_type_str, variant_str, match_format_str, scores))
+                        Ok((is_spectator, player_num, players, room_code.clone(), start_messages, game_type_str, variant_str, match_format_str, scores))
                     }
                 }
             };
@@ -532,7 +655,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                         .send_to(player_id, &ServerMessage::Error { message: msg })
                         .await;
                 }
-                Ok((player_num, players, code, start_messages, game_type_str, variant_str, match_format_str, scores)) => {
+                Ok((is_spectator, player_num, players, code, start_messages, game_type_str, variant_str, match_format_str, scores)) => {
                     // Register mappings
                     state.player_rooms.write().await
                         .insert(player_id.to_string(), code.clone());
@@ -541,7 +664,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                     state.player_names.write().await
                         .insert(player_id.to_string(), player_name.clone());
 
-                    tracing::info!("Player {} ({}) joined room {} as player {}", player_id, player_name, code, player_num);
+                    tracing::info!("Player {} ({}) joined room {} as player/spectator {}", player_id, player_name, code, player_num);
 
                     // Send existing players' info to the new joiner
                     {
@@ -565,7 +688,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                         }
                     }
 
-                    // Notify all players about the new joiner
+                    // Notify all players and spectators about the new joiner
                     let join_msg = ServerMessage::PlayerJoined {
                         player_id: player_id.to_string(),
                         player_number: player_num,
@@ -575,17 +698,27 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                         match_format: match_format_str,
                         player_count: scores.len() as u8,
                     };
-                    state.send_to_players(&players, &join_msg).await;
+                    let mut all_occupants = players.clone();
+                    {
+                        let rooms = state.rooms.read().await;
+                        if let Some(room) = rooms.get(&code) {
+                            all_occupants.extend(room.spectators.clone());
+                        }
+                    }
+                    state.send_to_players(&all_occupants, &join_msg).await;
 
-                    // Start game if ready
+                    // Start/resume game if ready
                     if !start_messages.is_empty() {
-                        tracing::info!("Game starting in room {}", code);
+                        tracing::info!("Game starting/updating in room {}", code);
                         for (pid, msg) in &start_messages {
                             state.send_to(pid, msg).await;
                         }
                     }
                     state.accept_invite_for_join(player_id, &code).await;
                     state.broadcast_current_presence_for_player(player_id).await;
+
+                    // Send RoomOccupants to everyone
+                    send_room_occupants(state, &code).await;
                 }
             }
         }
@@ -601,9 +734,21 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                 pn.get(player_id).copied().unwrap_or(0)
             };
 
+            if player_num == 99 {
+                state
+                    .send_to(
+                        player_id,
+                        &ServerMessage::Error {
+                            message: "Spectators cannot perform actions".into(),
+                        },
+                    )
+                    .await;
+                return;
+            }
+
             if let Some(code) = room_code {
                 // Process action under lock, collect messages to send
-                let messages_to_send = {
+                let (messages_to_send, spectator_messages) = {
                     let mut rooms = state.rooms.write().await;
                     if let Some(room) = rooms.get_mut(&code) {
                         if let Some(ref mut game) = room.game {
@@ -641,26 +786,45 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                                         for pid in &players {
                                             all_msgs.push((pid.clone(), over_msg.clone()));
                                         }
+                                        for pid in &room.spectators {
+                                            all_msgs.push((pid.clone(), over_msg.clone()));
+                                        }
                                     }
-                                    all_msgs
+
+                                    // Build GameUpdate messages for spectators!
+                                    let mut spec_updates = Vec::new();
+                                    if !room.spectators.is_empty() {
+                                        let spec_state = game.state_for_player(None);
+                                        let spec_msg = ServerMessage::GameUpdate {
+                                            game_state: spec_state,
+                                        };
+                                        for spec_id in &room.spectators {
+                                            spec_updates.push((spec_id.clone(), spec_msg.clone()));
+                                        }
+                                    }
+
+                                    (all_msgs, spec_updates)
                                 }
                                 Err(err) => {
-                                    vec![(player_id.to_string(), ServerMessage::Error { message: err })]
+                                    (vec![(player_id.to_string(), ServerMessage::Error { message: err })], vec![])
                                 }
                             }
                         } else {
-                            vec![(player_id.to_string(), ServerMessage::Error {
+                            (vec![(player_id.to_string(), ServerMessage::Error {
                                 message: "Game not started yet".into()
-                            })]
+                            })], vec![])
                         }
                     } else {
-                        vec![(player_id.to_string(), ServerMessage::Error {
+                        (vec![(player_id.to_string(), ServerMessage::Error {
                             message: "Room not found".into()
-                        })]
+                        })], vec![])
                     }
                 };
                 // Lock released — now send all messages
                 for (pid, msg) in &messages_to_send {
+                    state.send_to(pid, msg).await;
+                }
+                for (pid, msg) in &spectator_messages {
                     state.send_to(pid, msg).await;
                 }
             } else {
@@ -686,6 +850,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                     let rooms = state.rooms.read().await;
                     if let Some(room) = rooms.get(&code) {
                         players_to_notify = room.players.clone();
+                        players_to_notify.extend(room.spectators.clone());
                     }
                 }
                 let msg = ServerMessage::EmojiSent {
@@ -705,6 +870,18 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                 let pn = state.player_numbers.read().await;
                 pn.get(player_id).copied().unwrap_or(0)
             };
+
+            if player_num == 99 {
+                state
+                    .send_to(
+                        player_id,
+                        &ServerMessage::Error {
+                            message: "Spectators cannot vote to play again".into(),
+                        },
+                    )
+                    .await;
+                return;
+            }
 
             if let Some(code) = room_code {
                 let messages_to_send = {
@@ -733,18 +910,26 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                                     scores,
                                 };
                                 
-                                room.players.iter()
+                                let mut msgs = room.players.iter()
                                     .map(|pid| (pid.clone(), msg.clone()))
-                                    .collect::<Vec<_>>()
+                                    .collect::<Vec<_>>();
+                                for spec_id in &room.spectators {
+                                    msgs.push((spec_id.clone(), msg.clone()));
+                                }
+                                msgs
                             } else {
                                 vec![]
                             }
                         } else {
                             // Just notify others
                             let msg = ServerMessage::PlayAgainRequested { by_player: player_num };
-                            room.players.iter()
+                            let mut msgs = room.players.iter()
                                 .map(|pid| (pid.clone(), msg.clone()))
-                                .collect::<Vec<_>>()
+                                .collect::<Vec<_>>();
+                            for spec_id in &room.spectators {
+                                msgs.push((spec_id.clone(), msg.clone()));
+                            }
+                            msgs
                         }
                     } else {
                         vec![]
@@ -794,19 +979,48 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                                     let scores = room.scores.clone();
                                     room.game = Some(game);
                                     room.started = true;
+                                     let mut pnames_vec = vec![String::new(); room.players.len()];
+                                     {
+                                         let pnames = state.player_names.read().await;
+                                         for (idx, pid) in room.players.iter().enumerate() {
+                                             pnames_vec[idx] = pnames.get(pid).cloned().unwrap_or_else(|| "Unknown".to_string());
+                                         }
+                                     }
 
-                                    let mut pnames_vec = vec![String::new(); room.players.len()];
-                                    {
-                                        let pnames = state.player_names.read().await;
-                                        for (idx, pid) in room.players.iter().enumerate() {
-                                            pnames_vec[idx] = pnames.get(pid).cloned().unwrap_or_else(|| "Unknown".to_string());
-                                        }
-                                    }
-
-                                    room.game
-                                        .as_ref()
-                                        .map(|game| build_game_start_messages(game.as_ref(), &room.players, &pnames_vec, scores, &room.game_type, &room.variant, &room.match_format))
-                                        .unwrap_or_default()
+                                     let mut start_msgs = room.game
+                                         .as_ref()
+                                         .map(|game| build_game_start_messages(game.as_ref(), &room.players, &pnames_vec, scores.clone(), &room.game_type, &room.variant, &room.match_format))
+                                         .unwrap_or_default();
+                                     
+                                     if room.game.is_some() {
+                                         let game = room.game.as_ref().unwrap();
+                                         let mut players_info = Vec::new();
+                                         {
+                                             let names = state.player_names.read().await;
+                                             let numbers = state.player_numbers.read().await;
+                                             for pid in &room.players {
+                                                 players_info.push(crate::protocol::PlayerInfo {
+                                                     player_id: pid.clone(),
+                                                     player_number: numbers.get(pid).copied().unwrap_or(0),
+                                                     player_name: names.get(pid).cloned().unwrap_or_else(|| "Unknown".to_string()),
+                                                 });
+                                             }
+                                         }
+                                         for spec_id in &room.spectators {
+                                             start_msgs.push((
+                                                 spec_id.clone(),
+                                                 ServerMessage::GameStart {
+                                                     game_state: game.state_for_player(None),
+                                                     scores: scores.clone(),
+                                                     game_type: room.game_type.clone(),
+                                                     variant: room.variant.clone(),
+                                                     match_format: room.match_format.clone(),
+                                                     players: players_info.clone(),
+                                                 }
+                                             ));
+                                         }
+                                     }
+                                     start_msgs
                                 }
                                 None => vec![(
                                     player_id.to_string(),
@@ -913,6 +1127,133 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                 for (pid, msg) in &messages_to_send {
                     state.send_to(pid, msg).await;
                 }
+            } else {
+                state
+                    .send_to(
+                        player_id,
+                        &ServerMessage::Error {
+                            message: "You are not in a room".into(),
+                        },
+                    )
+                    .await;
+            }
+        }
+        ClientMessage::SwapPlayer { active_player_number, spectator_player_id } => {
+            let room_code = {
+                let pr = state.player_rooms.read().await;
+                pr.get(player_id).cloned()
+            };
+
+            if let Some(code) = room_code {
+                let messages_to_send = {
+                    let mut rooms = state.rooms.write().await;
+                    if let Some(room) = rooms.get_mut(&code) {
+                        if room.players.first() != Some(&player_id.to_string()) {
+                            vec![(
+                                player_id.to_string(),
+                                ServerMessage::Error {
+                                    message: "Only the room creator can swap players".into(),
+                                },
+                            )]
+                        } else if (active_player_number as usize) >= room.players.len() {
+                            vec![(
+                                player_id.to_string(),
+                                ServerMessage::Error {
+                                    message: "Invalid active player number".into(),
+                                },
+                            )]
+                        } else if !room.spectators.contains(&spectator_player_id) {
+                            vec![(
+                                player_id.to_string(),
+                                ServerMessage::Error {
+                                    message: "Spectator not found in this room".into(),
+                                },
+                            )]
+                        } else {
+                            let old_player_id = room.players[active_player_number as usize].clone();
+                            room.players[active_player_number as usize] = spectator_player_id.clone();
+                            if let Some(pos) = room.spectators.iter().position(|id| id == &spectator_player_id) {
+                                room.spectators[pos] = old_player_id.clone();
+                            }
+
+                            {
+                                let mut pnums = state.player_numbers.write().await;
+                                pnums.insert(spectator_player_id.clone(), active_player_number);
+                                pnums.insert(old_player_id.clone(), 99);
+                            }
+
+                            for vote in room.play_again_votes.iter_mut() {
+                                *vote = false;
+                            }
+                            
+                            room.game = state.registry.create(&room.game_type, room.variant.as_deref());
+                            room.started = true;
+
+                            let scores = room.scores.clone();
+                            let mut start_msgs = Vec::new();
+                            
+                            if let Some(ref game) = room.game {
+                                let mut pnames_vec = vec![String::new(); room.players.len()];
+                                {
+                                    let pnames = state.player_names.read().await;
+                                    for (idx, pid) in room.players.iter().enumerate() {
+                                        pnames_vec[idx] = pnames.get(pid).cloned().unwrap_or_else(|| "Unknown".to_string());
+                                    }
+                                }
+
+                                start_msgs = build_game_start_messages(
+                                    game.as_ref(),
+                                    &room.players,
+                                    &pnames_vec,
+                                    scores.clone(),
+                                    &room.game_type,
+                                    &room.variant,
+                                    &room.match_format,
+                                );
+
+                                let mut players_info = Vec::new();
+                                {
+                                    let names = state.player_names.read().await;
+                                    let numbers = state.player_numbers.read().await;
+                                    for pid in &room.players {
+                                        players_info.push(crate::protocol::PlayerInfo {
+                                            player_id: pid.clone(),
+                                            player_number: numbers.get(pid).copied().unwrap_or(0),
+                                            player_name: names.get(pid).cloned().unwrap_or_else(|| "Unknown".to_string()),
+                                        });
+                                    }
+                                }
+                                for spec_id in &room.spectators {
+                                    start_msgs.push((
+                                        spec_id.clone(),
+                                        ServerMessage::GameStart {
+                                            game_state: game.state_for_player(None),
+                                            scores: scores.clone(),
+                                            game_type: room.game_type.clone(),
+                                            variant: room.variant.clone(),
+                                            match_format: room.match_format.clone(),
+                                            players: players_info.clone(),
+                                        }
+                                    ));
+                                }
+                            }
+                            start_msgs
+                        }
+                    } else {
+                        vec![(
+                            player_id.to_string(),
+                            ServerMessage::Error {
+                                message: "Room not found".into(),
+                            },
+                        )]
+                    }
+                };
+
+                for (pid, msg) in &messages_to_send {
+                    state.send_to(pid, msg).await;
+                }
+                
+                send_room_occupants(state, &code).await;
             } else {
                 state
                     .send_to(
@@ -1124,6 +1465,7 @@ pub async fn handle_message(state: &Arc<AppState>, player_id: &str, msg: ClientM
                         variant: variant.clone(),
                         match_format: "single".to_string(),
                         players: vec![player_id.to_string()],
+                        spectators: vec![],
                         game: None,
                         started: false,
                         scores: vec![0; player_count as usize],
@@ -1581,6 +1923,7 @@ mod tests {
                 variant: Some("classic".into()),
                 match_format: "single".into(),
                 players: vec!["p1".into()],
+                spectators: vec![],
                 game: Some(Box::new(game)),
                 started: true,
                 scores: vec![2, 1],
@@ -1631,6 +1974,7 @@ mod tests {
                 variant: Some("disappearing".into()),
                 match_format: "single".into(),
                 players: vec!["p2".into()],
+                spectators: vec![],
                 game: Some(Box::new(game)),
                 started: true,
                 scores: vec![0, 3],
@@ -1676,6 +2020,7 @@ mod tests {
                 variant: Some("classic".into()),
                 match_format: "single".into(),
                 players: vec!["p1".into()],
+                spectators: vec![],
                 game: None,
                 started: false,
                 scores: vec![3, 1],
@@ -1715,6 +2060,7 @@ mod tests {
                 variant: Some("classic".into()),
                 match_format: "single".into(),
                 players: vec!["p1".into(), "p2".into()],
+                spectators: vec![],
                 game,
                 started: true,
                 scores: vec![4, 2],
@@ -1759,6 +2105,7 @@ mod tests {
                 variant: Some("classic".into()),
                 match_format: "single".into(),
                 players: vec!["p1".into(), "p2".into()],
+                spectators: vec![],
                 game,
                 started: true,
                 scores: vec![1, 0],
@@ -1799,6 +2146,7 @@ mod tests {
                 variant: Some("classic".into()),
                 match_format: "series_5".into(),
                 players: vec!["p1".into(), "p2".into()],
+                spectators: vec![],
                 game,
                 started: true,
                 scores: vec![2, 0],
@@ -1870,6 +2218,7 @@ mod tests {
                 variant: Some("classic".into()),
                 match_format: "single".into(),
                 players: vec!["p1".into(), "p2".into()],
+                spectators: vec![],
                 game,
                 started: true,
                 scores: vec![0, 0],
@@ -2026,5 +2375,135 @@ mod tests {
 
         assert!(accepted.is_some());
         assert!(state.active_invites.read().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_spectator_joins_when_room_full() {
+        let state = Arc::new(AppState::new());
+        state.rooms.write().await.insert(
+            "ROOM42".into(),
+            Room {
+                code: "ROOM42".into(),
+                game_type: "tic_tac_toe".into(),
+                variant: Some("classic".into()),
+                match_format: "single".into(),
+                players: vec!["p1".into(), "p2".into()],
+                spectators: vec![],
+                game: state.registry.create("tic_tac_toe", Some("classic")),
+                started: true,
+                scores: vec![0, 0],
+                play_again_votes: vec![false, false],
+            },
+        );
+        state.player_rooms.write().await.insert("p1".into(), "ROOM42".into());
+        state.player_rooms.write().await.insert("p2".into(), "ROOM42".into());
+        state.player_numbers.write().await.insert("p1".into(), 0);
+        state.player_numbers.write().await.insert("p2".into(), 1);
+
+        handle_message(
+            &state,
+            "spec1",
+            ClientMessage::JoinRoom {
+                room_code: "ROOM42".into(),
+                player_name: "Spectator 1".into(),
+            },
+        )
+        .await;
+
+        let rooms = state.rooms.read().await;
+        let room = rooms.get("ROOM42").unwrap();
+        assert_eq!(room.players.len(), 2);
+        assert_eq!(room.spectators, vec!["spec1".to_string()]);
+        assert_eq!(state.player_numbers.read().await.get("spec1").copied(), Some(99));
+    }
+
+    #[tokio::test]
+    async fn test_spectator_action_rejected() {
+        let state = Arc::new(AppState::new());
+        state.rooms.write().await.insert(
+            "ROOM42".into(),
+            Room {
+                code: "ROOM42".into(),
+                game_type: "tic_tac_toe".into(),
+                variant: Some("classic".into()),
+                match_format: "single".into(),
+                players: vec!["p1".into(), "p2".into()],
+                spectators: vec!["spec1".into()],
+                game: state.registry.create("tic_tac_toe", Some("classic")),
+                started: true,
+                scores: vec![0, 0],
+                play_again_votes: vec![false, false],
+            },
+        );
+        state.player_rooms.write().await.insert("p1".into(), "ROOM42".into());
+        state.player_rooms.write().await.insert("p2".into(), "ROOM42".into());
+        state.player_rooms.write().await.insert("spec1".into(), "ROOM42".into());
+        state.player_numbers.write().await.insert("p1".into(), 0);
+        state.player_numbers.write().await.insert("p2".into(), 1);
+        state.player_numbers.write().await.insert("spec1".into(), 99);
+
+        handle_message(
+            &state,
+            "spec1",
+            ClientMessage::GameAction {
+                action: serde_json::json!({
+                    "game": "TicTacToe",
+                    "cell": 0
+                }),
+            },
+        )
+        .await;
+
+        let rooms = state.rooms.read().await;
+        let room = rooms.get("ROOM42").unwrap();
+        let game_state = room.game.as_ref().unwrap().state_for_player(None);
+        assert!(game_state["board"][0].is_null());
+    }
+
+    #[tokio::test]
+    async fn test_creator_swaps_player_with_spectator() {
+        let state = Arc::new(AppState::new());
+        state.rooms.write().await.insert(
+            "ROOM42".into(),
+            Room {
+                code: "ROOM42".into(),
+                game_type: "tic_tac_toe".into(),
+                variant: Some("classic".into()),
+                match_format: "single".into(),
+                players: vec!["p1".into(), "p2".into()],
+                spectators: vec!["spec1".into()],
+                game: state.registry.create("tic_tac_toe", Some("classic")),
+                started: true,
+                scores: vec![0, 0],
+                play_again_votes: vec![false, false],
+            },
+        );
+        state.player_rooms.write().await.insert("p1".into(), "ROOM42".into());
+        state.player_rooms.write().await.insert("p2".into(), "ROOM42".into());
+        state.player_rooms.write().await.insert("spec1".into(), "ROOM42".into());
+        state.player_numbers.write().await.insert("p1".into(), 0);
+        state.player_numbers.write().await.insert("p2".into(), 1);
+        state.player_numbers.write().await.insert("spec1".into(), 99);
+        state.player_names.write().await.insert("p1".into(), "Creator".into());
+        state.player_names.write().await.insert("p2".into(), "Opponent".into());
+        state.player_names.write().await.insert("spec1".into(), "Spectator".into());
+
+        // Creator ("p1") swaps player 1 ("p2") with "spec1"
+        handle_message(
+            &state,
+            "p1",
+            ClientMessage::SwapPlayer {
+                active_player_number: 1,
+                spectator_player_id: "spec1".into(),
+            },
+        )
+        .await;
+
+        let rooms = state.rooms.read().await;
+        let room = rooms.get("ROOM42").unwrap();
+        assert_eq!(room.players, vec!["p1".to_string(), "spec1".to_string()]);
+        assert_eq!(room.spectators, vec!["p2".to_string()]);
+        assert_eq!(state.player_numbers.read().await.get("spec1").copied(), Some(1));
+        assert_eq!(state.player_numbers.read().await.get("p2").copied(), Some(99));
     }
 }

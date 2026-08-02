@@ -1,0 +1,236 @@
+/* frontend/src/app/games/line-crosser/game.module.css */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  gap: 1.5rem;
+  color: #f8fafc;
+}
+
+.statusBar {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 500;
+  backdrop-filter: blur(8px);
+  color: #e2e8f0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.scoreBoard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  gap: 1rem;
+}
+
+.scoreCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.activeScoreP1 {
+  border-color: #06b6d4;
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.2);
+  background: rgba(6, 182, 212, 0.05);
+}
+
+.activeScoreP2 {
+  border-color: #fb7185;
+  box-shadow: 0 0 15px rgba(251, 113, 133, 0.2);
+  background: rgba(251, 113, 133, 0.05);
+}
+
+.scoreLabel {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin-bottom: 0.25rem;
+}
+
+.scoreVal {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.scoreP1Val {
+  color: #22d3ee;
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.4);
+}
+
+.scoreP2Val {
+  color: #fb7185;
+  text-shadow: 0 0 8px rgba(251, 113, 133, 0.4);
+}
+
+.boardContainer {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+.svgBoard {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Radar-like background circles */
+.radarCircle {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.03);
+  stroke-width: 1.5;
+}
+
+.radarSpoke {
+  stroke: rgba(255, 255, 255, 0.02);
+  stroke-width: 1;
+}
+
+/* Lines */
+.connectionLine {
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.5s ease;
+}
+
+.lineP1 {
+  stroke: #22d3ee;
+  filter: drop-shadow(0 0 5px rgba(34, 211, 238, 0.7));
+}
+
+.lineP2 {
+  stroke: #fb7185;
+  filter: drop-shadow(0 0 5px rgba(251, 113, 133, 0.7));
+}
+
+.previewLine {
+  stroke: rgba(255, 255, 255, 0.4);
+  stroke-width: 2.5;
+  stroke-dasharray: 6, 4;
+  pointer-events: none;
+  animation: dash 1s linear infinite;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+/* Dots */
+.gridDot {
+  fill: #1e293b;
+  stroke: #475569;
+  stroke-width: 2;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: default;
+}
+
+.gridDotPlayable {
+  cursor: pointer;
+  stroke: #94a3b8;
+}
+
+.gridDotPlayable:hover {
+  fill: #334155;
+  stroke: #f1f5f9;
+  r: 9px;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
+}
+
+.gridDotSelected {
+  fill: #06b6d4;
+  stroke: #22d3ee;
+  stroke-width: 3;
+  r: 10px;
+  animation: pulse 1.5s infinite alternate;
+  filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.8));
+}
+
+.gridDotUsed {
+  fill: #0f172a;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 1.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.dotText {
+  font-size: 0.65rem;
+  font-weight: bold;
+  fill: #64748b;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  user-select: none;
+}
+
+.dotTextActive {
+  fill: #f1f5f9;
+}
+
+.dotTextUsed {
+  fill: rgba(255, 255, 255, 0.15);
+}
+
+@keyframes pulse {
+  0% {
+    r: 8px;
+    filter: drop-shadow(0 0 4px rgba(34, 211, 238, 0.5));
+  }
+  100% {
+    r: 11px;
+    filter: drop-shadow(0 0 12px rgba(34, 211, 238, 0.9));
+  }
+}
+
+.instructions {
+  width: 100%;
+  padding: 1rem;
+  background: rgba(30, 41, 59, 0.4);
+  border-radius: 12px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.instructions h4 {
+  margin: 0 0 0.5rem 0;
+  color: #f1f5f9;
+}
+
+.instructions ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.instructions li {
+  margin-bottom: 0.25rem;
+}

@@ -1,0 +1,190 @@
+/* frontend/src/app/games/sos-dot/game.module.css */
+
+.shell {
+  width: min(100%, 540px);
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+  color: #f8fafc;
+  padding: 10px;
+}
+
+.statusBar {
+  min-height: 48px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 18px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.scoreBoard {
+  display: flex;
+  gap: 12px;
+}
+
+.scoreCard {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.activeScoreP1 {
+  border-color: rgba(34, 211, 238, 0.3);
+  background: rgba(34, 211, 238, 0.03);
+}
+
+.activeScoreP2 {
+  border-color: rgba(251, 113, 133, 0.3);
+  background: rgba(251, 113, 133, 0.03);
+}
+
+.scoreLabel {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.scoreVal {
+  font-size: 1.3rem;
+  font-weight: 900;
+  font-family: monospace;
+  color: #f8fafc;
+}
+
+.selectorRow {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 8px;
+}
+
+.letterBtn {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+  font-size: 1.8rem;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.letterBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.activeS {
+  background: rgba(6, 182, 212, 0.1) !important;
+  border-color: #06b6d4 !important;
+  color: #22d3ee !important;
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.4);
+}
+
+.activeO {
+  background: rgba(236, 72, 153, 0.1) !important;
+  border-color: #ec4899 !important;
+  color: #f472b6 !important;
+  box-shadow: 0 0 12px rgba(236, 72, 153, 0.4);
+}
+
+.boardContainer {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: repeat(6, 1fr);
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  padding: 12px;
+  background: rgba(30, 41, 59, 0.4);
+  border: 2px solid #475569;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+
+.cell {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: not-allowed;
+  font-size: 1.8rem;
+  font-weight: 900;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.cellPlayable {
+  cursor: pointer;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.cellPlayable:hover {
+  background: rgba(255, 255, 255, 0.06);
+  transform: scale(1.03);
+}
+
+.letterS {
+  color: #22d3ee;
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.4);
+}
+
+.letterO {
+  color: #fb7185;
+  text-shadow: 0 0 8px rgba(251, 113, 133, 0.4);
+}
+
+/* Strike-through SVG overlays */
+.svgOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.strikeLine {
+  stroke: #f59e0b;
+  stroke-width: 4;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 5px #f59e0b);
+  animation: drawLineAnim 0.3s ease-out forwards;
+}
+
+@keyframes drawLineAnim {
+  from { stroke-dasharray: 100; stroke-dashoffset: 100; }
+  to { stroke-dasharray: 100; stroke-dashoffset: 0; }
+}
+
+@media (max-width: 480px) {
+  .cell {
+    font-size: 1.4rem;
+  }
+}

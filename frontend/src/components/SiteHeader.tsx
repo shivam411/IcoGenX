@@ -114,7 +114,7 @@ export default function SiteHeader() {
   return (
     <header className={styles.header} role="banner">
       <Link href="/" className={styles.brand} aria-label="IcoGenX home">
-        <Image src="/icon.svg" alt="" width={36} height={36} className={styles.brandMark} priority />
+        <Image src="/icon.svg" alt="IcoGenX Logo - Free 2-Player Online Games" width={36} height={36} className={styles.brandMark} priority />
         <span className={styles.brandWordmark}>
           Ico<span className={styles.brandAccent}>GenX</span>
         </span>
@@ -122,8 +122,9 @@ export default function SiteHeader() {
 
       <nav className={styles.nav} aria-label="Primary">
         <Link href="/" className={styles.navLink}>Games</Link>
+        <Link href="/about" className={styles.navLink}>About</Link>
+        <Link href="/tournaments" className={styles.navLink}>Tournaments</Link>
         {user && <Link href="/teams" className={styles.navLink}>Teams</Link>}
-        {user && <Link href="/tournaments" className={styles.navLink}>Tournaments</Link>}
         {user && (role === 'admin' || role === 'tournament_manager') && (
           <Link href="/admin" className={styles.navLink}>Admin</Link>
         )}

@@ -1,0 +1,275 @@
+/* frontend/src/app/games/s-curve-race/game.module.css */
+
+.boardShell {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 950px;
+  margin: 0 auto;
+  padding: 1rem;
+  color: #f3f4f6;
+  font-family: 'Outfit', sans-serif;
+}
+
+/* Event banner */
+.statusBar {
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 0.75rem 1.5rem;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(8px);
+}
+
+.statusText {
+  font-size: 0.95rem;
+  font-family: monospace;
+  color: #cbd5e1;
+}
+
+/* Main board area splits */
+.gameArea {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .gameArea {
+    display: grid;
+    grid-template-columns: 1fr 240px;
+    align-items: start;
+    gap: 1.5rem;
+  }
+}
+
+/* SVG Board Canvas styling */
+.canvasWrapper {
+  width: 100%;
+  background: rgba(15, 23, 42, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(12px);
+  padding: 1.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.boardSvg {
+  width: 100%;
+  height: auto;
+  max-height: 500px;
+}
+
+.pathLine {
+  stroke-dasharray: 8 8;
+  animation: pathFlow 30s linear infinite;
+}
+
+@keyframes pathFlow {
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+
+/* SVG nodes */
+.nodeGroup {
+  transition: transform 0.2s ease;
+}
+
+.nodeGroup:hover {
+  transform: scale(1.08);
+  cursor: default;
+}
+
+.nodeText {
+  font-family: monospace;
+  user-select: none;
+  pointer-events: none;
+}
+
+.endNodeGroup {
+  animation: pulseGold 2s infinite ease-in-out;
+}
+
+@keyframes pulseGold {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 4px rgba(250, 204, 21, 0.4));
+  }
+  50% {
+    transform: scale(1.03);
+    filter: drop-shadow(0 0 12px rgba(250, 204, 21, 0.8));
+  }
+}
+
+/* Tokens and animations */
+.tokenAnim {
+  transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+}
+
+.tokenAnim circle {
+  animation: tokenPulse 2.5s infinite ease-in-out;
+}
+
+@keyframes tokenPulse {
+  0%, 100% {
+    stroke-width: 2px;
+  }
+  50% {
+    stroke-width: 3.5px;
+    filter: drop-shadow(0 0 6px currentColor);
+  }
+}
+
+/* Center console tray */
+.consoleContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  background: rgba(30, 41, 59, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 24px;
+  padding: 1.5rem;
+  width: 100%;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(8px);
+}
+
+.playerInfoRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.playerBadge {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+  border: 1.5px solid;
+  background: rgba(15, 23, 42, 0.4);
+}
+
+.badgeLabel {
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 20px;
+  color: #0f172a;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badgePos {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: #e2e8f0;
+  font-weight: 700;
+}
+
+.diceTray {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.dieBox {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+  border: 2.5px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+  font-size: 2.75rem;
+  font-weight: 800;
+  transition: transform 0.2s ease;
+}
+
+.dieFace {
+  color: #fff;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
+  animation: rollPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.diePlaceholder {
+  color: rgba(255, 255, 255, 0.15);
+}
+
+.actionsBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.rollBtn {
+  width: 100%;
+  padding: 0.85rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.rollBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.4);
+}
+
+.rollBtn:active {
+  transform: translateY(0);
+}
+
+.waitingText {
+  font-size: 0.8rem;
+  color: #64748b;
+  text-align: center;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.gameOverBanner {
+  background: rgba(234, 179, 8, 0.15);
+  border: 1px solid #eab308;
+  color: #fef08a;
+  text-align: center;
+  padding: 0.6rem;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+@keyframes rollPop {
+  0% {
+    transform: scale(0.5) rotate(-180deg);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+}

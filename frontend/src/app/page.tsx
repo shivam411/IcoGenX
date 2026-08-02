@@ -5,34 +5,30 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getGamePath, useGame } from '@/context/GameContext';
 import { GAME_CATALOG, type GameCatalogItem } from '@/lib/gameMetadata';
-import { getVariantMetricId } from '@/lib/socialMetrics';
-import { recordGamePlay } from '@/lib/useGameSocial';
-import GameCard from '@/components/GameCard';
-import GameIcon from '@/components/GameIcon';
-import AdSlot from '@/components/AdSlot';
 import styles from './page.module.css';
 
 const games: GameCatalogItem[] = GAME_CATALOG;
 
 export default function HomePage() {
   const router = useRouter();
-  const { joinRoom, connected, error, roomCode, gameType, variant, pendingRoomAction } = useGame();
+  const { joinRoom, connected, roomCode, gameType, variant, pendingRoomAction } = useGame();
 
   const [filter, setFilter] = useState('All');
   const [playerFilter, setPlayerFilter] = useState<'all' | '2p' | '3-4p'>('all');
-  const [page, setPage] = useState(1);
-  const [selectedGame, setSelectedGame] = useState<GameCatalogItem | null>(null);
-  const [comingSoonGame, setComingSoonGame] = useState<GameCatalogItem | null>(null);
-  const [subscribeEmail, setSubscribeEmail] = useState('');
-  const [subscribedGameId, setSubscribedGameId] = useState<string | null>(null);
-  const [variantPlayCounts, setVariantPlayCounts] = useState<Record<string, number>>({});
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [quizMood, setQuizMood] = useState<string | null>('strategy');
 
-  // Quick join — now a toggleable action, not always-on
+  // Quick join room inputs
   const [joinOpen, setJoinOpen] = useState(false);
   const [joinName, setJoinName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [joinError, setJoinError] = useState('');
   const quickJoinPending = pendingRoomAction?.kind === 'joining';
+
+  // Interactive Mini-Demo Board State (Hero interactive mini-game)
+  const [demoBoard, setDemoBoard] = useState<(string | null)[]>(['X', null, 'O', null, 'X', null, 'O', null, null]);
+  const [demoTurn, setDemoTurn] = useState<'X' | 'O'>('X');
+  const [demoWinner, setDemoWinner] = useState<string | null>(null);
 
   const catalogRef = useRef<HTMLDivElement | null>(null);
 
@@ -48,33 +44,38 @@ export default function HomePage() {
     router.push(path);
   }, [pendingRoomAction, roomCode, gameType, variant, router]);
 
-  useEffect(() => {
-    if (!selectedGame?.variants?.length) return;
+  // Mini-game click handler for live hero experience
+  const handleDemoCellClick = (index: number) => {
+    if (demoBoard[index] || demoWinner) return;
+    const nextBoard = [...demoBoard];
+    nextBoard[index] = demoTurn;
+    setDemoBoard(nextBoard);
 
-    const metricIds = selectedGame.variants.map((item) => getVariantMetricId(selectedGame.id, item.id));
-    let cancelled = false;
+    // Simple check
+    const winningLines = [
+      [0,1,2], [3,4,5], [6,7,8],
+      [0,3,6], [1,4,7], [2,5,8],
+      [0,4,8], [2,4,6]
+    ];
+    let won = false;
+    for (const [a, b, c] of winningLines) {
+      if (nextBoard[a] && nextBoard[a] === nextBoard[b] && nextBoard[a] === nextBoard[c]) {
+        setDemoWinner(nextBoard[a]);
+        won = true;
+        break;
+      }
+    }
 
-    fetch(`/api/games/social?ids=${metricIds.join(',')}`, { cache: 'no-store' })
-      .then((res) => {
-        if (!res.ok) throw new Error(`variant_social_${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
-        if (cancelled) return;
-        const nextCounts: Record<string, number> = {};
-        for (const metricId of metricIds) {
-          nextCounts[metricId] = data.social?.[metricId]?.plays ?? 0;
-        }
-        setVariantPlayCounts((current) => ({ ...current, ...nextCounts }));
-      })
-      .catch(() => {
-        if (!cancelled) setVariantPlayCounts((current) => ({ ...current }));
-      });
+    if (!won) {
+      setDemoTurn(demoTurn === 'X' ? 'O' : 'X');
+    }
+  };
 
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedGame]);
+  const resetDemo = () => {
+    setDemoBoard([null, null, null, null, null, null, null, null, null]);
+    setDemoTurn('X');
+    setDemoWinner(null);
+  };
 
   const handleQuickJoin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,45 +92,40 @@ export default function HomePage() {
     joinRoom(joinCode.toUpperCase(), joinName.trim());
   };
 
-  const handleSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!subscribeEmail || !comingSoonGame) return;
-    setSubscribedGameId(comingSoonGame.id);
-    setSubscribeEmail('');
-  };
-
   const scrollToCatalog = () => {
     catalogRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const { categories, totalGames, totalVariants } = useMemo(() => {
-    const cats = ['All', ...Array.from(new Set(games.map((g) => g.category)))];
+  const { totalGames, totalVariants } = useMemo(() => {
     const variantCount = games.reduce((sum, g) => sum + (g.variants?.length ?? 1), 0);
-    return { categories: cats, totalGames: games.length, totalVariants: variantCount };
+    return { totalGames: games.length, totalVariants: variantCount };
   }, []);
 
+  // Filtered games logic
   const filteredGames = useMemo(() => {
     return games.filter((g) => {
-      // Category filter
       const matchesCategory = filter === 'All' || g.category === filter;
-      // Player count filter
       let matchesPlayerCount = true;
-      if (playerFilter === '2p') {
-        matchesPlayerCount = g.playerCount === 2;
-      } else if (playerFilter === '3-4p') {
-        matchesPlayerCount = g.playerCount >= 3;
-      }
+      if (playerFilter === '2p') matchesPlayerCount = g.playerCount === 2;
+      else if (playerFilter === '3-4p') matchesPlayerCount = g.playerCount >= 3;
       return matchesCategory && matchesPlayerCount;
     });
   }, [filter, playerFilter]);
 
-  const ITEMS_PER_PAGE = 6;
-  const totalPages = Math.max(1, Math.ceil(filteredGames.length / ITEMS_PER_PAGE));
-  const paginatedGames = filteredGames.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  // Quiz Recommendations
+  const quizRecommendedGames = useMemo(() => {
+    if (!quizMood) return games.slice(0, 3);
+    if (quizMood === 'strategy') return games.filter(g => g.category === 'Strategy').slice(0, 3);
+    if (quizMood === 'quick') return games.filter(g => g.estimatedTime.includes('1') || g.estimatedTime.includes('2')).slice(0, 3);
+    if (quizMood === 'couples') return games.filter(g => g.tags.includes('couples')).slice(0, 3);
+    if (quizMood === 'logic') return games.filter(g => g.category === 'Logic').slice(0, 3);
+    if (quizMood === 'party') return games.filter(g => g.category === 'Party').slice(0, 3);
+    return games.slice(0, 3);
+  }, [quizMood]);
 
   return (
     <div className={styles.page}>
-      {/* Background effects */}
+      {/* Dynamic Background Effects */}
       <div className={styles.bgOrbs} aria-hidden>
         <div className={`${styles.orb} ${styles.orb1}`} />
         <div className={`${styles.orb} ${styles.orb2}`} />
@@ -138,89 +134,104 @@ export default function HomePage() {
       </div>
 
       <div className={styles.content}>
-        {/* ---------- Hero ---------- */}
+        
+        {/* ==================== HERO SECTION ==================== */}
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
-            <span className={styles.eyebrow}>
+            <div className={styles.eyebrow}>
               <span className={styles.dot} aria-hidden />
-              Live multiplayer · no install
-            </span>
+              <span>Real-Time WebSockets · Instant Room Codes · 100% Free</span>
+            </div>
+
             <h1 className={styles.heroTitle}>
-              Quick, clever games
-              <br />
-              <span className={styles.heroAccent}>built for two &amp; more.</span>
+              PLAY FREE MULTIPLAYER<br />
+              <span className={styles.heroAccent}>BROWSER GAMES</span>
             </h1>
+
             <p className={styles.heroSub}>
-              Pick a game, share a 6-character room code, and play head-to-head in your browser.
-              Every game has fast variants for short, decisive matches.
+              Instant 6-character room codes. Zero downloads or sign-ups required.
+              Challenge friends, family, or partners to 36+ real-time strategy, logic, and reflex games.
             </p>
 
             <div className={styles.heroActions}>
-              <button type="button" className={`btn btn-primary ${styles.heroCta}`} onClick={scrollToCatalog}>
-                ▶ Browse {totalGames} games
+              <button type="button" className={`btn btn-primary ${styles.heroCtaMain}`} onClick={scrollToCatalog}>
+                🎮 Browse 36+ Games
               </button>
               <button
                 type="button"
-                className={`btn btn-ghost ${styles.heroCta}`}
-                onClick={() => setJoinOpen((open) => !open)}
+                className={`btn btn-ghost ${styles.heroCtaJoin}`}
+                onClick={() => setJoinOpen(!joinOpen)}
                 aria-expanded={joinOpen}
-                aria-controls="quick-join-panel"
               >
-                {joinOpen ? '× Close quick join' : '⚡ Quick join a room'}
+                {joinOpen ? '× Close Quick Join' : '⚡ Quick Join Room'}
               </button>
             </div>
 
-            <dl className={styles.heroStats} aria-label="At a glance">
+            <dl className={styles.heroStats} aria-label="IcoGenX Metrics">
               <div className={styles.heroStat}>
-                <dt>Games</dt>
+                <dt>Free Games</dt>
                 <dd>{totalGames}</dd>
               </div>
               <div className={styles.heroStat}>
-                <dt>Variants</dt>
+                <dt>Game Variants</dt>
                 <dd>{totalVariants}</dd>
               </div>
               <div className={styles.heroStat}>
-                <dt>Per room</dt>
-                <dd>2-4 Players</dd>
+                <dt>Netcode</dt>
+                <dd>WebSockets</dd>
               </div>
               <div className={styles.heroStat}>
-                <dt>Sign-up</dt>
+                <dt>Sign-Up</dt>
                 <dd>Optional</dd>
               </div>
             </dl>
           </div>
 
-          {/* Hero side panel: how-a-match-flows preview */}
-          <aside className={styles.heroVisual} aria-hidden>
-            <div className={styles.previewTile}>
-              <div className={styles.previewTileHeader}>
-                <span className={styles.previewTag}>How a match flows</span>
-                <span className={styles.previewBadge}>2-4P</span>
+          {/* Right Side: Interactive Live Mini-Game Demo */}
+          <aside className={styles.heroVisual}>
+            <div className={styles.interactiveDemoCard}>
+              <div className={styles.demoCardHeader}>
+                <span className={styles.demoBadge}>Interactive Demo</span>
+                <span className={styles.demoTitle}>Play Disappearing Tic-Tac-Toe</span>
               </div>
-              <ol className={styles.flowList}>
-                <li><span>1</span> Pick a game &amp; variant</li>
-                <li><span>2</span> Share your room code</li>
-                <li><span>3</span> Play, react, rematch</li>
-              </ol>
-              <div className={styles.previewBoard} role="presentation">
-                {Array.from({ length: 9 }).map((_, i) => {
-                  const mark = [0, 4, 8].includes(i) ? '✕' : [2, 6].includes(i) ? '○' : '';
-                  return (
-                    <div key={i} className={styles.previewCell}>{mark}</div>
-                  );
-                })}
+
+              <div className={styles.miniBoard}>
+                {demoBoard.map((cell, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    className={`${styles.miniCell} ${cell === 'X' ? styles.cellX : cell === 'O' ? styles.cellO : ''}`}
+                    onClick={() => handleDemoCellClick(idx)}
+                    disabled={!!cell || !!demoWinner}
+                  >
+                    {cell}
+                  </button>
+                ))}
               </div>
+
+              <div className={styles.demoStatus}>
+                {demoWinner ? (
+                  <p className={styles.winText}>✨ Player {demoWinner} Wins! <button onClick={resetDemo} className={styles.resetBtn}>Reset Demo</button></p>
+                ) : (
+                  <p>Current Turn: <strong>Player {demoTurn}</strong></p>
+                )}
+              </div>
+
+              <Link href="/games/tic-tac-toe" className={styles.demoPlayFullBtn}>
+                Play Full Room Game →
+              </Link>
             </div>
           </aside>
         </section>
 
-        {/* Quick Join slide-down */}
+        {/* ==================== QUICK JOIN SLIDE-DOWN ==================== */}
         {joinOpen && (
           <div id="quick-join-panel" className={`glass-card ${styles.joinPanel}`}>
+            <h3 className={styles.joinPanelTitle}>⚡ Join a Private Room</h3>
             <form onSubmit={handleQuickJoin} className={styles.joinForm}>
               <div className={styles.joinFields}>
                 <label className={styles.joinField}>
-                  <span>Your name</span>
+                  <span>Your Name</span>
                   <input
                     className={styles.joinInput}
                     placeholder="e.g. Shivam"
@@ -231,7 +242,7 @@ export default function HomePage() {
                   />
                 </label>
                 <label className={styles.joinField}>
-                  <span>Room code</span>
+                  <span>6-Character Room Code</span>
                   <input
                     className={`${styles.joinInput} ${styles.joinInputCode}`}
                     placeholder="ABC123"
@@ -246,270 +257,230 @@ export default function HomePage() {
                 className={`btn btn-primary ${styles.joinSubmit}`}
                 disabled={!connected || quickJoinPending}
               >
-                {!connected ? 'Connecting…' : quickJoinPending ? 'Joining…' : 'Join room →'}
+                {!connected ? 'Connecting…' : quickJoinPending ? 'Joining…' : 'Join Room →'}
               </button>
             </form>
-            {(joinError || error) && <div className={styles.joinError}>{joinError || error}</div>}
-            <p className={styles.joinHint}>
-              No room code? Pick a game below &mdash; you&apos;ll get one to share.
-            </p>
+            {joinError && <p className={styles.joinErrorMsg}>{joinError}</p>}
           </div>
         )}
 
-        {/* ---------- Featured Section & Couples Corner ---------- */}
-        {filter === 'All' && playerFilter === 'all' && page === 1 && (
-          <section className={styles.featuredSection}>
-            <div className={styles.featuredHeader}>
-              <h2 className={styles.featuredTitle}>
-                <span>✨</span> Featured &amp; Couples Corner
-              </h2>
-              <p className={styles.featuredSub}>Handpicked favorites for date nights, party nights, and quick challenges.</p>
-            </div>
-            <div className={styles.featuredGrid}>
-              {games.filter((g) => g.featured).map((game) => (
-                <GameCard
-                  key={`featured-${game.id}`}
-                  game={game}
-                  onOpenVariants={setSelectedGame}
-                  onNotifyComingSoon={setComingSoonGame}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ---------- Catalog ---------- */}
-        <section ref={catalogRef} className={styles.catalog} aria-labelledby="catalog-heading">
-          <header className={styles.catalogHeader}>
-            <div className={styles.catalogHeaderCopy}>
-              <h2 id="catalog-heading" className={styles.catalogTitle}>Game catalog</h2>
-              <p className={styles.catalogSub}>Explore our full collection of multiplayer games.</p>
-            </div>
-            <div className={styles.filterControls}>
-              <div className={styles.filterGroup}>
-                <span className={styles.filterLabel}>Category</span>
-                <div className={styles.filterRow} role="tablist" aria-label="Filter games by category">
-                  {categories.map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      role="tab"
-                      aria-selected={filter === cat}
-                      onClick={() => {
-                        setFilter(cat);
-                        setPage(1);
-                      }}
-                      className={`${styles.filterBtn} ${filter === cat ? styles.filterBtnActive : ''}`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className={styles.filterGroup}>
-                <span className={styles.filterLabel}>Players</span>
-                <div className={styles.filterRow} role="tablist" aria-label="Filter games by player count">
-                  {[
-                    { id: 'all', label: 'All Players' },
-                    { id: '2p', label: '👥 2 Players' },
-                    { id: '3-4p', label: '👥👥 3-4 Players' },
-                  ].map((pOpt) => (
-                    <button
-                      key={pOpt.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={playerFilter === pOpt.id}
-                      onClick={() => {
-                        setPlayerFilter(pOpt.id as any);
-                        setPage(1);
-                      }}
-                      className={`${styles.filterBtn} ${playerFilter === pOpt.id ? styles.filterBtnActive : ''}`}
-                    >
-                      {pOpt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </header>
-
-          <div className={styles.gamesGrid}>
-            {paginatedGames.length === 0 ? (
-              <div className={styles.emptyStateCard}>
-                <span className={styles.emptyIcon}>🎮</span>
-                <h3>No games found</h3>
-                <p>We are actively developing more multiplayer games for this category. Stay tuned!</p>
-                <button
-                  className="btn btn-primary btn-sm"
-                  onClick={() => {
-                    setFilter('All');
-                    setPlayerFilter('all');
-                  }}
-                >
-                  Reset Filters
-                </button>
-              </div>
-            ) : (
-              paginatedGames.map((game) => (
-                <GameCard
-                  key={game.id}
-                  game={game}
-                  onOpenVariants={setSelectedGame}
-                  onNotifyComingSoon={setComingSoonGame}
-                />
-              ))
-            )}
+        {/* ==================== LIVE ACTIVITY PULSE BAR ==================== */}
+        <section className={styles.activityBar}>
+          <div className={styles.activityItem}>
+            <span className={styles.pulseDot} />
+            <span>Real-Time Matchmaking Active</span>
           </div>
-
-          {totalPages > 1 && (
-            <nav className={styles.pagination} aria-label="Catalog pagination">
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                disabled={page === 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                ← Prev
-              </button>
-              <span className={styles.pageInfo}>Page {page} of {totalPages}</span>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                disabled={page === totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next →
-              </button>
-            </nav>
-          )}
+          <div className={styles.activityItem}>
+            <span>⚡ Ultra-Low Latency WebSocket Server</span>
+          </div>
+          <div className={styles.activityItem}>
+            <span>🛡️ 100% Free &amp; Guest Ready</span>
+          </div>
         </section>
 
-        <AdSlot slotId="home-leaderboard" shape="leaderboard" label="Homepage leaderboard" />
+        {/* ==================== FIND YOUR GAME QUIZ ==================== */}
+        <section className={styles.quizSection}>
+          <header className={styles.sectionHeader}>
+            <span className={styles.sectionTag}>🎯 Instant Game Recommender</span>
+            <h2>Find Your Game in Seconds</h2>
+            <p>What kind of experience are you looking for today?</p>
+          </header>
 
-        <footer className={styles.footerNote}>
-          <span>Built for friends &amp; couples · works on phones · zero install</span>
-        </footer>
-      </div>
-
-      {/* Variants Modal */}
-      {selectedGame?.variants && (
-        <div className={styles.modalOverlay} onClick={() => setSelectedGame(null)}>
-          <div
-            className={`glass-card ${styles.modalCard}`}
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Choose variant for ${selectedGame.name}`}
-          >
-            <h2 className={styles.modalTitle}>Choose a variant</h2>
-            <p className={styles.modalSub}>
-              Pick how you want to play {selectedGame.name.replace(' Variants', '')}.
-            </p>
-
-            <div className={styles.variantList}>
-              {selectedGame.variants.map((v) => {
-                const metricId = getVariantMetricId(selectedGame.id, v.id);
-                return (
-                  <Link
-                    key={v.id}
-                    href={v.path}
-                    className={styles.variantItem}
-                    onClick={() => {
-                      setVariantPlayCounts((current) => ({
-                        ...current,
-                        [metricId]: (current[metricId] ?? 0) + 1,
-                      }));
-                      void recordGamePlay(metricId);
-                    }}
-                  >
-                    <div className={styles.variantIcon}>
-                      <GameIcon icon={v.icon} />
-                    </div>
-                    <div className={styles.variantBody}>
-                      <div className={styles.variantMetaRow}>
-                        <h3 className={styles.variantName}>{v.name}</h3>
-                        <span className={styles.variantPlays}>▶ {variantPlayCounts[metricId] ?? 0}</span>
-                      </div>
-                      <p className={styles.variantDesc}>{v.desc}</p>
-                    </div>
-                    <div className={styles.variantArrow}>→</div>
-                  </Link>
-                );
-              })}
-            </div>
-
-            <button className={`btn btn-ghost ${styles.closeBtn}`} onClick={() => setSelectedGame(null)}>
-              Cancel
+          <div className={styles.quizTabs}>
+            <button
+              type="button"
+              className={`${styles.quizTab} ${quizMood === 'strategy' ? styles.quizTabActive : ''}`}
+              onClick={() => setQuizMood('strategy')}
+            >
+              ♟️ Strategy &amp; Tactics
+            </button>
+            <button
+              type="button"
+              className={`${styles.quizTab} ${quizMood === 'quick' ? styles.quizTabActive : ''}`}
+              onClick={() => setQuizMood('quick')}
+            >
+              ⚡ 2-Minute Quick Match
+            </button>
+            <button
+              type="button"
+              className={`${styles.quizTab} ${quizMood === 'couples' ? styles.quizTabActive : ''}`}
+              onClick={() => setQuizMood('couples')}
+            >
+              ❤️ Date Night / Couples
+            </button>
+            <button
+              type="button"
+              className={`${styles.quizTab} ${quizMood === 'logic' ? styles.quizTabActive : ''}`}
+              onClick={() => setQuizMood('logic')}
+            >
+              🧠 Logic &amp; Code Breaking
+            </button>
+            <button
+              type="button"
+              className={`${styles.quizTab} ${quizMood === 'party' ? styles.quizTabActive : ''}`}
+              onClick={() => setQuizMood('party')}
+            >
+              🎉 3-4 Player Party
             </button>
           </div>
-        </div>
-      )}
 
-      {/* Coming Soon Modal */}
-      {comingSoonGame && (
-        <div className={styles.modalOverlay} onClick={() => setComingSoonGame(null)}>
-          <div
-            className={`glass-card ${styles.modalCard}`}
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Coming soon info for ${comingSoonGame.name}`}
-          >
-            <div className={styles.comingSoonHeader}>
-              <span className={styles.comingSoonModalIcon} style={{ background: comingSoonGame.gradient }}>
-                <GameIcon icon={comingSoonGame.icon} />
-              </span>
-              <div>
-                <h2 className={styles.modalTitle}>{comingSoonGame.name}</h2>
-                <span className="badge badge-pink">v2.1 Beta</span>
-              </div>
-            </div>
-
-            <p className={styles.modalSub} style={{ marginTop: '1rem', fontSize: '1.02rem', lineHeight: '1.5' }}>
-              {comingSoonGame.description}
-            </p>
-
-            <div className={styles.comingSoonDetails}>
-              <h4 className={styles.comingSoonDetailsTitle}>Game Rules &amp; Highlights:</h4>
-              <ul className={styles.comingSoonRulesList}>
-                {comingSoonGame.rules.map((rule, idx) => (
-                  <li key={idx}>{rule}</li>
-                ))}
-              </ul>
-            </div>
-
-            {subscribedGameId === comingSoonGame.id ? (
-              <div className={styles.subscribeSuccess}>
-                <span>🎉</span> You are on the beta access list for {comingSoonGame.name}!
-              </div>
-            ) : (
-              <form onSubmit={handleSubscribe} className={styles.comingSoonForm}>
-                <p className={styles.subscribeText}>
-                  We are finalizing this game. Register your email for instant beta access!
-                </p>
-                <div className={styles.subscribeFields}>
-                  <input
-                    type="email"
-                    required
-                    placeholder="Enter your email"
-                    className={styles.subscribeInput}
-                    value={subscribeEmail}
-                    onChange={(e) => setSubscribeEmail(e.target.value)}
-                  />
-                  <button type="submit" className="btn btn-primary">
-                    Get Beta Invite 🚀
-                  </button>
+          <div className={styles.quizGrid}>
+            {quizRecommendedGames.map((game) => (
+              <div key={game.id} className={styles.quizCard}>
+                <div className={styles.quizCardHeader}>
+                  <span className={`badge ${game.badgeClass}`}>{game.category}</span>
+                  <span className={styles.quizTime}>⏱️ {game.estimatedTime}</span>
                 </div>
-              </form>
-            )}
-
-            <button className={`btn btn-ghost ${styles.closeBtn}`} onClick={() => setComingSoonGame(null)}>
-              Close
-            </button>
+                <h3 className={styles.quizCardTitle}>{game.name}</h3>
+                <p className={styles.quizCardDesc}>{game.description}</p>
+                <Link href={`/games/${game.id}`} className="btn btn-primary btn-sm">
+                  Play Now →
+                </Link>
+              </div>
+            ))}
           </div>
-        </div>
-      )}
+        </section>
+
+        {/* ==================== FEATURED GAMES ==================== */}
+        <section className={styles.featuredSection}>
+          <header className={styles.sectionHeader}>
+            <span className={styles.sectionTag}>✨ Trending Titles</span>
+            <h2>Popular 2-Player &amp; Multiplayer Browser Games</h2>
+            <p>Handpicked strategy, logic, and reflex games ready for instant room code matches.</p>
+          </header>
+
+          <div className={styles.featuredGrid}>
+            {games.filter(g => g.featured).slice(0, 4).map((game) => (
+              <article key={game.id} className={`glass-card ${styles.featuredCard}`}>
+                <div className={styles.featuredBanner} style={{ background: game.gradient }}>
+                  <div className={styles.featuredBadge}>{game.variants?.length || 1} Mode</div>
+                </div>
+                <div className={styles.cardBody}>
+                  <div className={styles.tagRow}>
+                    <span className={`badge ${game.badgeClass}`}>{game.category}</span>
+                    <span className={styles.playerTag}>👥 {game.players}</span>
+                  </div>
+                  <h3 className={styles.cardTitle}>
+                    <Link href={`/games/${game.id}`}>{game.name}</Link>
+                  </h3>
+                  <p className={styles.cardDesc}>{game.description}</p>
+                  <div className={styles.cardFooter}>
+                    <span>⏱️ {game.estimatedTime}</span>
+                    <Link href={`/games/${game.id}`} className="btn btn-primary btn-sm">
+                      Play Now →
+                    </Link>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* ==================== CATEGORY EXPLORER ==================== */}
+        <section className={styles.categorySection} id="game-catalog" ref={catalogRef}>
+          <header className={styles.sectionHeader}>
+            <span className={styles.sectionTag}>🎯 Explore By Genre</span>
+            <h2>Discover Games by Category</h2>
+          </header>
+
+          <div className={styles.filterRow}>
+            {['All', 'Strategy', 'Logic', 'Memory', 'Quick', 'Reflex', 'Cards', 'Party', 'Couples'].map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                className={`${styles.filterBtn} ${filter === cat ? styles.filterBtnActive : ''}`}
+                onClick={() => setFilter(cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          <div className={styles.catalogGrid}>
+            {filteredGames.map((game) => (
+              <article key={game.id} className={styles.catalogCard}>
+                <div className={styles.catalogCardBody}>
+                  <span className={`badge ${game.badgeClass}`}>{game.category}</span>
+                  <h3 className={styles.catalogTitle}>
+                    <Link href={`/games/${game.id}`}>{game.name}</Link>
+                  </h3>
+                  <p className={styles.catalogDesc}>{game.description}</p>
+                  <div className={styles.catalogFooter}>
+                    <span>👥 {game.playerLabel}</span>
+                    <Link href={`/games/${game.id}`} className="btn btn-primary btn-sm">
+                      Play →
+                    </Link>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* ==================== HOW IT WORKS TIMELINE ==================== */}
+        <section className={styles.howItWorksSection}>
+          <header className={styles.sectionHeader}>
+            <span className={styles.sectionTag}>⚡ Zero Friction</span>
+            <h2>How a Match Flows on IcoGenX</h2>
+          </header>
+
+          <div className={styles.timelineGrid}>
+            <div className={styles.timelineCard}>
+              <div className={styles.timelineStep}>1</div>
+              <h3>Pick a Game &amp; Variant</h3>
+              <p>Choose from 36+ strategy, logic, and reflex browser games.</p>
+            </div>
+            <div className={styles.timelineCard}>
+              <div className={styles.timelineStep}>2</div>
+              <h3>Share 6-Digit Code</h3>
+              <p>Click 'Create Room' and send the 6-character link to your friend.</p>
+            </div>
+            <div className={styles.timelineCard}>
+              <div className={styles.timelineStep}>3</div>
+              <h3>Play Real-Time</h3>
+              <p>Powered by Rust WebSockets for instant, lag-free move synchronization.</p>
+            </div>
+            <div className={styles.timelineCard}>
+              <div className={styles.timelineStep}>4</div>
+              <h3>Rematch Instantly</h3>
+              <p>Finish your match and hit rematch without leaving the room.</p>
+            </div>
+          </div>
+        </section>
+
+        {/* ==================== SEO-OPTIMIZED SSR GUIDE COPY ==================== */}
+        <section className={styles.seoContentSection}>
+          <h2>Free 2-Player Online Games with Instant Room Codes</h2>
+          <p>
+            Welcome to <strong>IcoGenX</strong>, the modern indie multiplayer gaming platform built for quick, clever, and tactical 2-player browser matches.
+            Whether you want to play a quick 2-minute round of <em>Disappearing Tic-Tac-Toe</em>, test your deductive reasoning in <em>Code Breaker</em>, or invert gravity in <em>Drop Four Chaos</em>, IcoGenX makes online gaming effortless.
+          </p>
+
+          <h3>Why Choose IcoGenX for Online Multiplayer Games?</h3>
+          <ul>
+            <li><strong>Zero Install Required:</strong> Play natively inside Chrome, Safari, Firefox, or mobile browsers.</li>
+            <li><strong>Instant Private Lobbies:</strong> Share 6-character room codes with friends to join the same match in under 5 seconds.</li>
+            <li><strong>High-Performance Netcode:</strong> Powered by Rust WebSockets for real-time move synchronization.</li>
+          </ul>
+
+          <h3>Frequently Asked Questions (FAQ)</h3>
+          <div className={styles.faqList}>
+            <details className={styles.faqItem}>
+              <summary><h4>Are all games on IcoGenX free to play?</h4></summary>
+              <p>Yes! Every game and variant on IcoGenX is 100% free with no paywalls or mandatory account sign-ups.</p>
+            </details>
+            <details className={styles.faqItem}>
+              <summary><h4>Do I need to download an application?</h4></summary>
+              <p>No downloads are needed. All games run directly inside desktop and mobile web browsers.</p>
+            </details>
+            <details className={styles.faqItem}>
+              <summary><h4>How do room codes work?</h4></summary>
+              <p>Generating a room creates a 6-character code (e.g. <code>ABC123</code>). Send that code to your friend so they can join your lobby instantly.</p>
+            </details>
+          </div>
+        </section>
+
+      </div>
     </div>
   );
 }

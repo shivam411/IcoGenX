@@ -1,0 +1,274 @@
+/* frontend/src/app/games/connect-numbers/game.module.css */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 750px;
+  margin: 0 auto;
+  gap: 1.5rem;
+  color: #f8fafc;
+}
+
+.statusBar {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 500;
+  backdrop-filter: blur(8px);
+  color: #e2e8f0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.scoreBoard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  gap: 1rem;
+}
+
+.scoreCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.activeScoreP1 {
+  border-color: #06b6d4;
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.2);
+  background: rgba(6, 182, 212, 0.05);
+}
+
+.activeScoreP2 {
+  border-color: #f43f5e;
+  box-shadow: 0 0 15px rgba(244, 63, 94, 0.2);
+  background: rgba(244, 63, 94, 0.05);
+}
+
+.scoreLabel {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin-bottom: 0.25rem;
+}
+
+.scoreVal {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.scoreP1 { color: #22d3ee; text-shadow: 0 0 8px rgba(34, 211, 238, 0.4); }
+.scoreP2 { color: #fb7185; text-shadow: 0 0 8px rgba(251, 113, 133, 0.4); }
+
+.boardContainer {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 1rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.svgBoard {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Central Trophy */
+.prizeWrapper {
+  animation: float 3s ease-in-out infinite alternate;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px) rotate(0deg); }
+  100% { transform: translateY(-8px) rotate(2deg); }
+}
+
+.prizeGlow {
+  fill: radial-gradient(circle, rgba(234, 179, 8, 0.2) 0%, rgba(234, 179, 8, 0) 70%);
+}
+
+.prizeBase {
+  fill: #eab308;
+  filter: drop-shadow(0 0 10px rgba(234, 179, 8, 0.5));
+}
+
+.prizeSparkle {
+  fill: #ffffff;
+  animation: blink 1.5s infinite alternate;
+}
+
+@keyframes blink {
+  0% { opacity: 0.2; transform: scale(0.8); }
+  100% { opacity: 1; transform: scale(1.2); }
+}
+
+/* Connection Lines */
+.connectionLine {
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.lineP1 {
+  stroke: #22d3ee;
+  filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.8));
+}
+
+.lineP2 {
+  stroke: #fb7185;
+  filter: drop-shadow(0 0 6px rgba(251, 113, 133, 0.8));
+}
+
+.lineGuide {
+  stroke: rgba(255, 255, 255, 0.04);
+  stroke-width: 1.5;
+  stroke-dasharray: 4, 6;
+}
+
+/* Number circles */
+.numberNode {
+  fill: #1e293b;
+  stroke: #475569;
+  stroke-width: 2;
+  transition: all 0.3s ease;
+}
+
+.nodeP1Connected {
+  fill: #06b6d4;
+  stroke: #22d3ee;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 10px rgba(34, 211, 238, 0.6));
+}
+
+.nodeP2Connected {
+  fill: #e11d48;
+  stroke: #fb7185;
+  stroke-width: 3;
+  filter: drop-shadow(0 0 10px rgba(251, 113, 133, 0.6));
+}
+
+.nodeText {
+  font-size: 1.1rem;
+  font-weight: 800;
+  fill: #94a3b8;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  user-select: none;
+  pointer-events: none;
+}
+
+.nodeTextConnected {
+  fill: #ffffff;
+}
+
+/* Side headers */
+.sideLabel {
+  font-size: 0.9rem;
+  font-weight: 700;
+  fill: #475569;
+  text-anchor: middle;
+}
+
+.sideLabelActive {
+  fill: #f8fafc;
+}
+
+/* Dice Console */
+.diceConsole {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  width: 100%;
+}
+
+.rollBtn {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: #ffffff;
+  border: none;
+  padding: 0.75rem 2rem;
+  font-weight: 700;
+  font-size: 1rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+.rollBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+}
+
+.rollBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* 3D Dice Face */
+.diceShowcase {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.die {
+  width: 50px;
+  height: 50px;
+  background: #ffffff;
+  border-radius: 10px;
+  position: relative;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3), inset 0 -4px 0 rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.dieRolling {
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg) scale(1.1); }
+  50% { transform: rotate(180deg) scale(0.9); }
+  100% { transform: rotate(360deg) scale(1.1); }
+}
+
+.rollText {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.rollTextActive {
+  color: #eab308;
+}

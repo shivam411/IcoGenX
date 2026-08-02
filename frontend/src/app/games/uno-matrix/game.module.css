@@ -1,0 +1,459 @@
+/* frontend/src/app/games/uno-matrix/game.module.css */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  gap: 1.5rem;
+  color: #f8fafc;
+}
+
+.statusBar {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 500;
+  backdrop-filter: blur(8px);
+  color: #e2e8f0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.gameArea {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  gap: 2rem;
+}
+
+@media (max-width: 768px) {
+  .gameArea {
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
+.leftPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  flex: 1;
+}
+
+.rightPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 280px;
+}
+
+@media (max-width: 768px) {
+  .rightPanel {
+    width: 100%;
+  }
+}
+
+/* Score Board */
+.scoreBoard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  width: 100%;
+}
+
+.scoreCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.activeP1 {
+  border-color: #ef4444;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.activeP2 {
+  border-color: #3b82f6;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.scoreLabel {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin-bottom: 0.25rem;
+}
+
+.scoreVal {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+/* Draw Console */
+.drawConsole {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  gap: 1rem;
+}
+
+.deckContainer {
+  position: relative;
+  width: 100px;
+  height: 150px;
+  cursor: pointer;
+  perspective: 1000px;
+}
+
+.deckDisabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.deckBack {
+  position: absolute;
+  width: 100px;
+  height: 150px;
+  background: linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%);
+  border: 3px solid #facc15;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+  transition: all 0.3s ease;
+}
+
+.deckBack::after {
+  content: 'UNO';
+  font-size: 1.2rem;
+  font-weight: 900;
+  font-style: italic;
+  color: #facc15;
+  text-shadow: 2px 2px 0px #000;
+  transform: rotate(-20deg);
+}
+
+.deckContainer:not(.deckDisabled):hover .deckBack {
+  transform: translateY(-8px) rotateY(-10deg);
+  box-shadow: 0 12px 25px rgba(250, 204, 21, 0.25);
+  border-color: #ffffff;
+}
+
+.drawPrompt {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.drawPromptActive {
+  color: #facc15;
+  animation: pulseText 1.5s infinite alternate;
+}
+
+@keyframes pulseText {
+  from { opacity: 0.8; }
+  to { opacity: 1; text-shadow: 0 0 8px rgba(250, 204, 21, 0.5); }
+}
+
+/* Card representation */
+.unoCard {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.5rem;
+  box-sizing: border-box;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  font-family: 'Outfit', sans-serif;
+  user-select: none;
+}
+
+.cardRed {
+  background: #dc2626;
+  border: 2px solid #ef4444;
+}
+
+.cardYellow {
+  background: #ca8a04;
+  border: 2px solid #eab308;
+  color: #0f172a;
+}
+
+.cardGreen {
+  background: #16a34a;
+  border: 2px solid #22c55e;
+}
+
+.cardBlue {
+  background: #2563eb;
+  border: 2px solid #3b82f6;
+}
+
+.cardWild {
+  background: linear-gradient(135deg, #dc2626 50%, #2563eb 50%),
+              linear-gradient(45deg, #16a34a 50%, #ca8a04 50%);
+  background-blend-mode: overlay;
+  border: 2px solid #ffffff;
+}
+
+.cardHidden {
+  background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+  border: 2px solid #475569;
+}
+
+.cardBack {
+  background: linear-gradient(135deg, #991b1b 0%, #450a0a 100%);
+  border: 2px solid #facc15;
+}
+
+.cardBackInner {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  height: 100%;
+  width: 100%;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cardBackText {
+  color: #facc15;
+  font-size: 1.1rem;
+  font-weight: 900;
+  font-style: italic;
+  transform: rotate(-15deg);
+  text-shadow: 1px 1px 0px #000;
+}
+
+.cardCorner {
+  font-size: 0.8rem;
+  font-weight: 800;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardCornerBottom {
+  font-size: 0.8rem;
+  font-weight: 800;
+  align-self: flex-end;
+  transform: rotate(180deg);
+}
+
+.cardCenter {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 65%;
+  height: 50%;
+  background: #ffffff;
+  border-radius: 50% / 30%;
+  transform: translate(-50%, -50%) rotate(-15deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.yellowInner .cardCenter {
+  background: #0f172a;
+}
+
+.cardCenterText {
+  font-size: 2rem;
+  font-weight: 900;
+  font-style: italic;
+  transform: rotate(15deg);
+  text-shadow: 2px 2px 0px rgba(0,0,0,0.15);
+}
+
+.cardRed .cardCenterText { color: #dc2626; }
+.cardBlue .cardCenterText { color: #2563eb; }
+.cardGreen .cardCenterText { color: #16a34a; }
+.cardYellow .cardCenterText { color: #eab308; }
+.cardWild .cardCenterText { color: #000000; }
+
+/* 4x4 Grid */
+.matrixGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  background: rgba(15, 23, 42, 0.4);
+  padding: 1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.gridCell {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  perspective: 1000px;
+}
+
+/* Axis Headers */
+.gridHeaderRow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  padding: 0 1rem;
+}
+
+.colHeader {
+  text-align: center;
+  font-weight: 800;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+.gridWithRowHeaders {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 0.75rem;
+  align-items: center;
+  width: 100%;
+}
+
+.rowHeaders {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: space-around;
+  padding: 1rem 0;
+  box-sizing: border-box;
+}
+
+.rowHeader {
+  height: 25%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+.rowHeaderGreen { color: #22c55e; }
+.rowHeaderBlue { color: #3b82f6; }
+.rowHeaderYellow { color: #eab308; }
+.rowHeaderRed { color: #ef4444; }
+
+/* Flip cards stack */
+.cardStack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.placeholderCard {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.25;
+  filter: blur(0.5px);
+  pointer-events: none;
+}
+
+.overlayCard {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  animation: dropIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes dropIn {
+  0% { transform: scale(1.3) rotate(-10deg); opacity: 0; filter: drop-shadow(0 20px 20px rgba(0,0,0,0.5)); }
+  100% { transform: scale(1) rotate(0); opacity: 1; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3)); }
+}
+
+/* Opponent Mini Grid */
+.miniGridContainer {
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 1rem;
+}
+
+.miniGridContainer h3 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+.miniGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.4rem;
+}
+
+.miniCell {
+  aspect-ratio: 2 / 3;
+  border-radius: 4px;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.miniCellCompleted {
+  background: #22c55e;
+  border-color: #4ade80;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.3);
+}
+
+/* Last Drawn Show */
+.lastDrawnPanel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  background: rgba(30, 41, 59, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  gap: 0.5rem;
+}
+
+.lastDrawnTitle {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+}
+
+.lastDrawnWrapper {
+  width: 80px;
+  height: 120px;
+}

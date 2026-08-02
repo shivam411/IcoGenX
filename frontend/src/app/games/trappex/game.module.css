@@ -1,0 +1,231 @@
+/* frontend/src/app/games/trappex/game.module.css */
+
+.gameWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.boardContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.statusText {
+  min-height: 24px;
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.warning {
+  color: var(--accent-rose, #f43f5e);
+  animation: shake 0.3s ease;
+  display: inline-block;
+}
+
+.myTurn {
+  color: var(--accent-blue, #3b82f6);
+  font-weight: 600;
+  text-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+}
+
+.bonusTurn {
+  color: var(--accent-yellow, #fde047);
+  font-weight: 700;
+  animation: pulse 1.2s infinite alternate ease-in-out;
+  display: inline-block;
+}
+
+.opponentTurn {
+  color: var(--text-secondary, #94a3b8);
+}
+
+/* SVG Board Container */
+.svgBoard {
+  width: 100%;
+  max-width: 440px;
+  aspect-ratio: 1 / 1;
+  background: rgba(15, 12, 38, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg, 24px);
+  box-shadow: var(--shadow-card), inset 0 0 30px rgba(0, 0, 0, 0.6);
+  padding: 10px;
+  margin-bottom: 18px;
+}
+
+/* Dots and Lines */
+.gridDot {
+  fill: #4b5563;
+  transition: all 0.3s ease;
+}
+
+.gridDotActive {
+  fill: #9ca3af;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.5));
+}
+
+/* Lines */
+.barrierLine {
+  stroke-linecap: round;
+  transition: all 0.25s ease-in-out;
+}
+
+.lineEmpty {
+  stroke: rgba(255, 255, 255, 0.04);
+  stroke-width: 3;
+}
+
+.lineP1 {
+  stroke: #22d3ee;
+  stroke-width: 6;
+  filter: drop-shadow(0 0 6px rgba(34, 211, 238, 0.8));
+}
+
+.lineP2 {
+  stroke: #f43f5e;
+  stroke-width: 6;
+  filter: drop-shadow(0 0 6px rgba(244, 63, 94, 0.8));
+}
+
+.lineObstacle {
+  stroke: #4b5563;
+  stroke-width: 5;
+  stroke-dasharray: 2, 2;
+  opacity: 0.7;
+}
+
+/* Hitboxes for easy tapping */
+.hitbox {
+  fill: transparent;
+  cursor: pointer;
+}
+
+.hitbox:hover + .lineEmpty {
+  stroke: rgba(59, 130, 246, 0.4);
+  stroke-width: 6;
+}
+
+.hitboxP1Hover:hover + .lineEmpty {
+  stroke: rgba(34, 211, 238, 0.4);
+  stroke-width: 6;
+}
+
+.hitboxP2Hover:hover + .lineEmpty {
+  stroke: rgba(244, 63, 94, 0.4);
+  stroke-width: 6;
+}
+
+/* Claimed Squares */
+.squareClaimedP1 {
+  fill: rgba(34, 211, 238, 0.08);
+  transition: fill 0.4s ease;
+}
+
+.squareClaimedP2 {
+  fill: rgba(244, 63, 94, 0.08);
+  transition: fill 0.4s ease;
+}
+
+.squareObstacle {
+  fill: url(#obstacleHatch);
+  opacity: 0.8;
+}
+
+/* Token / Initials inside boxes */
+.squareText {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.4rem;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  pointer-events: none;
+  user-select: none;
+}
+
+.textP1 {
+  fill: #22d3ee;
+  filter: drop-shadow(0 0 4px rgba(34, 211, 238, 0.5));
+}
+
+.textP2 {
+  fill: #f43f5e;
+  filter: drop-shadow(0 0 4px rgba(244, 63, 94, 0.5));
+}
+
+.eventLog {
+  font-size: 0.85rem;
+  color: var(--text-secondary, #94a3b8);
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  padding: 6px 14px;
+  border-radius: var(--radius-sm, 8px);
+  margin-top: 10px;
+  text-align: center;
+  width: 100%;
+}
+
+.scoreBoard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.scoreItem {
+  padding: 12px;
+  border-radius: 12px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.scoreP1 {
+  border-color: rgba(6, 182, 212, 0.2);
+  background: rgba(6, 182, 212, 0.02);
+}
+
+.scoreP2 {
+  border-color: rgba(244, 63, 94, 0.2);
+  background: rgba(244, 63, 94, 0.02);
+}
+
+.scoreLabel {
+  font-size: 0.8rem;
+  color: var(--text-secondary, #94a3b8);
+  margin-bottom: 4px;
+}
+
+.scoreVal {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.scoreP1 .scoreVal {
+  color: #22d3ee;
+}
+
+.scoreP2 .scoreVal {
+  color: #fb7185;
+}
+
+/* Keyframes */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+@keyframes pulse {
+  0% { opacity: 0.7; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1.03); }
+}
